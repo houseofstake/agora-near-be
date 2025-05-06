@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+.env
+.git
+.github
+.vscode
+dist
+coverage
+README.md
+.gitignore
+tests 

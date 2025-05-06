@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model blocks {
+  height       BigInt   @id
+  hash         String
+  prev_hash    String
+  author       String
+  timestamp    DateTime @db.Timestamp(6)
+  gas_price    String
+  total_supply String
+}
+
+model chunks {
+  height                 BigInt
+  chunk_hash             String @id
+  prev_block_hash        String
+  outcome_root           String
+  prev_state_root        String
+  encoded_merkle_root    String
+  encoded_length         BigInt
+  height_created         BigInt
+  height_included        BigInt
+  shard_id               BigInt
+  gas_used               BigInt
+  gas_limit              BigInt
+  validator_reward       String
+  balance_burnt          String
+  outgoing_receipts_root String
+  tx_root                String
+  author                 String
+}
+
+model cursors {
+  id        String  @id(map: "cursor_pk")
+  cursor    String?
+  block_num BigInt?
+  block_id  String?
+}
+
+model receipt_actions {
+  id                String   @id
+  block_height      BigInt
+  receipt_id        String
+  signer_account_id String
+  signer_public_key String
+  gas_price         String
+  action_kind       String
+  predecessor_id    String
+  receiver_id       String
+  block_hash        String
+  chunk_hash        String
+  author            String
+  method_name       String
+  gas               BigInt
+  deposit           String
+  args_base64       String
+  action_index      Int
+  block_timestamp   DateTime @db.Timestamp(6)
+}
+
+model receipts {
+  height         BigInt
+  block_hash     String
+  chunk_hash     String
+  receipt_id     String @id
+  predecessor_id String
+  receiver_id    String
+  receipt_kind   String
+  author         String
+}
+
+model substreams_history {
+  id         Int     @id @default(autoincrement())
+  op         String? @db.Char(1)
+  table_name String?
+  pk         String?
+  prev_value String?
+  block_num  BigInt?
+}
+
+model DelegateStatements {
+  address   String
+  signature String
+  payload   Json
+  twitter   String?
+  discord   String?
+  email     String?
+  createdAt DateTime? @default(now()) @map("created_at") @db.Date
+  updatedAt DateTime? @default(now()) @map("updated_at") @db.Date
+  warpcast  String?
+  endorsed  Boolean   @default(false)
+
+  @@id(address)
+  @@index([email], map: "idx_delegate_statements_email")
+  @@map("delegate_statements")
+}
