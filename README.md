@@ -64,11 +64,7 @@ The server will be running at http://localhost:3000
 ## API Endpoints
 
 - `GET /health` - Health check endpoint
-- `GET /api/users` - Get all users
-- `GET /api/users/:id` - Get user by ID
-- `POST /api/users` - Create a new user
-- `PUT /api/users/:id` - Update a user
-- `DELETE /api/users/:id` - Delete a user
+- `GET /api/delegate-statement/[:address]` - Get delegate statement of user by address
 
 ## Building and Running with Docker
 
@@ -81,35 +77,5 @@ docker build -t agora-near-be .
 2. Run the container:
 
 ```bash
-docker run -p 3000:3000 --env-file .env agora-near-be
+docker run -p 8080:8080 --env-file .env agora-near-be
 ```
-
-## Deployment to GCP
-
-To deploy this application to Google Cloud Platform:
-
-1. Build the Docker image:
-
-```bash
-docker build -t gcr.io/[PROJECT_ID]/agora-near-be .
-```
-
-2. Push the image to Google Container Registry:
-
-```bash
-docker push gcr.io/[PROJECT_ID]/agora-near-be
-```
-
-3. Deploy to Cloud Run:
-
-```bash
-gcloud run deploy agora-near-be \
-  --image gcr.io/[PROJECT_ID]/agora-near-be \
-  --platform managed \
-  --region [REGION] \
-  --allow-unauthenticated
-```
-
-## License
-
-[MIT](LICENSE)
