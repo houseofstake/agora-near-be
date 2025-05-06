@@ -3,6 +3,8 @@ node_modules
 
 # Build output
 dist/
+*.d.ts
+*.d.ts.map
 
 # Logs
 logs
