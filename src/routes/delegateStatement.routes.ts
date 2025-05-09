@@ -9,4 +9,6 @@ router.get(
   delegateStatementController.getDelegateStatementByAddress
 );
 
+router.post("/", delegateStatementController.createDelegateStatement);
+
 export default router;
