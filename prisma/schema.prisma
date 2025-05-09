@@ -87,7 +87,7 @@ model substreams_history {
 }
 
 model DelegateStatements {
-  address   String
+  address   String    @id
   signature String
   payload   Json
   twitter   String?
@@ -98,7 +98,21 @@ model DelegateStatements {
   warpcast  String?
   endorsed  Boolean   @default(false)
 
-  @@id(address)
   @@index([email], map: "idx_delegate_statements_email")
   @@map("delegate_statements")
+}
+
+model execution_outcomes {
+  receipt_id             String   @id
+  block_height           BigInt
+  block_hash             String
+  chunk_hash             String
+  shard_id               String
+  gas_burnt              BigInt
+  gas_used               Float
+  tokens_burnt           Float
+  executor_account_id    String
+  status                 String
+  outcome_receipt_ids    String[]
+  executed_in_block_hash String
 }
