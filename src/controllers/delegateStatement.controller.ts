@@ -27,7 +27,7 @@ export class DelegateStatementController {
   ): Promise<void> => {
     try {
       const { address } = req.params;
-      const delegateStatement = await prisma.delegateStatements.findUnique({
+      const delegateStatement = await prisma.delegate_statements.findUnique({
         where: { address },
       });
 
@@ -84,15 +84,18 @@ export class DelegateStatementController {
         email,
         topIssues,
         agreeCodeConduct,
+        publicKey,
       };
 
-      const createdDelegateStatement = await prisma.delegateStatements.upsert({
+      const createdDelegateStatement = await prisma.delegate_statements.upsert({
         where: { address },
         update: data,
         create: data,
       });
 
-      res.status(200).json({ delegateStatement: createdDelegateStatement });
+      res
+        .status(200)
+        .json({ delegateStatement: createdDelegateStatement, success: true });
     } catch (error) {
       console.error("Error creating delegate statement:", error);
       res.status(500).json({ error: "Failed to create delegate statement" });

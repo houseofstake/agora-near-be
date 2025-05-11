@@ -8,7 +8,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "test": "jest --coverage",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev --name delegate_statements",
+    "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:pull": "prisma db pull",
     "prisma:migrateDiff": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script"
