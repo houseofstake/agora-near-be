@@ -1,16 +1,30 @@
 import { Request, Response } from "express";
-import { prisma } from "../index";
+import { prisma } from "../../../index";
+
+interface ProposalVotingHistoryParams {
+  proposal_id: string;
+}
+
+interface ProposalVotingHistoryQuery {
+  page_size?: string;
+  page?: string;
+}
 
 export class ProposalVotingHistoryController {
   public getProposalVotingHistory = async (
-    req: Request,
+    req: Request<
+      ProposalVotingHistoryParams,
+      {},
+      {},
+      ProposalVotingHistoryQuery
+    >,
     res: Response
   ): Promise<void> => {
     try {
       const { proposal_id } = req.params;
       const { page_size, page } = req.query;
-      const pageSize = parseInt(page_size as string);
-      const pageNumber = parseInt(page as string);
+      const pageSize = parseInt(page_size ?? "10");
+      const pageNumber = parseInt(page ?? "1");
       const proposalId = parseInt(proposal_id);
 
       const records = await prisma.proposalVotingHistory.findMany({

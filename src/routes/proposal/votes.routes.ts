@@ -1,5 +1,5 @@
 import express from "express";
-import { ProposalVotingHistoryController } from "../controllers/proposalVotingHistory.controller";
+import { ProposalVotingHistoryController } from "../../controllers/proposal/votes/votes.controller";
 
 const router = express.Router();
 const proposalVotingHistoryController = new ProposalVotingHistoryController();
