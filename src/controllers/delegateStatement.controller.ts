@@ -1,30 +1,23 @@
 import { Request, Response } from "express";
 import { prisma } from "../index";
+import { verifySignature } from "../lib/signature/verifySignature";
 import { sanitizeContent } from "../lib/utils/sanitizationUtils";
-import { InputJsonValue } from "@prisma/client/runtime/library";
-
-type DelegateStatement = {
-  agreeCodeConduct: boolean;
-  discord: string;
-  delegateStatement: string;
-  email: string;
-  twitter: string;
-  warpcast: string;
-  topIssues: {
-    type: string;
-    value: string;
-  }[];
-};
 
 type DelegateStatementsCreateInput = {
   address: string;
-  delegateStatement: DelegateStatement;
+  message: string;
   signature: string;
   publicKey: string;
   twitter: string;
   discord: string;
   email: string;
   warpcast: string;
+  topIssues: {
+    type: string;
+    value: string;
+  }[];
+  agreeCodeConduct: boolean;
+  statement: string;
 };
 
 export class DelegateStatementController {
@@ -58,29 +51,39 @@ export class DelegateStatementController {
       const {
         address,
         signature,
-        delegateStatement,
         publicKey,
         twitter,
         discord,
         email,
         warpcast,
+        message,
+        statement,
+        topIssues,
+        agreeCodeConduct,
       } = req.body;
 
-      // TODO: Check validity of signature
+      const isVerified = verifySignature({
+        message,
+        signature,
+        publicKey,
+      });
 
-      const sanitizedStatement = {
-        ...delegateStatement,
-        delegateStatement: sanitizeContent(delegateStatement.delegateStatement),
-      };
+      if (!isVerified) {
+        res.status(400).json({ error: "Invalid signature" });
+        return;
+      }
 
       const data = {
         address,
+        message,
         signature,
-        payload: sanitizedStatement as InputJsonValue,
+        statement: sanitizeContent(statement),
         twitter,
         warpcast,
         discord,
         email,
+        topIssues,
+        agreeCodeConduct,
       };
 
       const createdDelegateStatement = await prisma.delegateStatements.upsert({
