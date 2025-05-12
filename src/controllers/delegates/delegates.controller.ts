@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
-import { prisma } from "../index";
-import { verifySignature } from "../lib/signature/verifySignature";
-import { sanitizeContent } from "../lib/utils/sanitizationUtils";
+import { prisma } from "../../index";
+import { verifySignature } from "../../lib/signature/verifySignature";
+import { sanitizeContent } from "../../lib/utils/sanitizationUtils";
 
-type DelegateStatementsCreateInput = {
+type DelegateStatementInput = {
   address: string;
   message: string;
   signature: string;
@@ -20,7 +20,7 @@ type DelegateStatementsCreateInput = {
   statement: string;
 };
 
-export class DelegateStatementController {
+export class DelegatesController {
   public getDelegateStatementByAddress = async (
     req: Request,
     res: Response
@@ -43,8 +43,56 @@ export class DelegateStatementController {
     }
   };
 
+  public getDelegateByAddress = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { address } = req.params;
+      const delegateStatement = await prisma.delegate_statements.findUnique({
+        where: { address },
+      });
+
+      if (!delegateStatement) {
+        // For now, just return the address if not found since we don't actually have a table for registered voters/delegates yet
+        // Eventually this will return a 404
+        res.status(200).json({
+          delegate: {
+            address,
+          },
+        });
+        return;
+      }
+
+      const {
+        twitter,
+        discord,
+        email,
+        warpcast,
+        statement,
+        topIssues,
+        address: delegateAddress,
+      } = delegateStatement;
+
+      res.status(200).json({
+        delegate: {
+          address: delegateAddress,
+          twitter,
+          discord,
+          email,
+          warpcast,
+          statement,
+          topIssues,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching delegate statement:", error);
+      res.status(500).json({ error: "Failed to fetch delegate statement" });
+    }
+  };
+
   public createDelegateStatement = async (
-    req: Request<{}, {}, DelegateStatementsCreateInput>,
+    req: Request<{}, {}, DelegateStatementInput>,
     res: Response
   ): Promise<void> => {
     try {
