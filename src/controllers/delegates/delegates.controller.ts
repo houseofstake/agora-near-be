@@ -21,28 +21,6 @@ type DelegateStatementInput = {
 };
 
 export class DelegatesController {
-  public getDelegateStatementByAddress = async (
-    req: Request,
-    res: Response
-  ): Promise<void> => {
-    try {
-      const { address } = req.params;
-      const delegateStatement = await prisma.delegate_statements.findUnique({
-        where: { address },
-      });
-
-      if (!delegateStatement) {
-        res.status(404).json({ error: "Delegate statement not found" });
-        return;
-      }
-
-      res.status(200).json({ delegateStatement });
-    } catch (error) {
-      console.error("Error fetching delegate statement:", error);
-      res.status(500).json({ error: "Failed to fetch delegate statement" });
-    }
-  };
-
   public getDelegateByAddress = async (
     req: Request,
     res: Response
@@ -54,8 +32,9 @@ export class DelegatesController {
       });
 
       if (!delegateStatement) {
-        // For now, just return the address if not found since we don't actually have a table for registered voters/delegates yet
-        // Eventually this will return a 404
+        // For now, just return the address if not found since
+        // we don't actually have a table for registered voters/delegates yet.
+        // Eventually, this will return a 404.
         res.status(200).json({
           delegate: {
             address,
@@ -86,8 +65,8 @@ export class DelegatesController {
         },
       });
     } catch (error) {
-      console.error("Error fetching delegate statement:", error);
-      res.status(500).json({ error: "Failed to fetch delegate statement" });
+      console.error("Error fetching delegate:", error);
+      res.status(500).json({ error: "Failed to fetch delegate" });
     }
   };
 
