@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client-js"
+  output          = "../src/generated/prisma"
   previewFeatures = ["views"]
 }
 
@@ -11,21 +11,21 @@ datasource db {
 
 // Do not remove, might be overridden by prisma db pull
 view proposalVotingHistory {
-  id String @id
-  receiptId String @map("receipt_id")
-  votedDate DateTime @db.Date @map("voted_date")
-  votedAt   DateTime @db.Timestamp(6) @map("voted_at")
-  proposalId Int @map("proposal_id")
-  voterId String @map("voter_id")
-  voteOption Int @map("vote_option")
-  votingPower Decimal @map("voting_power")
-  extraVenearBalance Decimal @map("extra_venear_balance")
-  delegation Json
-  delegatedVotingPower Decimal @map("delegated_voting_power")
-  delegatedExtraVenearBalance Decimal @map("delegated_extra_venear_balance")
-  blockHash String @map("block_hash")
-  blockHeight Int @map("block_height")
-  chunkHash String @map("chunk_hash")
+  id                          String   @id
+  receiptId                   String   @map("receipt_id")
+  votedDate                   DateTime @map("voted_date") @db.Date
+  votedAt                     DateTime @map("voted_at") @db.Timestamp(6)
+  proposalId                  Int      @map("proposal_id")
+  voterId                     String   @map("voter_id")
+  voteOption                  Int      @map("vote_option")
+  votingPower                 Decimal  @map("voting_power")
+  extraVenearBalance          Decimal  @map("extra_venear_balance")
+  delegation                  Json
+  delegatedVotingPower        Decimal  @map("delegated_voting_power")
+  delegatedExtraVenearBalance Decimal  @map("delegated_extra_venear_balance")
+  blockHash                   String   @map("block_hash")
+  blockHeight                 Int      @map("block_height")
+  chunkHash                   String   @map("chunk_hash")
 
   @@map("proposal_voting_history")
 }
@@ -108,22 +108,6 @@ model substreams_history {
   block_num  BigInt?
 }
 
-model DelegateStatements {
-  address   String    @id
-  signature String
-  payload   Json
-  twitter   String?
-  discord   String?
-  email     String?
-  createdAt DateTime? @default(now()) @map("created_at") @db.Date
-  updatedAt DateTime? @default(now()) @map("updated_at") @db.Date
-  warpcast  String?
-  endorsed  Boolean   @default(false)
-
-  @@index([email], map: "idx_delegate_statements_email")
-  @@map("delegate_statements")
-}
-
 model execution_outcomes {
   receipt_id             String   @id
   block_height           BigInt
@@ -137,4 +121,20 @@ model execution_outcomes {
   status                 String
   outcome_receipt_ids    String[]
   executed_in_block_hash String
+}
+
+model delegate_statements {
+  address          String  @id
+  signature        String
+  statement        String
+  publicKey        String
+  message          String
+  topIssues        Json?
+  agreeCodeConduct Boolean
+  twitter          String?
+  discord          String?
+  email            String?
+  warpcast         String?
+
+  @@index([email], map: "idx_delegate_statements_email")
 }

@@ -1,0 +1,2 @@
+-- This migration adds the delegate_statements table
+-- Since we're going to drop it immediately after, this is just a placeholder 
