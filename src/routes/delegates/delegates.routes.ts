@@ -8,4 +8,6 @@ router.post("/statement", delegatesController.createDelegateStatement);
 
 router.get("/:address", delegatesController.getDelegateByAddress);
 
+router.get("/", delegatesController.getAllDelegates);
+
 export default router;

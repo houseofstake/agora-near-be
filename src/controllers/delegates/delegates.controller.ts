@@ -20,7 +20,41 @@ type DelegateStatementInput = {
   statement: string;
 };
 
+interface DeletesQuery {
+  page_size?: string;
+  page?: string;
+}
+
 export class DelegatesController {
+  public getAllDelegates = async (
+    req: Request<{}, {}, {}, DeletesQuery>,
+    res: Response
+  ): Promise<void> => {
+    const { page_size, page } = req.query;
+    const pageSize = parseInt(page_size ?? "10");
+    const pageNumber = parseInt(page ?? "1");
+
+    const records = await prisma.registeredVoters.findMany({
+      skip: (pageNumber - 1) * pageSize,
+      take: pageSize,
+    });
+
+    const delegates = records.map((record) => {
+      const { registeredVoterId, currentVotingPower, initialVotingPower, proposalParticipationRate } = record;
+
+      return {
+        address: registeredVoterId,
+        votingPower: currentVotingPower ?? "0",
+        initialVotingPower: initialVotingPower ?? "0",
+        participationRate: proposalParticipationRate ?? "0",
+      };
+    });
+
+    const count = await prisma.registeredVoters.count();
+
+    res.status(200).json({ delegates, count });
+  };
+
   public getDelegateByAddress = async (
     req: Request,
     res: Response
