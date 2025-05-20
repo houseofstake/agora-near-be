@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { prisma } from "../../index";
 import { verifySignature } from "../../lib/signature/verifySignature";
 import { sanitizeContent } from "../../lib/utils/sanitizationUtils";
+import { delegate_statements, registeredVoters } from "../../generated/prisma";
 
 type DelegateStatementInput = {
   address: string;
@@ -25,6 +26,8 @@ interface DeletesQuery {
   page?: string;
 }
 
+type DelegateWithVoterInfo = delegate_statements & registeredVoters;
+
 export class DelegatesController {
   public getAllDelegates = async (
     req: Request<{}, {}, {}, DeletesQuery>,
@@ -34,19 +37,48 @@ export class DelegatesController {
     const pageSize = parseInt(page_size ?? "10");
     const pageNumber = parseInt(page ?? "1");
 
-    const records = await prisma.registeredVoters.findMany({
-      skip: (pageNumber - 1) * pageSize,
-      take: pageSize,
-    });
+    const records = await prisma.$queryRaw<DelegateWithVoterInfo[]>`
+      SELECT
+        rv.registered_voter_id as "registeredVoterId",
+        rv.current_voting_power as "currentVotingPower",
+        rv.proposal_participation_rate as "proposalParticipationRate",
+        ds.address,
+        ds.twitter,
+        ds.discord,
+        ds.email,
+        ds.warpcast,
+        ds.statement,
+        ds."topIssues"
+      FROM registered_voters rv
+      LEFT JOIN delegate_statements ds ON rv.registered_voter_id = ds.address
+      ORDER BY rv.current_voting_power DESC
+      LIMIT ${pageSize}
+      OFFSET ${(pageNumber - 1) * pageSize}
+    `;
 
     const delegates = records.map((record) => {
-      const { registeredVoterId, currentVotingPower, initialVotingPower, proposalParticipationRate } = record;
+      const {
+        registeredVoterId,
+        currentVotingPower,
+        proposalParticipationRate,
+        twitter,
+        discord,
+        email,
+        warpcast,
+        statement,
+        topIssues,
+      } = record;
 
       return {
         address: registeredVoterId,
-        votingPower: currentVotingPower ?? "0",
-        initialVotingPower: initialVotingPower ?? "0",
-        participationRate: proposalParticipationRate ?? "0",
+        votingPower: currentVotingPower?.toFixed(),
+        participationRate: proposalParticipationRate?.toFixed(),
+        twitter,
+        discord,
+        email,
+        warpcast,
+        statement,
+        topIssues,
       };
     });
 
@@ -61,41 +93,48 @@ export class DelegatesController {
   ): Promise<void> => {
     try {
       const { address } = req.params;
-      const delegateStatement = await prisma.delegate_statements.findUnique({
-        where: { address },
-      });
 
-      if (!delegateStatement) {
-        // For now, just return the address if not found since
-        // we don't actually have a table for registered voters/delegates yet.
-        // Eventually, this will return a 404.
-        res.status(200).json({
-          delegate: {
-            address,
-          },
+      const voterData = await prisma.$queryRaw<DelegateWithVoterInfo[]>`
+        SELECT
+          rv.registered_voter_id as "registeredVoterId",
+          rv.current_voting_power as "currentVotingPower",
+          rv.proposal_participation_rate as "proposalParticipationRate",
+          ds.address,
+          ds.twitter,
+          ds.discord,
+          ds.email,
+          ds.warpcast,
+          ds.statement,
+          ds."topIssues",
+          ds.message,
+          ds.signature,
+          ds."publicKey",
+          ds."agreeCodeConduct"
+        FROM registered_voters rv
+        LEFT JOIN delegate_statements ds ON rv.registered_voter_id = ds.address
+        WHERE rv.registered_voter_id = ${address}
+      `;
+
+      if (!voterData || voterData.length === 0) {
+        res.status(404).json({
+          message: "Address not found in registered voters",
         });
         return;
       }
 
-      const {
-        twitter,
-        discord,
-        email,
-        warpcast,
-        statement,
-        topIssues,
-        address: delegateAddress,
-      } = delegateStatement;
+      const data = voterData[0];
 
       res.status(200).json({
         delegate: {
-          address: delegateAddress,
-          twitter,
-          discord,
-          email,
-          warpcast,
-          statement,
-          topIssues,
+          address: data.registeredVoterId,
+          twitter: data.twitter,
+          discord: data.discord,
+          email: data.email,
+          warpcast: data.warpcast,
+          statement: data.statement,
+          topIssues: data.topIssues,
+          votingPower: data.currentVotingPower?.toFixed(),
+          participationRate: data.proposalParticipationRate?.toFixed(),
         },
       });
     } catch (error) {
