@@ -4,14 +4,7 @@ import { prisma } from "../..";
 import { fetchPriceAtBlock } from "../../lib/staking/fetchPriceAtBlock";
 import { getRpcUrl } from "../../lib/utils/rpc";
 
-const CONTRACTS_TO_PRICE_METHOD: Record<string, string> = {
-  "linear-protocol.near": "ft_price",
-  "linear-protocol.testnet": "ft_price",
-  "meta-v2.pool.testnet": "get_st_near_price",
-  "meta-pool.near": "get_st_near_price",
-};
-
-const DAYS_AGO = 25;
+const META_POOL_CONTRACTS = ["meta-v2.pool.testnet", "meta-pool.near"];
 
 export class StakingController {
   public getAPY = async (
@@ -22,11 +15,12 @@ export class StakingController {
       const { networkId, contractId } = req.query;
       const rpcUrl = getRpcUrl({ networkId, useArchivalNode: true });
       const provider = new providers.JsonRpcProvider({ url: rpcUrl });
-
-      const methodName = CONTRACTS_TO_PRICE_METHOD[contractId] ?? "ft_price";
-
+      const isMetaPoolContract = META_POOL_CONTRACTS.includes(contractId);
+      const methodName = isMetaPoolContract ? "get_st_near_price" : "ft_price";
+      // MetaPool uses 365 days of price history to calculate APY, liNEAR uses 30 day price history
+      const numDaysAgo = isMetaPoolContract ? 365 : 25;
       const targetDate = new Date();
-      targetDate.setDate(targetDate.getDate() - DAYS_AGO);
+      targetDate.setDate(targetDate.getDate() - numDaysAgo);
 
       const blockTargetDatePromise = prisma.blocks.findFirst({
         select: {
@@ -64,7 +58,11 @@ export class StakingController {
       );
 
       const rate = priceNow / priceThen - 1;
-      const apy = Math.pow(1 + rate, 365 / DAYS_AGO) - 1;
+
+      // Only annualize for liNEAR, MetaPool rate is already annualized
+      const apy = isMetaPoolContract
+        ? rate
+        : Math.pow(1 + rate, 365 / numDaysAgo) - 1;
 
       res.status(200).json({ apy });
     } catch (error) {
