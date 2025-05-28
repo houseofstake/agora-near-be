@@ -6,6 +6,8 @@ const delegatesController = new DelegatesController();
 
 router.post("/statement", delegatesController.createDelegateStatement);
 
+router.get("/:address/voting-history", delegatesController.getDelegateVotingHistory);
+
 router.get("/:address", delegatesController.getDelegateByAddress);
 
 router.get("/", delegatesController.getAllDelegates);
