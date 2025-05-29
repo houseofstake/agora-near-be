@@ -8,6 +8,10 @@ router.post("/statement", delegatesController.createDelegateStatement);
 
 router.get("/:address/voting-history", delegatesController.getDelegateVotingHistory);
 
+router.get("/:address/delegated-from", delegatesController.getDelegateDelegatedFrom);
+
+router.get("/:address/delegated-to", delegatesController.getDelegateDelegatedTo);
+
 router.get("/:address", delegatesController.getDelegateByAddress);
 
 router.get("/", delegatesController.getAllDelegates);

@@ -49,6 +49,22 @@ view registeredVoters {
   @@map("registered_voters")
 }
 
+// Do not remove, might be overridden by prisma db pull
+view delegationEvents {
+  id                          String   @id
+  receiptId                   String   @map("receipt_id")
+  eventDate                   DateTime @map("event_date") @db.Date
+  eventTimestamp              DateTime @map("event_timestamp") @db.Timestamp(6)
+  delegatorId                 String   @map("delegator_id")
+  delegateeId                 String?   @map("delegatee_id")
+  delegateMethod              String   @map("delegate_method")
+  nearAmount                  Decimal? @map("near_amount")
+  blockHeight                 Int      @map("block_height")
+  blockHash                   String   @map("block_hash")
+
+  @@map("delegation_events")
+}
+
 model blocks {
   height       BigInt   @id
   hash         String
