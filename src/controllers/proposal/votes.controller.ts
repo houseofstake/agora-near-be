@@ -45,7 +45,7 @@ export class ProposalVotingHistoryController {
 
         return {
           accountId: voterId,
-          votingPower: votingPower?.toString() ?? "0",
+          votingPower: votingPower?.toFixed() ?? "0",
           voteOption: voteOption.toString(),
         };
       });

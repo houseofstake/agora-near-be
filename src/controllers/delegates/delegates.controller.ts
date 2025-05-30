@@ -133,17 +133,23 @@ export class DelegatesController {
 
       const data = voterData[0];
 
-      const forCount = await prisma.proposalVotingHistory.count({
+      const forCountPromise = prisma.proposalVotingHistory.count({
         where: { voterId: address, voteOption: 0 },
       });
 
-      const againstCount = await prisma.proposalVotingHistory.count({
+      const againstCountPromise = prisma.proposalVotingHistory.count({
         where: { voterId: address, voteOption: 1 },
       });
 
-      const delegatedFromCount = await prisma.delegationEvents.count({
+      const delegatedFromCountPromise = prisma.delegationEvents.count({
         where: { delegateeId: address },
       });
+
+      const [forCount, againstCount, delegatedFromCount] = await Promise.all([
+        forCountPromise,
+        againstCountPromise,
+        delegatedFromCountPromise
+      ]);
 
       res.status(200).json({
         delegate: {
@@ -197,7 +203,7 @@ export class DelegatesController {
 
       const votes = records.map((record) => ({
         voteOption: record.voteOption.toString(),
-        votingPower: record.votingPower?.toString() ?? "0",
+        votingPower: record.votingPower?.toFixed() ?? "0",
         address: record.voterId,
         votedAt: record.votedAt,
         proposalId: record.proposalId?.toString(),
@@ -227,7 +233,7 @@ export class DelegatesController {
       const pageNumber = parseInt(page ?? "1");
 
       const records = await prisma.delegationEvents.findMany({
-        where: { delegateeId: address },
+        where: { delegateeId: address, isLatestDelegatorEvent: true },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
         orderBy: {
@@ -262,7 +268,7 @@ export class DelegatesController {
       const pageNumber = parseInt(page ?? "1");
 
       const records = await prisma.delegationEvents.findMany({
-        where: { delegatorId: address },
+        where: { delegatorId: address, isLatestDelegatorEvent: true, delegateMethod: "delegate_all" },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
         orderBy: {

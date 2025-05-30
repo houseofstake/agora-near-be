@@ -58,6 +58,7 @@ view delegationEvents {
   delegatorId                 String   @map("delegator_id")
   delegateeId                 String?   @map("delegatee_id")
   delegateMethod              String   @map("delegate_method")
+  isLatestDelegatorEvent      Boolean  @map("is_latest_delegator_event")
   nearAmount                  Decimal? @map("near_amount")
   blockHeight                 Int      @map("block_height")
   blockHash                   String   @map("block_hash")
