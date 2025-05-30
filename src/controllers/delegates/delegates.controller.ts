@@ -133,13 +133,18 @@ export class DelegatesController {
 
       const data = voterData[0];
 
-      const forCount = await prisma.proposalVotingHistory.count({
+      const forCountPromise = prisma.proposalVotingHistory.count({
         where: { voterId: address, voteOption: 0 },
       });
 
-      const againstCount = await prisma.proposalVotingHistory.count({
+      const againstCountPromise = prisma.proposalVotingHistory.count({
         where: { voterId: address, voteOption: 1 },
       });
+
+      const [forCount, againstCount] = await Promise.all([
+        forCountPromise,
+        againstCountPromise,
+      ]);
 
       res.status(200).json({
         delegate: {
@@ -192,7 +197,7 @@ export class DelegatesController {
 
       const votes = records.map((record) => ({
         voteOption: record.voteOption.toString(),
-        votingPower: record.votingPower?.toString() ?? "0",
+        votingPower: record.votingPower?.toFixed() ?? "0",
         address: record.voterId,
         votedAt: record.votedAt,
         proposalId: record.proposalId?.toString(),
@@ -202,7 +207,9 @@ export class DelegatesController {
       res.status(200).json({ votes, count });
     } catch (error) {
       console.error("Error fetching delegate voting history:", error);
-      res.status(500).json({ error: "Failed to fetch delegate voting history" });
+      res
+        .status(500)
+        .json({ error: "Failed to fetch delegate voting history" });
     }
   };
 
