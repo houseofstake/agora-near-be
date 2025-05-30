@@ -28,6 +28,15 @@ interface DeletesQuery {
 
 type DelegateWithVoterInfo = delegate_statements & registeredVoters;
 
+interface DelegateVotingHistoryParams {
+  address: string;
+}
+
+interface DelegateVotingHistoryQuery {
+  page_size?: string;
+  page?: string;
+}
+
 export class DelegatesController {
   public getAllDelegates = async (
     req: Request<{}, {}, {}, DeletesQuery>,
@@ -124,6 +133,19 @@ export class DelegatesController {
 
       const data = voterData[0];
 
+      const forCountPromise = prisma.proposalVotingHistory.count({
+        where: { voterId: address, voteOption: 0 },
+      });
+
+      const againstCountPromise = prisma.proposalVotingHistory.count({
+        where: { voterId: address, voteOption: 1 },
+      });
+
+      const [forCount, againstCount] = await Promise.all([
+        forCountPromise,
+        againstCountPromise,
+      ]);
+
       res.status(200).json({
         delegate: {
           address: data.registeredVoterId,
@@ -134,12 +156,60 @@ export class DelegatesController {
           statement: data.statement,
           topIssues: data.topIssues,
           votingPower: data.currentVotingPower?.toFixed(),
+          forCount,
+          againstCount,
           participationRate: data.proposalParticipationRate?.toFixed(),
         },
       });
     } catch (error) {
       console.error("Error fetching delegate:", error);
       res.status(500).json({ error: "Failed to fetch delegate" });
+    }
+  };
+
+  public getDelegateVotingHistory = async (
+    req: Request<
+      DelegateVotingHistoryParams,
+      {},
+      {},
+      DelegateVotingHistoryQuery
+    >,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { address } = req.params;
+      const { page_size, page } = req.query;
+      const pageSize = parseInt(page_size ?? "10");
+      const pageNumber = parseInt(page ?? "1");
+
+      const records = await prisma.proposalVotingHistory.findMany({
+        where: { voterId: address },
+        skip: (pageNumber - 1) * pageSize,
+        take: pageSize,
+        orderBy: {
+          votedDate: "desc",
+        },
+      });
+
+      const count = await prisma.proposalVotingHistory.count({
+        where: { voterId: address },
+      });
+
+      const votes = records.map((record) => ({
+        voteOption: record.voteOption.toString(),
+        votingPower: record.votingPower?.toFixed() ?? "0",
+        address: record.voterId,
+        votedAt: record.votedAt,
+        proposalId: record.proposalId?.toString(),
+        proposalName: record.proposalName,
+      }));
+
+      res.status(200).json({ votes, count });
+    } catch (error) {
+      console.error("Error fetching delegate voting history:", error);
+      res
+        .status(500)
+        .json({ error: "Failed to fetch delegate voting history" });
     }
   };
 
