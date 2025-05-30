@@ -142,7 +142,7 @@ export class DelegatesController {
       });
 
       const delegatedFromCountPromise = prisma.delegationEvents.count({
-        where: { delegateeId: address },
+        where: { delegateeId: address, isLatestDelegatorEvent: true, delegateMethod: "delegate_all" },
       });
 
       const [forCount, againstCount, delegatedFromCount] = await Promise.all([
@@ -242,7 +242,7 @@ export class DelegatesController {
       });
 
       const count = await prisma.delegationEvents.count({
-        where: { delegateeId: address },
+        where: { delegateeId: address, isLatestDelegatorEvent: true },
       });
 
       res.status(200).json({ events: records, count });
@@ -277,7 +277,7 @@ export class DelegatesController {
       });
 
       const count = await prisma.delegationEvents.count({
-        where: { delegatorId: address },
+        where: { delegatorId: address, isLatestDelegatorEvent: true, delegateMethod: "delegate_all" },
       });
 
       res.status(200).json({ events: records, count });
