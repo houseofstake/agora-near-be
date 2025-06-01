@@ -142,13 +142,18 @@ export class DelegatesController {
       });
 
       const delegatedFromCountPromise = prisma.delegationEvents.count({
-        where: { delegateeId: address, isLatestDelegatorEvent: true, delegateMethod: "delegate_all" },
+        where: {
+          delegateeId: address,
+          isLatestDelegatorEvent: true,
+          delegateMethod: "delegate_all",
+          delegateEvent: "ft_mint",
+        },
       });
 
       const [forCount, againstCount, delegatedFromCount] = await Promise.all([
         forCountPromise,
         againstCountPromise,
-        delegatedFromCountPromise
+        delegatedFromCountPromise,
       ]);
 
       res.status(200).json({
@@ -174,12 +179,7 @@ export class DelegatesController {
   };
 
   public getDelegateVotingHistory = async (
-    req: Request<
-      AddressParams,
-      {},
-      {},
-      PaginationQuery
-    >,
+    req: Request<AddressParams, {}, {}, PaginationQuery>,
     res: Response
   ): Promise<void> => {
     try {
@@ -213,17 +213,14 @@ export class DelegatesController {
       res.status(200).json({ votes, count });
     } catch (error) {
       console.error("Error fetching delegate voting history:", error);
-      res.status(500).json({ error: "Failed to fetch delegate voting history" });
+      res
+        .status(500)
+        .json({ error: "Failed to fetch delegate voting history" });
     }
   };
 
   public getDelegateDelegatedFrom = async (
-    req: Request<
-      AddressParams,
-      {},
-      {},
-      PaginationQuery
-    >,
+    req: Request<AddressParams, {}, {}, PaginationQuery>,
     res: Response
   ): Promise<void> => {
     try {
@@ -233,7 +230,11 @@ export class DelegatesController {
       const pageNumber = parseInt(page ?? "1");
 
       const records = await prisma.delegationEvents.findMany({
-        where: { delegateeId: address, isLatestDelegatorEvent: true },
+        where: {
+          delegateeId: address,
+          isLatestDelegatorEvent: true,
+          delegateEvent: "ft_mint",
+        },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
         orderBy: {
@@ -242,23 +243,24 @@ export class DelegatesController {
       });
 
       const count = await prisma.delegationEvents.count({
-        where: { delegateeId: address, isLatestDelegatorEvent: true },
+        where: {
+          delegateeId: address,
+          isLatestDelegatorEvent: true,
+          delegateEvent: "ft_mint",
+        },
       });
 
       res.status(200).json({ events: records, count });
     } catch (error) {
       console.error("Error fetching delegate delegated from events:", error);
-      res.status(500).json({ error: "Failed to fetch delegate delegated from events" });
+      res
+        .status(500)
+        .json({ error: "Failed to fetch delegate delegated from events" });
     }
   };
 
   public getDelegateDelegatedTo = async (
-    req: Request<
-      AddressParams,
-      {},
-      {},
-      PaginationQuery
-    >,
+    req: Request<AddressParams, {}, {}, PaginationQuery>,
     res: Response
   ): Promise<void> => {
     try {
@@ -268,7 +270,12 @@ export class DelegatesController {
       const pageNumber = parseInt(page ?? "1");
 
       const records = await prisma.delegationEvents.findMany({
-        where: { delegatorId: address, isLatestDelegatorEvent: true, delegateMethod: "delegate_all" },
+        where: {
+          delegatorId: address,
+          isLatestDelegatorEvent: true,
+          delegateMethod: "delegate_all",
+          delegateEvent: "ft_mint",
+        },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
         orderBy: {
@@ -277,13 +284,20 @@ export class DelegatesController {
       });
 
       const count = await prisma.delegationEvents.count({
-        where: { delegatorId: address, isLatestDelegatorEvent: true, delegateMethod: "delegate_all" },
+        where: {
+          delegatorId: address,
+          isLatestDelegatorEvent: true,
+          delegateMethod: "delegate_all",
+          delegateEvent: "ft_mint",
+        },
       });
 
       res.status(200).json({ events: records, count });
     } catch (error) {
       console.error("Error fetching delegate delegated to events:", error);
-      res.status(500).json({ error: "Failed to fetch delegate delegated to events" });
+      res
+        .status(500)
+        .json({ error: "Failed to fetch delegate delegated to events" });
     }
   };
 
