@@ -23,7 +23,7 @@ export class NearController {
       }
 
       // Get API key from environment
-      const apiKey = process.env.COIN_GECK_API_KEY;
+      const apiKey = process.env.COIN_GECKO_API_KEY;
       if (!apiKey) {
         res.status(500).json({ error: "API key not configured" });
         return;
