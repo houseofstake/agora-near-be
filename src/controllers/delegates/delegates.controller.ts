@@ -28,11 +28,11 @@ interface DeletesQuery {
 
 type DelegateWithVoterInfo = delegate_statements & registeredVoters;
 
-interface DelegateVotingHistoryParams {
+interface AddressParams {
   address: string;
 }
 
-interface DelegateVotingHistoryQuery {
+interface PaginationQuery {
   page_size?: string;
   page?: string;
 }
@@ -141,9 +141,14 @@ export class DelegatesController {
         where: { voterId: address, voteOption: 1 },
       });
 
-      const [forCount, againstCount] = await Promise.all([
+      const delegatedFromCountPromise = prisma.delegationEvents.count({
+        where: { delegateeId: address, isLatestDelegatorEvent: true, delegateMethod: "delegate_all" },
+      });
+
+      const [forCount, againstCount, delegatedFromCount] = await Promise.all([
         forCountPromise,
         againstCountPromise,
+        delegatedFromCountPromise
       ]);
 
       res.status(200).json({
@@ -158,6 +163,7 @@ export class DelegatesController {
           votingPower: data.currentVotingPower?.toFixed(),
           forCount,
           againstCount,
+          delegatedFromCount,
           participationRate: data.proposalParticipationRate?.toFixed(),
         },
       });
@@ -169,10 +175,10 @@ export class DelegatesController {
 
   public getDelegateVotingHistory = async (
     req: Request<
-      DelegateVotingHistoryParams,
+      AddressParams,
       {},
       {},
-      DelegateVotingHistoryQuery
+      PaginationQuery
     >,
     res: Response
   ): Promise<void> => {
@@ -207,9 +213,77 @@ export class DelegatesController {
       res.status(200).json({ votes, count });
     } catch (error) {
       console.error("Error fetching delegate voting history:", error);
-      res
-        .status(500)
-        .json({ error: "Failed to fetch delegate voting history" });
+      res.status(500).json({ error: "Failed to fetch delegate voting history" });
+    }
+  };
+
+  public getDelegateDelegatedFrom = async (
+    req: Request<
+      AddressParams,
+      {},
+      {},
+      PaginationQuery
+    >,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { address } = req.params;
+      const { page_size, page } = req.query;
+      const pageSize = parseInt(page_size ?? "10");
+      const pageNumber = parseInt(page ?? "1");
+
+      const records = await prisma.delegationEvents.findMany({
+        where: { delegateeId: address, isLatestDelegatorEvent: true },
+        skip: (pageNumber - 1) * pageSize,
+        take: pageSize,
+        orderBy: {
+          eventTimestamp: "desc",
+        },
+      });
+
+      const count = await prisma.delegationEvents.count({
+        where: { delegateeId: address, isLatestDelegatorEvent: true },
+      });
+
+      res.status(200).json({ events: records, count });
+    } catch (error) {
+      console.error("Error fetching delegate delegated from events:", error);
+      res.status(500).json({ error: "Failed to fetch delegate delegated from events" });
+    }
+  };
+
+  public getDelegateDelegatedTo = async (
+    req: Request<
+      AddressParams,
+      {},
+      {},
+      PaginationQuery
+    >,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { address } = req.params;
+      const { page_size, page } = req.query;
+      const pageSize = parseInt(page_size ?? "10");
+      const pageNumber = parseInt(page ?? "1");
+
+      const records = await prisma.delegationEvents.findMany({
+        where: { delegatorId: address, isLatestDelegatorEvent: true, delegateMethod: "delegate_all" },
+        skip: (pageNumber - 1) * pageSize,
+        take: pageSize,
+        orderBy: {
+          eventTimestamp: "desc",
+        },
+      });
+
+      const count = await prisma.delegationEvents.count({
+        where: { delegatorId: address, isLatestDelegatorEvent: true, delegateMethod: "delegate_all" },
+      });
+
+      res.status(200).json({ events: records, count });
+    } catch (error) {
+      console.error("Error fetching delegate delegated to events:", error);
+      res.status(500).json({ error: "Failed to fetch delegate delegated to events" });
     }
   };
 
