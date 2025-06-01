@@ -158,6 +158,7 @@ model execution_outcomes {
   status                 String
   outcome_receipt_ids    String[]
   executed_in_block_hash String
+  logs                   String[]
 }
 
 model delegate_statements {
@@ -174,4 +175,15 @@ model delegate_statements {
   warpcast         String?
 
   @@index([email], map: "idx_delegate_statements_email")
+}
+
+model cache {
+  key       String   @id
+  data      Json
+  expiresAt DateTime @map("expires_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([expiresAt], map: "idx_cache_expires_at")
+  @@map("cache")
 }
