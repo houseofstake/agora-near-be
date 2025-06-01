@@ -25,7 +25,7 @@ export class NearController {
       // Get API key from environment
       const apiKey = process.env.COIN_GECKO_API_KEY;
       if (!apiKey) {
-        res.status(500).json({ error: "API key not configured" });
+        res.status(500).json({ error: "Failed to fetch NEAR price" });
         return;
       }
 
@@ -43,7 +43,7 @@ export class NearController {
 
       if (!response.ok) {
         res.status(response.status).json({
-          error: `Failed to fetch price from CoinGecko: ${response.statusText}`,
+          error: `Failed to fetch NEAR price`,
         });
         return;
       }
@@ -53,8 +53,7 @@ export class NearController {
       // Extract the USD price
       const usdPrice = data?.market_data?.current_price?.usd;
       if (typeof usdPrice !== "number") {
-        console.error("Invalid price data received from CoinGecko");
-        res.status(500).json({ error: "Invalid price data received" });
+        res.status(500).json({ error: "Failed to fetch NEAR price" });
         return;
       }
 
@@ -82,7 +81,6 @@ export class NearController {
 
       res.status(200).json(priceResponse);
     } catch (error) {
-      console.error("Error fetching NEAR price:", error);
       res.status(500).json({
         error: "Failed to fetch NEAR price",
         details: error instanceof Error ? error.message : "Unknown error",
