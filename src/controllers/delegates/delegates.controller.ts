@@ -2,7 +2,11 @@ import { Request, Response } from "express";
 import { prisma } from "../../index";
 import { verifySignature } from "../../lib/signature/verifySignature";
 import { sanitizeContent } from "../../lib/utils/sanitizationUtils";
-import { delegate_statements, Prisma, registeredVoters } from "../../generated/prisma";
+import {
+  delegate_statements,
+  Prisma,
+  registeredVoters,
+} from "../../generated/prisma";
 
 type DelegateStatementInput = {
   address: string;
@@ -47,13 +51,13 @@ export class DelegatesController {
     const pageSize = parseInt(page_size ?? "10");
     const pageNumber = parseInt(page ?? "1");
 
-    let orderByClause
-    if (order_by === 'most_voting_power') {
-      orderByClause = Prisma.sql`ORDER BY rv.current_voting_power DESC`
-    } else if (order_by === 'least_voting_power') {
-      orderByClause = Prisma.sql`ORDER BY rv.current_voting_power ASC`
+    let orderByClause;
+    if (order_by === "most_voting_power") {
+      orderByClause = Prisma.sql`ORDER BY rv.current_voting_power DESC NULLS LAST`;
+    } else if (order_by === "least_voting_power") {
+      orderByClause = Prisma.sql`ORDER BY rv.current_voting_power ASC NULLS FIRST`;
     } else {
-      orderByClause = Prisma.sql`ORDER BY -log(random()) / NULLIF(rv.current_voting_power, 0)`
+      orderByClause = Prisma.sql`ORDER BY -log(random()) / NULLIF(rv.current_voting_power, 0)`;
     }
 
     const records = await prisma.$queryRaw<DelegateWithVoterInfo[]>`
