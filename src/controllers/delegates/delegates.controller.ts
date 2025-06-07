@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { prisma } from "../../index";
 import { verifySignature } from "../../lib/signature/verifySignature";
 import { sanitizeContent } from "../../lib/utils/sanitizationUtils";
-import { delegate_statements, registeredVoters } from "../../generated/prisma";
+import { delegate_statements, Prisma, registeredVoters } from "../../generated/prisma";
 
 type DelegateStatementInput = {
   address: string;
@@ -24,6 +24,7 @@ type DelegateStatementInput = {
 interface DeletesQuery {
   page_size?: string;
   page?: string;
+  order_by?: string;
 }
 
 type DelegateWithVoterInfo = delegate_statements & registeredVoters;
@@ -42,9 +43,18 @@ export class DelegatesController {
     req: Request<{}, {}, {}, DeletesQuery>,
     res: Response
   ): Promise<void> => {
-    const { page_size, page } = req.query;
+    const { page_size, page, order_by } = req.query;
     const pageSize = parseInt(page_size ?? "10");
     const pageNumber = parseInt(page ?? "1");
+
+    let orderByClause
+    if (order_by === 'most_voting_power') {
+      orderByClause = Prisma.sql`ORDER BY rv.current_voting_power DESC`
+    } else if (order_by === 'least_voting_power') {
+      orderByClause = Prisma.sql`ORDER BY rv.current_voting_power ASC`
+    } else {
+      orderByClause = Prisma.sql`ORDER BY -log(random()) / NULLIF(rv.current_voting_power, 0)`
+    }
 
     const records = await prisma.$queryRaw<DelegateWithVoterInfo[]>`
       SELECT
@@ -60,7 +70,7 @@ export class DelegatesController {
         ds."topIssues"
       FROM registered_voters rv
       LEFT JOIN delegate_statements ds ON rv.registered_voter_id = ds.address
-      ORDER BY rv.current_voting_power DESC
+      ${orderByClause}
       LIMIT ${pageSize}
       OFFSET ${(pageNumber - 1) * pageSize}
     `;
