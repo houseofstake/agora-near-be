@@ -27,7 +27,7 @@ view proposalVotingHistory {
   blockHash                   String   @map("block_hash")
   blockHeight                 Int      @map("block_height")
 
-  @@map("proposal_voting_history")
+  @@map("proposal_voting_history_v2")
 }
 
 // Do not remove, might be overridden by prisma db pull
@@ -46,7 +46,7 @@ view registeredVoters {
   blockHeight                Int      @map("block_height")
   chunkHash                  String   @map("chunk_hash")
 
-  @@map("registered_voters")
+  @@map("registered_voters_v2")
 }
 
 // Do not remove, might be overridden by prisma db pull
@@ -64,7 +64,7 @@ view delegationEvents {
   blockHeight            Int      @map("block_height")
   blockHash              String   @map("block_hash")
 
-  @@map("delegation_events")
+  @@map("delegation_events_v2")
 }
 
 model blocks {
