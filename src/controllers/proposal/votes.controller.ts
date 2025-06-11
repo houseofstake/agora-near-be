@@ -58,4 +58,39 @@ export class ProposalVotingHistoryController {
         .json({ error: "Failed to fetch proposal voting history" });
     }
   };
+
+  public getProposalVotingChartsData = async (
+    req: Request<ProposalVotingHistoryParams, {}, {}, {}>,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { proposal_id } = req.params;
+      const proposalId = parseInt(proposal_id);
+
+      const records = await prisma.proposalVotingHistory.findMany({
+        where: { proposalId },
+        orderBy: {
+          votingPower: "desc",
+        },
+      });
+
+      const voteRecords = records.map((record) => {
+        const { votingPower, voterId, voteOption } = record;
+
+        return {
+          accountId: voterId,
+          votingPower: votingPower?.toFixed() ?? "0",
+          voteOption: voteOption.toString(),
+          blockHeight: record.blockHeight,
+        };
+      });
+
+      res.status(200).json({ data: voteRecords });
+    } catch (error) {
+      console.error("Error fetching proposal voting charts data:", error);
+      res
+        .status(500)
+        .json({ error: "Failed to fetch proposal voting charts data" });
+    }
+  };
 }

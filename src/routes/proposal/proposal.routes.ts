@@ -10,4 +10,9 @@ router.get(
   proposalVotingHistoryController.getProposalVotingHistory
 );
 
+router.get(
+  "/:proposal_id/charts",
+  proposalVotingHistoryController.getProposalVotingChartsData
+);
+
 export { router as proposalRoutes };
