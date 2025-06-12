@@ -81,7 +81,7 @@ export class ProposalVotingHistoryController {
           accountId: voterId,
           votingPower: votingPower?.toFixed() ?? "0",
           voteOption: voteOption.toString(),
-          blockHeight: record.blockHeight,
+          votedAt: record.votedAt,
         };
       });
 
