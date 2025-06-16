@@ -7,6 +7,8 @@ import {
   Prisma,
   registeredVoters,
 } from "../../generated/prisma";
+import { providers } from "near-api-js";
+import { getRpcUrl } from "../../lib/utils/rpc";
 
 type DelegateStatementInput = {
   address: string;
@@ -116,6 +118,7 @@ export class DelegatesController {
   ): Promise<void> => {
     try {
       const { address } = req.params;
+      const { networkId } = req.query;
 
       const voterData = await prisma.$queryRaw<DelegateWithVoterInfo[]>`
         SELECT
@@ -139,10 +142,42 @@ export class DelegatesController {
       `;
 
       if (!voterData || voterData.length === 0) {
-        res.status(404).json({
-          message: "Address not found in registered voters",
-        });
-        return;
+        // Not found in registered voters, check if it's a valid NEAR account
+        try {
+          const isValidNetworkId =
+            networkId &&
+            typeof networkId === "string" &&
+            (networkId === "mainnet" || networkId === "testnet");
+
+          const rpcUrl = getRpcUrl({
+            networkId: isValidNetworkId ? networkId : "mainnet",
+            useArchivalNode: true,
+          });
+
+          const provider = new providers.JsonRpcProvider({ url: rpcUrl });
+
+          // Query account state to verify it exists
+          await provider.query({
+            request_type: "view_account",
+            account_id: address,
+            finality: "final",
+          });
+
+          // If we reach here, the account exists
+          res.status(200).json({
+            delegate: {
+              address: address,
+            },
+          });
+          return;
+        } catch {
+          // Account doesn't exist or other NEAR error
+          res.status(404).json({
+            message:
+              "Address not found in registered voters and is not a valid NEAR account",
+          });
+          return;
+        }
       }
 
       const data = voterData[0];
