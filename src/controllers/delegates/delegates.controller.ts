@@ -190,6 +190,10 @@ export class DelegatesController {
         where: { voterId: address, voteOption: 1 },
       });
 
+      const abstainCountPromise = prisma.proposalVotingHistory.count({
+        where: { voterId: address, voteOption: 2 },
+      });
+
       const delegatedFromCountPromise = prisma.delegationEvents.count({
         where: {
           delegateeId: address,
@@ -199,9 +203,10 @@ export class DelegatesController {
         },
       });
 
-      const [forCount, againstCount, delegatedFromCount] = await Promise.all([
+      const [forCount, againstCount, abstainCount, delegatedFromCount] = await Promise.all([
         forCountPromise,
         againstCountPromise,
+        abstainCountPromise,
         delegatedFromCountPromise,
       ]);
 
@@ -217,6 +222,7 @@ export class DelegatesController {
           votingPower: data.currentVotingPower?.toFixed(),
           forCount,
           againstCount,
+          abstainCount,
           delegatedFromCount,
           participationRate: data.proposalParticipationRate?.toFixed(),
         },
