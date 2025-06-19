@@ -70,7 +70,7 @@ export class ProposalVotingHistoryController {
       const records = await prisma.proposalVotingHistory.findMany({
         where: { proposalId },
         orderBy: {
-          votingPower: "desc",
+          votedAt: "asc",
         },
       });
 
