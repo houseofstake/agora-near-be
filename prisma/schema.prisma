@@ -10,6 +10,28 @@ datasource db {
 }
 
 // Do not remove, might be overridden by prisma db pull
+view proposal {
+  id String @id
+  receiptId String @map("receipt_id")
+  proposalId Int @map("proposal_id")
+  proposalTitle String? @map("proposal_title")
+  proposalDescription String? @map("proposal_description")
+  proposalUrl String? @map("proposal_url")
+  isApproved Boolean @map("is_approved")
+  isRejected Boolean @map("is_rejected")
+  hasVotes Boolean @map("has_votes")
+  createdAt DateTime @map("created_at") @db.Timestamp(6)
+  creatorId String @map("creator_id")
+  approvedAt DateTime? @map("approved_at") @db.Timestamp(6)
+  approverId String? @map("approver_id")
+  rejectedAt DateTime? @map("rejected_at") @db.Timestamp(6)
+  rejecterId String? @map("rejecter_id")
+
+  @@map("proposals_v2")
+}
+
+
+// Do not remove, might be overridden by prisma db pull
 view proposalVotingHistory {
   id                          String   @id
   receiptId                   String   @map("receipt_id")
