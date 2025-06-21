@@ -50,6 +50,15 @@ view registeredVoters {
 }
 
 // Do not remove, might be overridden by prisma db pull
+view proposalNonVoters {
+  id                         String   @id
+  proposalId                 Int      @map("proposal_id")
+  registeredVoterId          String   @map("registered_voter_id")
+
+  @@map("proposal_non_voters_v2")
+}
+
+// Do not remove, might be overridden by prisma db pull
 view delegationEvents {
   id                     String   @id
   receiptId              String   @map("receipt_id")

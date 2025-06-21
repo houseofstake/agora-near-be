@@ -11,6 +11,11 @@ router.get(
 );
 
 router.get(
+  "/:proposal_id/non-voters",
+  proposalVotingHistoryController.getProposalNonVoters
+);
+
+router.get(
   "/:proposal_id/charts",
   proposalVotingHistoryController.getProposalVotingChartsData
 );
