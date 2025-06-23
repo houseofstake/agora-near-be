@@ -11,25 +11,24 @@ datasource db {
 
 // Do not remove, might be overridden by prisma db pull
 view proposal {
-  id String @id
-  receiptId String @map("receipt_id")
-  proposalId Int @map("proposal_id")
-  proposalTitle String? @map("proposal_title")
-  proposalDescription String? @map("proposal_description")
-  proposalUrl String? @map("proposal_url")
-  isApproved Boolean @map("is_approved")
-  isRejected Boolean @map("is_rejected")
-  hasVotes Boolean @map("has_votes")
-  createdAt DateTime @map("created_at") @db.Timestamp(6)
-  creatorId String @map("creator_id")
-  approvedAt DateTime? @map("approved_at") @db.Timestamp(6)
-  approverId String? @map("approver_id")
-  rejectedAt DateTime? @map("rejected_at") @db.Timestamp(6)
-  rejecterId String? @map("rejecter_id")
+  id                  String    @id
+  receiptId           String    @map("receipt_id")
+  proposalId          Int       @map("proposal_id")
+  proposalTitle       String?   @map("proposal_title")
+  proposalDescription String?   @map("proposal_description")
+  proposalUrl         String?   @map("proposal_url")
+  isApproved          Boolean   @map("is_approved")
+  isRejected          Boolean   @map("is_rejected")
+  hasVotes            Boolean   @map("has_votes")
+  createdAt           DateTime  @map("created_at") @db.Timestamp(6)
+  creatorId           String    @map("creator_id")
+  approvedAt          DateTime? @map("approved_at") @db.Timestamp(6)
+  approverId          String?   @map("approver_id")
+  rejectedAt          DateTime? @map("rejected_at") @db.Timestamp(6)
+  rejecterId          String?   @map("rejecter_id")
 
   @@map("proposals_v2")
 }
-
 
 // Do not remove, might be overridden by prisma db pull
 view proposalVotingHistory {
@@ -73,9 +72,9 @@ view registeredVoters {
 
 // Do not remove, might be overridden by prisma db pull
 view proposalNonVoters {
-  id                         String   @id
-  proposalId                 Int      @map("proposal_id")
-  registeredVoterId          String   @map("registered_voter_id")
+  id                String @id
+  proposalId        Int    @map("proposal_id")
+  registeredVoterId String @map("registered_voter_id")
 
   @@map("proposal_non_voters_v2")
 }
@@ -96,6 +95,25 @@ view delegationEvents {
   blockHash              String   @map("block_hash")
 
   @@map("delegation_events_v2")
+}
+
+// Do not remove, might be overridden by prisma db pull
+view userActivities {
+  id                 String   @id
+  receiptId          String   @map("receipt_id")
+  hosContractAddress String   @map("hos_contract_address")
+  accountId          String   @map("account_id")
+  eventDate          DateTime @map("event_date") @db.Date
+  eventTimestamp     DateTime @map("event_timestamp") @db.Timestamp(6)
+  methodName         String   @map("method_name")
+  eventType          String   @map("event_type")
+  eventStatus        String   @map("event_status")
+  nearAmount         Decimal? @map("near_amount")
+  lockedNearBalance  Decimal? @map("locked_near_balance")
+  blockHeight        BigInt   @map("block_height")
+  blockHash          String   @map("block_hash")
+
+  @@map("user_activities_v2")
 }
 
 model blocks {

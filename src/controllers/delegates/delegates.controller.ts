@@ -9,6 +9,7 @@ import {
 } from "../../generated/prisma";
 import { providers } from "near-api-js";
 import { getRpcUrl } from "../../lib/utils/rpc";
+import Big from "big.js";
 
 type DelegateStatementInput = {
   address: string;
@@ -42,6 +43,11 @@ interface AddressParams {
 interface PaginationQuery {
   page_size?: string;
   page?: string;
+}
+
+interface HOSActivityQuery extends PaginationQuery {
+  network_id: string;
+  contract_id: string;
 }
 
 export class DelegatesController {
@@ -144,13 +150,8 @@ export class DelegatesController {
       if (!voterData || voterData.length === 0) {
         // Not found in registered voters, check if it's a valid NEAR account
         try {
-          const isValidNetworkId =
-            networkId &&
-            typeof networkId === "string" &&
-            (networkId === "mainnet" || networkId === "testnet");
-
           const rpcUrl = getRpcUrl({
-            networkId: isValidNetworkId ? networkId : "mainnet",
+            networkId,
             useArchivalNode: true,
           });
 
@@ -203,12 +204,13 @@ export class DelegatesController {
         },
       });
 
-      const [forCount, againstCount, abstainCount, delegatedFromCount] = await Promise.all([
-        forCountPromise,
-        againstCountPromise,
-        abstainCountPromise,
-        delegatedFromCountPromise,
-      ]);
+      const [forCount, againstCount, abstainCount, delegatedFromCount] =
+        await Promise.all([
+          forCountPromise,
+          againstCountPromise,
+          abstainCountPromise,
+          delegatedFromCountPromise,
+        ]);
 
       res.status(200).json({
         delegate: {
@@ -353,6 +355,148 @@ export class DelegatesController {
       res
         .status(500)
         .json({ error: "Failed to fetch delegate delegated to events" });
+    }
+  };
+
+  public getDelegateHosActivity = async (
+    req: Request<AddressParams, {}, {}, HOSActivityQuery>,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { address } = req.params;
+      const { page_size, page, network_id, contract_id } = req.query;
+      const pageSize = parseInt(page_size ?? "10");
+      const pageNumber = parseInt(page ?? "1");
+
+      const url = getRpcUrl({ networkId: network_id });
+      const provider = new providers.JsonRpcProvider({ url: url });
+
+      // Query the veNEAR contract to get the storage deposit
+      const configResult = await provider.query({
+        request_type: "call_function",
+        account_id: contract_id,
+        method_name: "get_config",
+        args_base64: "",
+        finality: "final",
+      });
+      const resultArray = (configResult as any).result;
+      const jsonResult = JSON.parse(Buffer.from(resultArray).toString()) as {
+        local_deposit: string;
+      };
+
+      const storageDeposit = jsonResult?.local_deposit ?? "0";
+
+      const whereCondition = {
+        accountId: address,
+        OR: [
+          {
+            methodName: "on_lockup_update",
+            eventType: "on_lockup_update_ft_burn",
+          },
+          {
+            methodName: "on_lockup_update",
+            eventType: "on_lockup_update_ft_mint",
+          },
+          {
+            methodName: "delegate_all",
+            eventType: "delegate_all_ft_burn",
+          },
+          {
+            methodName: "on_lockup_deployed",
+            eventType: "lockup_deployed",
+          },
+          {
+            methodName: "delegate_all",
+            eventType: "delegate_all_ft_mint",
+          },
+        ],
+      };
+
+      const records = await prisma.userActivities.findMany({
+        where: whereCondition,
+        skip: (pageNumber - 1) * pageSize,
+        take: pageSize,
+        orderBy: {
+          eventTimestamp: "desc",
+        },
+      });
+
+      const count = await prisma.userActivities.count({
+        where: whereCondition,
+      });
+
+      const getTransactionType = (
+        methodName: string,
+        eventType: string
+      ): string => {
+        if (
+          methodName === "on_lockup_update" &&
+          eventType === "on_lockup_update_ft_burn"
+        ) {
+          return "unlock";
+        }
+        if (
+          methodName === "on_lockup_update" &&
+          eventType === "on_lockup_update_ft_mint"
+        ) {
+          return "lock";
+        }
+        if (
+          methodName === "delegate_all" &&
+          eventType === "delegate_all_ft_burn"
+        ) {
+          return "outbound_delegation";
+        }
+        if (
+          methodName === "on_lockup_deployed" &&
+          eventType === "lockup_deployed"
+        ) {
+          return "initial_registration";
+        }
+        if (
+          methodName === "delegate_all" &&
+          eventType === "delegate_all_ft_mint"
+        ) {
+          return "inbound_delegation";
+        }
+        return "unknown";
+      };
+
+      const hosActivity = records.map((record) => {
+        const transactionType = getTransactionType(
+          record.methodName,
+          record.eventType
+        );
+
+        // The amount logged by the contract does not include the storage deposit so we add it to the locked balance
+        const lockedBalanceWithStorage = record.lockedNearBalance
+          ? Big(storageDeposit).plus(Big(record.lockedNearBalance.toFixed()))
+          : null;
+
+        const lockedNearBalance =
+          transactionType === "initial_registration"
+            ? storageDeposit // Initial locked balance is the storage deposit
+            : lockedBalanceWithStorage;
+
+        const nearAmount =
+          transactionType === "initial_registration"
+            ? storageDeposit // Initial voting power is the storage deposit
+            : record.nearAmount?.toFixed() ?? null;
+
+        return {
+          receiptId: record.receiptId,
+          blockHeight: record.blockHeight.toString(),
+          eventDate: record.eventDate,
+          nearAmount,
+          lockedNearBalance,
+          transactionType,
+        };
+      });
+
+      res.status(200).json({ hosActivity, count });
+    } catch (error) {
+      console.error("Error fetching delegate HOS activity:", error);
+      res.status(500).json({ error: "Failed to fetch delegate HOS activity" });
     }
   };
 
