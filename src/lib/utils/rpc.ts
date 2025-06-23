@@ -2,10 +2,17 @@ export const getRpcUrl = ({
   networkId,
   useArchivalNode = false,
 }: {
-  networkId: string;
+  networkId?: unknown;
   useArchivalNode?: boolean;
 }) => {
+  const sanitizedNetworkId =
+    typeof networkId === "string" && networkId === "testnet"
+      ? "testnet"
+      : "mainnet";
+
   return `https://${
     useArchivalNode ? "archival-" : ""
-  }rpc.${networkId}.fastnear.com?apiKey=${process.env.FASTNEAR_API_KEY}`;
+  }rpc.${sanitizedNetworkId}.fastnear.com?apiKey=${
+    process.env.FASTNEAR_API_KEY
+  }`;
 };
