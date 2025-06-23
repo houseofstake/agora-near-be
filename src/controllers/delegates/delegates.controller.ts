@@ -371,7 +371,7 @@ export class DelegatesController {
       const url = getRpcUrl({ networkId: network_id });
       const provider = new providers.JsonRpcProvider({ url: url });
 
-      // Query the smart contract configuration
+      // Query the veNEAR contract to get the storage deposit
       const configResult = await provider.query({
         request_type: "call_function",
         account_id: contract_id,
@@ -468,6 +468,7 @@ export class DelegatesController {
           record.eventType
         );
 
+        // The amount logged by the contract does not include the storage deposit so we add it to the locked balance
         const lockedBalanceWithStorage = record.lockedNearBalance
           ? Big(storageDeposit).plus(Big(record.lockedNearBalance.toFixed()))
           : null;
