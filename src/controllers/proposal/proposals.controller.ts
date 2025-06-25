@@ -24,6 +24,7 @@ export class ProposalController {
 
       const records = await prisma.proposal.findMany({
         where: { isApproved: false, isRejected: false, creatorId: created_by },
+        orderBy: { createdAt: "desc" },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
       });
