@@ -26,6 +26,9 @@ view proposal {
   approverId          String?   @map("approver_id")
   rejectedAt          DateTime? @map("rejected_at") @db.Timestamp(6)
   rejecterId          String?   @map("rejecter_id")
+  forVotingPower       Decimal   @map("for_voting_power")
+  againstVotingPower   Decimal   @map("against_voting_power")
+  abstainVotingPower   Decimal   @map("abstain_voting_power")
 
   @@map("proposals_v2")
 }

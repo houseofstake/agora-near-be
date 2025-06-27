@@ -6,6 +6,8 @@ const router = express.Router();
 const proposalVotingHistoryController = new ProposalVotingHistoryController();
 const proposalController = new ProposalController();
 
+router.get("/approved", proposalController.getApprovedProposals);
+
 router.get("/pending", proposalController.getPendingProposals);
 
 // Define votes as a nested resource under a specific proposal
