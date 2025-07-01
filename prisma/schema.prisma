@@ -26,9 +26,9 @@ view proposal {
   approverId          String?   @map("approver_id")
   rejectedAt          DateTime? @map("rejected_at") @db.Timestamp(6)
   rejecterId          String?   @map("rejecter_id")
-  forVotingPower       Decimal   @map("for_voting_power")
-  againstVotingPower   Decimal   @map("against_voting_power")
-  abstainVotingPower   Decimal   @map("abstain_voting_power")
+  forVotingPower      Decimal   @map("for_voting_power")
+  againstVotingPower  Decimal   @map("against_voting_power")
+  abstainVotingPower  Decimal   @map("abstain_voting_power")
 
   @@map("proposals_v2")
 }
@@ -56,19 +56,21 @@ view proposalVotingHistory {
 
 // Do not remove, might be overridden by prisma db pull
 view registeredVoters {
-  id                         String   @id
-  receiptId                  String   @map("receipt_id")
-  registeredDate             DateTime @map("registered_date") @db.Date
-  registeredAt               DateTime @map("registered_at") @db.Timestamp(6)
-  registeredVoterId          String   @map("registered_voter_id")
-  hosContractAddress         String   @map("hos_contract_address")
-  hasVoterLockedUnlockedNear Boolean  @map("has_voter_locked_unlocked_near")
-  currentVotingPower         Decimal? @map("current_voting_power")
-  initialVotingPower         Decimal? @map("initial_voting_power")
-  proposalParticipationRate  Decimal? @map("proposal_participation_rate")
-  blockHash                  String   @map("block_hash")
-  blockHeight                Int      @map("block_height")
-  chunkHash                  String   @map("chunk_hash")
+  id                          String   @id
+  receiptId                   String   @map("receipt_id")
+  registeredDate              DateTime @map("registered_date") @db.Date
+  registeredAt                DateTime @map("registered_at") @db.Timestamp(6)
+  registeredVoterId           String   @map("registered_voter_id")
+  hosContractAddress          String   @map("hos_contract_address")
+  hasLockedUnlockedNear       Boolean  @map("has_locked_unlocked_near")
+  isActivelyDelegating        Boolean  @map("is_actively_delegating")
+  votingPowerFromDelegations  Decimal? @map("voting_power_from_delegations")
+  votingPowerFromLocksUnlocks Decimal? @map("voting_power_from_locks_unlocks")
+  initialVotingPower          Decimal? @map("initial_voting_power")
+  currentVotingPower          Decimal? @map("current_voting_power")
+  proposalParticipationRate   Decimal? @map("proposal_participation_rate")
+  blockHeight                 BigInt   @map("block_height")
+  blockHash                   String   @map("block_hash")
 
   @@map("registered_voters_v2")
 }
