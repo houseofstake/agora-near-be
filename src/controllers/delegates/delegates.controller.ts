@@ -80,7 +80,7 @@ export class DelegatesController {
         ds.warpcast,
         ds.statement,
         ds."topIssues"
-      FROM registered_voters_v2 rv
+      FROM registered_voters rv
       LEFT JOIN delegate_statements ds ON rv.registered_voter_id = ds.address
       ${orderByClause}
       LIMIT ${pageSize}
@@ -142,7 +142,7 @@ export class DelegatesController {
           ds.signature,
           ds."publicKey",
           ds."agreeCodeConduct"
-        FROM registered_voters_v2 rv
+        FROM registered_voters rv
         LEFT JOIN delegate_statements ds ON rv.registered_voter_id = ds.address
         WHERE rv.registered_voter_id = ${address}
       `;

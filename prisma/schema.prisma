@@ -30,7 +30,7 @@ view proposal {
   againstVotingPower  Decimal   @map("against_voting_power")
   abstainVotingPower  Decimal   @map("abstain_voting_power")
 
-  @@map("proposals_v2")
+  @@map("proposals")
 }
 
 // Do not remove, might be overridden by prisma db pull
@@ -51,7 +51,7 @@ view proposalVotingHistory {
   blockHash                   String   @map("block_hash")
   blockHeight                 Int      @map("block_height")
 
-  @@map("proposal_voting_history_v2")
+  @@map("proposal_voting_history")
 }
 
 // Do not remove, might be overridden by prisma db pull
@@ -72,7 +72,7 @@ view registeredVoters {
   blockHeight                 BigInt   @map("block_height")
   blockHash                   String   @map("block_hash")
 
-  @@map("registered_voters_v2")
+  @@map("registered_voters")
 }
 
 // Do not remove, might be overridden by prisma db pull
@@ -81,7 +81,7 @@ view proposalNonVoters {
   proposalId        Int    @map("proposal_id")
   registeredVoterId String @map("registered_voter_id")
 
-  @@map("proposal_non_voters_v2")
+  @@map("proposal_non_voters")
 }
 
 // Do not remove, might be overridden by prisma db pull
@@ -99,7 +99,7 @@ view delegationEvents {
   blockHeight            Int      @map("block_height")
   blockHash              String   @map("block_hash")
 
-  @@map("delegation_events_v2")
+  @@map("delegation_events")
 }
 
 // Do not remove, might be overridden by prisma db pull
@@ -118,7 +118,7 @@ view userActivities {
   blockHeight        BigInt   @map("block_height")
   blockHash          String   @map("block_hash")
 
-  @@map("user_activities_v2")
+  @@map("user_activities")
 }
 
 model blocks {
