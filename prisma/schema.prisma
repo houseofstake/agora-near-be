@@ -1,12 +1,13 @@
 generator client {
   provider        = "prisma-client-js"
   output          = "../src/generated/prisma"
-  previewFeatures = ["views"]
+  previewFeatures = ["views", "multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["public", "web2"]
 }
 
 // Do not remove, might be overridden by prisma db pull
@@ -31,6 +32,7 @@ view proposal {
   abstainVotingPower  Decimal   @map("abstain_voting_power")
 
   @@map("proposals")
+  @@schema("public")
 }
 
 // Do not remove, might be overridden by prisma db pull
@@ -52,6 +54,7 @@ view proposalVotingHistory {
   blockHeight                 Int      @map("block_height")
 
   @@map("proposal_voting_history")
+  @@schema("public")
 }
 
 // Do not remove, might be overridden by prisma db pull
@@ -73,6 +76,7 @@ view registeredVoters {
   blockHash                   String   @map("block_hash")
 
   @@map("registered_voters")
+  @@schema("public")
 }
 
 // Do not remove, might be overridden by prisma db pull
@@ -82,6 +86,7 @@ view proposalNonVoters {
   registeredVoterId String @map("registered_voter_id")
 
   @@map("proposal_non_voters")
+  @@schema("public")
 }
 
 // Do not remove, might be overridden by prisma db pull
@@ -100,6 +105,7 @@ view delegationEvents {
   blockHash              String   @map("block_hash")
 
   @@map("delegation_events")
+  @@schema("public")
 }
 
 // Do not remove, might be overridden by prisma db pull
@@ -119,6 +125,7 @@ view userActivities {
   blockHash          String   @map("block_hash")
 
   @@map("user_activities")
+  @@schema("public")
 }
 
 model blocks {
@@ -129,6 +136,8 @@ model blocks {
   timestamp    DateTime @db.Timestamp(6)
   gas_price    String
   total_supply String
+
+  @@schema("public")
 }
 
 model chunks {
@@ -149,6 +158,8 @@ model chunks {
   outgoing_receipts_root String
   tx_root                String
   author                 String
+
+  @@schema("public")
 }
 
 model cursors {
@@ -156,6 +167,8 @@ model cursors {
   cursor    String?
   block_num BigInt?
   block_id  String?
+
+  @@schema("public")
 }
 
 model receipt_actions {
@@ -177,6 +190,8 @@ model receipt_actions {
   args_base64       String
   action_index      Int
   block_timestamp   DateTime @db.Timestamp(6)
+
+  @@schema("public")
 }
 
 model receipts {
@@ -188,6 +203,8 @@ model receipts {
   receiver_id    String
   receipt_kind   String
   author         String
+
+  @@schema("public")
 }
 
 model substreams_history {
@@ -197,6 +214,8 @@ model substreams_history {
   pk         String?
   prev_value String?
   block_num  BigInt?
+
+  @@schema("public")
 }
 
 model execution_outcomes {
@@ -213,6 +232,8 @@ model execution_outcomes {
   outcome_receipt_ids    String[]
   executed_in_block_hash String
   logs                   String[]
+
+  @@schema("public")
 }
 
 model delegate_statements {
@@ -229,6 +250,7 @@ model delegate_statements {
   warpcast         String?
 
   @@index([email], map: "idx_delegate_statements_email")
+  @@schema("web2")
 }
 
 model cache {
@@ -240,4 +262,5 @@ model cache {
 
   @@index([expiresAt], map: "idx_cache_expires_at")
   @@map("cache")
+  @@schema("web2")
 }
