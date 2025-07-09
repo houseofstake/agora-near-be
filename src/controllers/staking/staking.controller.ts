@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { providers } from "near-api-js";
-import { prisma } from "../..";
 import { fetchPriceAtBlock } from "../../lib/staking/fetchPriceAtBlock";
 import { getRpcUrl } from "../../lib/utils/rpc";
+import { prismaPublic } from "../../lib/prisma-public";
 
 const META_POOL_CONTRACTS = ["meta-v2.pool.testnet", "meta-pool.near"];
 
@@ -22,7 +22,7 @@ export class StakingController {
       const targetDate = new Date();
       targetDate.setDate(targetDate.getDate() - numDaysAgo);
 
-      const blockTargetDatePromise = prisma.blocks.findFirst({
+      const blockTargetDatePromise = prismaPublic.blocks.findFirst({
         select: {
           height: true,
         },

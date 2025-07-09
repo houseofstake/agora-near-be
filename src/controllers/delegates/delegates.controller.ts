@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { prisma } from "../../index";
+
 import { verifySignature } from "../../lib/signature/verifySignature";
 import { sanitizeContent } from "../../lib/utils/sanitizationUtils";
 import {
@@ -10,6 +10,8 @@ import {
 import { providers } from "near-api-js";
 import { getRpcUrl } from "../../lib/utils/rpc";
 import Big from "big.js";
+import { prismaPublic } from "../../lib/prisma-public";
+import { prismaWeb2 } from "../../lib/prisma-web2";
 
 type DelegateStatementInput = {
   address: string;
@@ -68,7 +70,7 @@ export class DelegatesController {
       orderByClause = Prisma.sql`ORDER BY -log(random()) / NULLIF(rv.current_voting_power, 0)`;
     }
 
-    const records = await prisma.$queryRaw<DelegateWithVoterInfo[]>`
+    const records = await prismaPublic.$queryRaw<DelegateWithVoterInfo[]>`
       SELECT
         rv.registered_voter_id as "registeredVoterId",
         rv.current_voting_power as "currentVotingPower",
@@ -113,7 +115,7 @@ export class DelegatesController {
       };
     });
 
-    const count = await prisma.registeredVoters.count();
+    const count = await prismaPublic.registeredVoters.count();
 
     res.status(200).json({ delegates, count });
   };
@@ -126,7 +128,7 @@ export class DelegatesController {
       const { address } = req.params;
       const { networkId } = req.query;
 
-      const voterData = await prisma.$queryRaw<DelegateWithVoterInfo[]>`
+      const voterData = await prismaPublic.$queryRaw<DelegateWithVoterInfo[]>`
         SELECT
           rv.registered_voter_id as "registeredVoterId",
           rv.current_voting_power as "currentVotingPower",
@@ -183,19 +185,19 @@ export class DelegatesController {
 
       const data = voterData[0];
 
-      const forCountPromise = prisma.proposalVotingHistory.count({
+      const forCountPromise = prismaPublic.proposalVotingHistory.count({
         where: { voterId: address, voteOption: 0 },
       });
 
-      const againstCountPromise = prisma.proposalVotingHistory.count({
+      const againstCountPromise = prismaPublic.proposalVotingHistory.count({
         where: { voterId: address, voteOption: 1 },
       });
 
-      const abstainCountPromise = prisma.proposalVotingHistory.count({
+      const abstainCountPromise = prismaPublic.proposalVotingHistory.count({
         where: { voterId: address, voteOption: 2 },
       });
 
-      const delegatedFromCountPromise = prisma.delegationEvents.count({
+      const delegatedFromCountPromise = prismaPublic.delegationEvents.count({
         where: {
           delegateeId: address,
           isLatestDelegatorEvent: true,
@@ -245,7 +247,7 @@ export class DelegatesController {
       const pageSize = parseInt(page_size ?? "10");
       const pageNumber = parseInt(page ?? "1");
 
-      const records = await prisma.proposalVotingHistory.findMany({
+      const records = await prismaPublic.proposalVotingHistory.findMany({
         where: { voterId: address },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
@@ -254,7 +256,7 @@ export class DelegatesController {
         },
       });
 
-      const count = await prisma.proposalVotingHistory.count({
+      const count = await prismaPublic.proposalVotingHistory.count({
         where: { voterId: address },
       });
 
@@ -286,7 +288,7 @@ export class DelegatesController {
       const pageSize = parseInt(page_size ?? "10");
       const pageNumber = parseInt(page ?? "1");
 
-      const records = await prisma.delegationEvents.findMany({
+      const records = await prismaPublic.delegationEvents.findMany({
         where: {
           delegateeId: address,
           isLatestDelegatorEvent: true,
@@ -299,7 +301,7 @@ export class DelegatesController {
         },
       });
 
-      const count = await prisma.delegationEvents.count({
+      const count = await prismaPublic.delegationEvents.count({
         where: {
           delegateeId: address,
           isLatestDelegatorEvent: true,
@@ -326,7 +328,7 @@ export class DelegatesController {
       const pageSize = parseInt(page_size ?? "10");
       const pageNumber = parseInt(page ?? "1");
 
-      const records = await prisma.delegationEvents.findMany({
+      const records = await prismaPublic.delegationEvents.findMany({
         where: {
           delegatorId: address,
           isLatestDelegatorEvent: true,
@@ -340,7 +342,7 @@ export class DelegatesController {
         },
       });
 
-      const count = await prisma.delegationEvents.count({
+      const count = await prismaPublic.delegationEvents.count({
         where: {
           delegatorId: address,
           isLatestDelegatorEvent: true,
@@ -412,7 +414,7 @@ export class DelegatesController {
         ],
       };
 
-      const records = await prisma.userActivities.findMany({
+      const records = await prismaPublic.userActivities.findMany({
         where: whereCondition,
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
@@ -421,7 +423,7 @@ export class DelegatesController {
         },
       });
 
-      const count = await prisma.userActivities.count({
+      const count = await prismaPublic.userActivities.count({
         where: whereCondition,
       });
 
@@ -544,11 +546,12 @@ export class DelegatesController {
         publicKey,
       };
 
-      const createdDelegateStatement = await prisma.delegate_statements.upsert({
-        where: { address },
-        update: data,
-        create: data,
-      });
+      const createdDelegateStatement =
+        await prismaWeb2.delegate_statements.upsert({
+          where: { address },
+          update: data,
+          create: data,
+        });
 
       res
         .status(200)

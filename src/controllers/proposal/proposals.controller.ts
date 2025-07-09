@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { prisma } from "../../index";
+import { prismaPublic } from "../../lib/prisma-public";
 
 interface ActiveProposalQueryParams {
   page_size?: string;
@@ -14,12 +14,7 @@ interface PendingProposalQueryParams {
 
 export class ProposalController {
   public getApprovedProposals = async (
-    req: Request<
-      {},
-      {},
-      {},
-      ActiveProposalQueryParams
-    >,
+    req: Request<{}, {}, {}, ActiveProposalQueryParams>,
     res: Response
   ): Promise<void> => {
     try {
@@ -27,14 +22,14 @@ export class ProposalController {
       const pageSize = parseInt(page_size ?? "10");
       const pageNumber = parseInt(page ?? "1");
 
-      const records = await prisma.proposal.findMany({
+      const records = await prismaPublic.proposal.findMany({
         where: { isApproved: true, isRejected: false },
         orderBy: { createdAt: "desc" },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
       });
 
-      const count = await prisma.proposal.count({
+      const count = await prismaPublic.proposal.count({
         where: { isApproved: true, isRejected: false },
       });
 
@@ -46,12 +41,7 @@ export class ProposalController {
   };
 
   public getPendingProposals = async (
-    req: Request<
-      {},
-      {},
-      {},
-      PendingProposalQueryParams
-    >,
+    req: Request<{}, {}, {}, PendingProposalQueryParams>,
     res: Response
   ): Promise<void> => {
     try {
@@ -59,14 +49,14 @@ export class ProposalController {
       const pageSize = parseInt(page_size ?? "10");
       const pageNumber = parseInt(page ?? "1");
 
-      const records = await prisma.proposal.findMany({
+      const records = await prismaPublic.proposal.findMany({
         where: { isApproved: false, isRejected: false, creatorId: created_by },
         orderBy: { createdAt: "desc" },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
       });
 
-      const count = await prisma.proposal.count({
+      const count = await prismaPublic.proposal.count({
         where: { isApproved: false, isRejected: false, creatorId: created_by },
       });
 

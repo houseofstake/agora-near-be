@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { prisma } from "../../index";
+import { prismaPublic } from "../../lib/prisma-public";
 
 interface ProposalParams {
   proposal_id: string;
@@ -12,12 +12,7 @@ interface PaginationQuery {
 
 export class ProposalVotingHistoryController {
   public getProposalVotingHistory = async (
-    req: Request<
-      ProposalParams,
-      {},
-      {},
-      PaginationQuery
-    >,
+    req: Request<ProposalParams, {}, {}, PaginationQuery>,
     res: Response
   ): Promise<void> => {
     try {
@@ -27,7 +22,7 @@ export class ProposalVotingHistoryController {
       const pageNumber = parseInt(page ?? "1");
       const proposalId = parseInt(proposal_id);
 
-      const records = await prisma.proposalVotingHistory.findMany({
+      const records = await prismaPublic.proposalVotingHistory.findMany({
         where: { proposalId },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
@@ -36,7 +31,7 @@ export class ProposalVotingHistoryController {
         },
       });
 
-      const count = await prisma.proposalVotingHistory.count({
+      const count = await prismaPublic.proposalVotingHistory.count({
         where: { proposalId },
       });
 
@@ -67,7 +62,7 @@ export class ProposalVotingHistoryController {
       const { proposal_id } = req.params;
       const proposalId = parseInt(proposal_id);
 
-      const records = await prisma.proposalVotingHistory.findMany({
+      const records = await prismaPublic.proposalVotingHistory.findMany({
         where: { proposalId },
         orderBy: {
           votedAt: "asc",
@@ -105,22 +100,20 @@ export class ProposalVotingHistoryController {
       const pageNumber = parseInt(page ?? "1");
       const proposalId = parseInt(proposal_id);
 
-      const records = await prisma.proposalNonVoters.findMany({
+      const records = await prismaPublic.proposalNonVoters.findMany({
         where: { proposalId },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
       });
 
-      const count = await prisma.proposalNonVoters.count({
+      const count = await prismaPublic.proposalNonVoters.count({
         where: { proposalId },
       });
 
       res.status(200).json({ nonVoters: records, count });
     } catch (error) {
       console.error("Error fetching proposal non voters:", error);
-      res
-        .status(500)
-        .json({ error: "Failed to fetch proposal non voters" });
+      res.status(500).json({ error: "Failed to fetch proposal non voters" });
     }
-  }
+  };
 }
