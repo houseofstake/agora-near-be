@@ -1,10 +1,7 @@
 name: Deploy Dev
 
 on:
-  workflow_dispatch:  # This allows the workflow to be manually triggered from the GitHub UI
-  push:
-    branches:
-      - main
+  workflow_dispatch: # This allows the workflow to be manually triggered from the GitHub UI
 
 env:
   PROJECT_NUMBER: "158107670134"
