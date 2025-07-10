@@ -477,7 +477,7 @@ export class DelegatesController {
         const lockedNearBalance =
           transactionType === "initial_registration"
             ? storageDeposit // Initial locked balance is the storage deposit
-            : lockedBalanceWithStorage;
+            : lockedBalanceWithStorage?.toFixed() ?? null;
 
         const nearAmount =
           transactionType === "initial_registration"
