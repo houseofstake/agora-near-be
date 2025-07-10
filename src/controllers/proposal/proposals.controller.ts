@@ -83,8 +83,8 @@ export class ProposalController {
   ): Promise<void> => {
     try {
       const { page_size, page } = req.query;
-      const pageSize = parseInt(page_size ?? "10");
-      const pageNumber = parseInt(page ?? "1");
+      const pageSize = parseInt(page_size ?? "10") || 10;
+      const pageNumber = parseInt(page ?? "1") || 1;
 
       const records = await prisma.proposal.findMany({
         where: { isApproved: true, isRejected: false },
@@ -113,8 +113,8 @@ export class ProposalController {
   ): Promise<void> => {
     try {
       const { created_by, page_size, page } = req.query;
-      const pageSize = parseInt(page_size ?? "10");
-      const pageNumber = parseInt(page ?? "1");
+      const pageSize = parseInt(page_size ?? "10") || 10;
+      const pageNumber = parseInt(page ?? "1") || 1;
 
       const records = await prisma.proposal.findMany({
         where: { isApproved: false, isRejected: false, creatorId: created_by },
