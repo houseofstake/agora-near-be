@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { providers } from "near-api-js";
-import { prisma } from "../..";
 import { fetchPriceAtBlock } from "../../lib/staking/fetchPriceAtBlock";
 import { getRpcUrl } from "../../lib/utils/rpc";
+import { prisma } from "../..";
 
 const META_POOL_CONTRACTS = ["meta-v2.pool.testnet", "meta-pool.near"];
 

@@ -6,14 +6,23 @@ import { PrismaClient } from "./generated/prisma";
 dotenv.config();
 
 const port = process.env.PORT || 8080;
+
 export const prisma = new PrismaClient();
 
-// Handle graceful shutdown
-process.on("SIGINT", async () => {
-  await prisma.$disconnect();
-  console.log("Database connection closed");
-  process.exit(0);
-});
+// Graceful shutdown handler
+const gracefulShutdown = async (signal: string) => {
+  try {
+    await prisma.$disconnect();
+    process.exit(0);
+  } catch (error) {
+    console.error("Error during graceful shutdown:", error);
+    process.exit(1);
+  }
+};
+
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("beforeExit", () => gracefulShutdown("beforeExit"));
 
 // Start the server
 app.listen(port, () => {

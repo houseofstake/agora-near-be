@@ -94,3 +94,55 @@ CREATE TABLE "substreams_history" (
     CONSTRAINT "substreams_history_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "execution_outcomes" (
+    "receipt_id" TEXT NOT NULL,
+    "block_height" BIGINT NOT NULL,
+    "block_hash" TEXT NOT NULL,
+    "chunk_hash" TEXT NOT NULL,
+    "shard_id" TEXT NOT NULL,
+    "gas_burnt" BIGINT NOT NULL,
+    "gas_used" DOUBLE PRECISION NOT NULL,
+    "tokens_burnt" DOUBLE PRECISION NOT NULL,
+    "executor_account_id" TEXT NOT NULL,
+    "status" TEXT NOT NULL,
+    "outcome_receipt_ids" TEXT[],
+    "executed_in_block_hash" TEXT NOT NULL,
+    "logs" TEXT[],
+
+    CONSTRAINT "execution_outcomes_pkey" PRIMARY KEY ("receipt_id")
+);
+
+-- CreateTable
+CREATE TABLE "delegate_statements" (
+    "address" TEXT NOT NULL,
+    "signature" TEXT NOT NULL,
+    "statement" TEXT NOT NULL,
+    "publicKey" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "topIssues" JSONB,
+    "agreeCodeConduct" BOOLEAN NOT NULL,
+    "twitter" TEXT,
+    "discord" TEXT,
+    "email" TEXT,
+    "warpcast" TEXT,
+
+    CONSTRAINT "delegate_statements_pkey" PRIMARY KEY ("address")
+);
+
+-- CreateTable
+CREATE TABLE "cache" (
+    "key" TEXT NOT NULL,
+    "data" JSONB NOT NULL,
+    "expires_at" TIMESTAMP(6) NOT NULL,
+    "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(6) NOT NULL,
+
+    CONSTRAINT "cache_pkey" PRIMARY KEY ("key")
+);
+
+-- CreateIndex
+CREATE INDEX "idx_delegate_statements_email" ON "delegate_statements"("email");
+
+-- CreateIndex
+CREATE INDEX "idx_cache_expires_at" ON "cache"("expires_at");

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { prisma } from "../../index";
+import { prisma } from "../..";
 
 export class NearController {
   public getNearPrice = async (req: Request, res: Response): Promise<void> => {

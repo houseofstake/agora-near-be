@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { prisma } from "../../index";
+import { prisma } from "../..";
 
 interface ProposalParams {
   proposal_id: string;
@@ -12,12 +12,7 @@ interface PaginationQuery {
 
 export class ProposalVotingHistoryController {
   public getProposalVotingHistory = async (
-    req: Request<
-      ProposalParams,
-      {},
-      {},
-      PaginationQuery
-    >,
+    req: Request<ProposalParams, {}, {}, PaginationQuery>,
     res: Response
   ): Promise<void> => {
     try {
@@ -118,9 +113,7 @@ export class ProposalVotingHistoryController {
       res.status(200).json({ nonVoters: records, count });
     } catch (error) {
       console.error("Error fetching proposal non voters:", error);
-      res
-        .status(500)
-        .json({ error: "Failed to fetch proposal non voters" });
+      res.status(500).json({ error: "Failed to fetch proposal non voters" });
     }
-  }
+  };
 }

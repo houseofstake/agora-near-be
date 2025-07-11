@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { prisma } from "../../index";
+
 import { verifySignature } from "../../lib/signature/verifySignature";
 import { sanitizeContent } from "../../lib/utils/sanitizationUtils";
 import {
@@ -10,6 +10,7 @@ import {
 import { providers } from "near-api-js";
 import { getRpcUrl } from "../../lib/utils/rpc";
 import Big from "big.js";
+import { prisma } from "../..";
 
 type DelegateStatementInput = {
   address: string;
@@ -80,8 +81,8 @@ export class DelegatesController {
         ds.warpcast,
         ds.statement,
         ds."topIssues"
-      FROM registered_voters_v2 rv
-      LEFT JOIN delegate_statements ds ON rv.registered_voter_id = ds.address
+      FROM registered_voters rv
+      LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
       ${orderByClause}
       LIMIT ${pageSize}
       OFFSET ${(pageNumber - 1) * pageSize}
@@ -142,8 +143,8 @@ export class DelegatesController {
           ds.signature,
           ds."publicKey",
           ds."agreeCodeConduct"
-        FROM registered_voters_v2 rv
-        LEFT JOIN delegate_statements ds ON rv.registered_voter_id = ds.address
+        FROM registered_voters rv
+        LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
         WHERE rv.registered_voter_id = ${address}
       `;
 
