@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { prismaWeb2 } from "../../lib/prisma-web2";
+import { prisma } from "../..";
 
 export class NearController {
   public getNearPrice = async (req: Request, res: Response): Promise<void> => {
@@ -8,7 +8,7 @@ export class NearController {
       const cacheTTL = 30 * 60 * 1000; // Cache for 30 minutes
 
       // Check database cache first
-      const cachedEntry = await prismaWeb2.cache.findFirst({
+      const cachedEntry = await prisma.cache.findFirst({
         where: {
           key: cacheKey,
           expiresAt: {
@@ -66,7 +66,7 @@ export class NearController {
       // Cache the response in database with TTL
       const expiresAt = new Date(Date.now() + cacheTTL);
 
-      await prismaWeb2.cache.upsert({
+      await prisma.cache.upsert({
         where: { key: cacheKey },
         update: {
           data: priceResponse,
@@ -90,7 +90,7 @@ export class NearController {
 
   public cleanupExpiredCache = async (): Promise<void> => {
     try {
-      await prismaWeb2.cache.deleteMany({
+      await prisma.cache.deleteMany({
         where: {
           expiresAt: {
             lt: new Date(), // Delete entries that have expired

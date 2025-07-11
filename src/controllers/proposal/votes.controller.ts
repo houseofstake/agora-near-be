@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { prismaPublic } from "../../lib/prisma-public";
+import { prisma } from "../..";
 
 interface ProposalParams {
   proposal_id: string;
@@ -22,7 +22,7 @@ export class ProposalVotingHistoryController {
       const pageNumber = parseInt(page ?? "1");
       const proposalId = parseInt(proposal_id);
 
-      const records = await prismaPublic.proposalVotingHistory.findMany({
+      const records = await prisma.proposalVotingHistory.findMany({
         where: { proposalId },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
@@ -31,7 +31,7 @@ export class ProposalVotingHistoryController {
         },
       });
 
-      const count = await prismaPublic.proposalVotingHistory.count({
+      const count = await prisma.proposalVotingHistory.count({
         where: { proposalId },
       });
 
@@ -62,7 +62,7 @@ export class ProposalVotingHistoryController {
       const { proposal_id } = req.params;
       const proposalId = parseInt(proposal_id);
 
-      const records = await prismaPublic.proposalVotingHistory.findMany({
+      const records = await prisma.proposalVotingHistory.findMany({
         where: { proposalId },
         orderBy: {
           votedAt: "asc",
@@ -100,13 +100,13 @@ export class ProposalVotingHistoryController {
       const pageNumber = parseInt(page ?? "1");
       const proposalId = parseInt(proposal_id);
 
-      const records = await prismaPublic.proposalNonVoters.findMany({
+      const records = await prisma.proposalNonVoters.findMany({
         where: { proposalId },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
       });
 
-      const count = await prismaPublic.proposalNonVoters.count({
+      const count = await prisma.proposalNonVoters.count({
         where: { proposalId },
       });
 

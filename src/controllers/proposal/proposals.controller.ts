@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { prismaPublic } from "../../lib/prisma-public";
+import { prisma } from "../..";
 
 interface ActiveProposalQueryParams {
   page_size?: string;
@@ -22,14 +22,14 @@ export class ProposalController {
       const pageSize = parseInt(page_size ?? "10");
       const pageNumber = parseInt(page ?? "1");
 
-      const records = await prismaPublic.proposal.findMany({
+      const records = await prisma.proposal.findMany({
         where: { isApproved: true, isRejected: false },
         orderBy: { createdAt: "desc" },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
       });
 
-      const count = await prismaPublic.proposal.count({
+      const count = await prisma.proposal.count({
         where: { isApproved: true, isRejected: false },
       });
 
@@ -49,14 +49,14 @@ export class ProposalController {
       const pageSize = parseInt(page_size ?? "10");
       const pageNumber = parseInt(page ?? "1");
 
-      const records = await prismaPublic.proposal.findMany({
+      const records = await prisma.proposal.findMany({
         where: { isApproved: false, isRejected: false, creatorId: created_by },
         orderBy: { createdAt: "desc" },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
       });
 
-      const count = await prismaPublic.proposal.count({
+      const count = await prisma.proposal.count({
         where: { isApproved: false, isRejected: false, creatorId: created_by },
       });
 

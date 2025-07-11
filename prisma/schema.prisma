@@ -1,13 +1,13 @@
 generator publicclient {
     provider        = "prisma-client-js"
-    output          = "../src/generated/prisma-public"
+    output          = "../src/generated/prisma"
     previewFeatures = ["views", "multiSchema"]
 }
 
-datasource publicdb {
+datasource db {
     provider = "postgresql"
     url      = env("DATABASE_URL")
-    schemas  = ["public"]
+    schemas  = ["web2", "public"]
 }
 
 // Do not remove, might be overridden by prisma db pull
@@ -21,11 +21,11 @@ view proposal {
     isApproved          Boolean   @map("is_approved")
     isRejected          Boolean   @map("is_rejected")
     hasVotes            Boolean   @map("has_votes")
-    createdAt           DateTime  @map("created_at") @publicdb.Timestamp(6)
+    createdAt           DateTime  @map("created_at") @db.Timestamp(6)
     creatorId           String    @map("creator_id")
-    approvedAt          DateTime? @map("approved_at") @publicdb.Timestamp(6)
+    approvedAt          DateTime? @map("approved_at") @db.Timestamp(6)
     approverId          String?   @map("approver_id")
-    rejectedAt          DateTime? @map("rejected_at") @publicdb.Timestamp(6)
+    rejectedAt          DateTime? @map("rejected_at") @db.Timestamp(6)
     rejecterId          String?   @map("rejecter_id")
     forVotingPower      Decimal   @map("for_voting_power")
     againstVotingPower  Decimal   @map("against_voting_power")
@@ -39,8 +39,8 @@ view proposal {
 view proposalVotingHistory {
     id                          String   @id
     receiptId                   String   @map("receipt_id")
-    votedDate                   DateTime @map("voted_date") @publicdb.Date
-    votedAt                     DateTime @map("voted_at") @publicdb.Timestamp(6)
+    votedDate                   DateTime @map("voted_date") @db.Date
+    votedAt                     DateTime @map("voted_at") @db.Timestamp(6)
     proposalId                  Int      @map("proposal_id")
     proposalName                String?  @map("proposal_name")
     voterId                     String   @map("voter_id")
@@ -61,8 +61,8 @@ view proposalVotingHistory {
 view registeredVoters {
     id                          String   @id
     receiptId                   String   @map("receipt_id")
-    registeredDate              DateTime @map("registered_date") @publicdb.Date
-    registeredAt                DateTime @map("registered_at") @publicdb.Timestamp(6)
+    registeredDate              DateTime @map("registered_date") @db.Date
+    registeredAt                DateTime @map("registered_at") @db.Timestamp(6)
     registeredVoterId           String   @map("registered_voter_id")
     hosContractAddress          String   @map("hos_contract_address")
     hasLockedUnlockedNear       Boolean  @map("has_locked_unlocked_near")
@@ -93,8 +93,8 @@ view proposalNonVoters {
 view delegationEvents {
     id                     String   @id
     receiptId              String   @map("receipt_id")
-    eventDate              DateTime @map("event_date") @publicdb.Date
-    eventTimestamp         DateTime @map("event_timestamp") @publicdb.Timestamp(6)
+    eventDate              DateTime @map("event_date") @db.Date
+    eventTimestamp         DateTime @map("event_timestamp") @db.Timestamp(6)
     delegatorId            String   @map("delegator_id")
     delegateeId            String?  @map("delegatee_id")
     delegateMethod         String   @map("delegate_method")
@@ -114,8 +114,8 @@ view userActivities {
     receiptId          String   @map("receipt_id")
     hosContractAddress String   @map("hos_contract_address")
     accountId          String   @map("account_id")
-    eventDate          DateTime @map("event_date") @publicdb.Date
-    eventTimestamp     DateTime @map("event_timestamp") @publicdb.Timestamp(6)
+    eventDate          DateTime @map("event_date") @db.Date
+    eventTimestamp     DateTime @map("event_timestamp") @db.Timestamp(6)
     methodName         String   @map("method_name")
     eventType          String   @map("event_type")
     eventStatus        String   @map("event_status")
@@ -133,7 +133,7 @@ model blocks {
     hash         String
     prev_hash    String
     author       String
-    timestamp    DateTime @publicdb.Timestamp(6)
+    timestamp    DateTime @db.Timestamp(6)
     gas_price    String
     total_supply String
 
@@ -189,7 +189,7 @@ model receipt_actions {
     deposit           String
     args_base64       String
     action_index      Int
-    block_timestamp   DateTime @publicdb.Timestamp(6)
+    block_timestamp   DateTime @db.Timestamp(6)
 
     @@schema("public")
 }
@@ -209,7 +209,7 @@ model receipts {
 
 model substreams_history {
     id         Int     @id @default(autoincrement())
-    op         String? @publicdb.Char(1)
+    op         String? @db.Char(1)
     table_name String?
     pk         String?
     prev_value String?
@@ -234,4 +234,33 @@ model execution_outcomes {
     logs                   String[]
 
     @@schema("public")
+}
+
+model delegate_statements {
+    address          String  @id
+    signature        String
+    statement        String
+    publicKey        String
+    message          String
+    topIssues        Json?
+    agreeCodeConduct Boolean
+    twitter          String?
+    discord          String?
+    email            String?
+    warpcast         String?
+
+    @@index([email], map: "idx_delegate_statements_email")
+    @@schema("web2")
+}
+
+model cache {
+    key       String   @id
+    data      Json
+    expiresAt DateTime @map("expires_at") @db.Timestamp(6)
+    createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+    updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+    @@index([expiresAt], map: "idx_cache_expires_at")
+    @@map("cache")
+    @@schema("web2")
 }
