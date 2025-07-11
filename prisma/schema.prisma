@@ -241,9 +241,8 @@ view userActivities {
     @@schema("public")
 }
 
-/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
 view approved_proposals {
-    id                     String?
+    id                     String    @id
     receipt_id             String?
     proposal_approved_date DateTime? @db.Date
     proposal_approved_at   DateTime? @db.Timestamp(6)
@@ -253,6 +252,5 @@ view approved_proposals {
     block_hash             String?
     block_height           BigInt?
 
-    @@ignore
     @@schema("public")
 }
