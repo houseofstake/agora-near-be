@@ -1,4 +1,4 @@
-generator publicclient {
+generator client {
     provider        = "prisma-client-js"
     output          = "../src/generated/prisma"
     previewFeatures = ["views", "multiSchema"]
