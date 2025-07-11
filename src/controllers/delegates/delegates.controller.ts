@@ -62,16 +62,14 @@ export class DelegatesController {
 
     let orderByClause;
     if (order_by === "most_voting_power") {
-      orderByClause = "ORDER BY rv.current_voting_power DESC NULLS LAST";
+      orderByClause = Prisma.sql`ORDER BY rv.current_voting_power DESC NULLS LAST`;
     } else if (order_by === "least_voting_power") {
-      orderByClause = "ORDER BY rv.current_voting_power ASC NULLS FIRST";
+      orderByClause = Prisma.sql`ORDER BY rv.current_voting_power ASC NULLS FIRST`;
     } else {
-      orderByClause =
-        "ORDER BY -log(random()) / NULLIF(rv.current_voting_power, 0)";
+      orderByClause = Prisma.sql`ORDER BY -log(random()) / NULLIF(rv.current_voting_power, 0)`;
     }
 
-    const records = await prisma.$queryRawUnsafe<DelegateWithVoterInfo[]>(
-      `
+    const records = await prisma.$queryRaw<DelegateWithVoterInfo[]>`
       SELECT
         rv.registered_voter_id as "registeredVoterId",
         rv.current_voting_power as "currentVotingPower",
@@ -86,12 +84,9 @@ export class DelegatesController {
       FROM registered_voters rv
       LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
       ${orderByClause}
-      LIMIT $1
-      OFFSET $2
-    `,
-      pageSize,
-      (pageNumber - 1) * pageSize
-    );
+      LIMIT ${pageSize}
+      OFFSET ${(pageNumber - 1) * pageSize}
+    `;
 
     const delegates = records.map((record) => {
       const {
