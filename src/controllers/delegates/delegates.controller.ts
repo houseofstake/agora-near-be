@@ -2,11 +2,8 @@ import { Request, Response } from "express";
 
 import { verifySignature } from "../../lib/signature/verifySignature";
 import { sanitizeContent } from "../../lib/utils/sanitizationUtils";
-import {
-  delegate_statements,
-  Prisma,
-  registeredVoters,
-} from "../../generated/prisma";
+import { delegate_statements, Prisma } from "../../generated/prisma-web2";
+import { registeredVoters } from "../../generated/prisma-public";
 import { providers } from "near-api-js";
 import { getRpcUrl } from "../../lib/utils/rpc";
 import Big from "big.js";
@@ -33,6 +30,7 @@ interface DeletesQuery {
   page_size?: string;
   page?: string;
   order_by?: string;
+  filter_by?: string;
 }
 
 type DelegateWithVoterInfo = delegate_statements & registeredVoters;
@@ -56,7 +54,7 @@ export class DelegatesController {
     req: Request<{}, {}, {}, DeletesQuery>,
     res: Response
   ): Promise<void> => {
-    const { page_size, page, order_by } = req.query;
+    const { page_size, page, order_by, filter_by } = req.query;
     const pageSize = parseInt(page_size ?? "10");
     const pageNumber = parseInt(page ?? "1");
 
@@ -69,24 +67,33 @@ export class DelegatesController {
       orderByClause = Prisma.sql`ORDER BY -log(random()) / NULLIF(rv.current_voting_power, 0)`;
     }
 
-    const records = await prisma.$queryRaw<DelegateWithVoterInfo[]>`
-      SELECT
-        rv.registered_voter_id as "registeredVoterId",
-        rv.current_voting_power as "currentVotingPower",
-        rv.proposal_participation_rate as "proposalParticipationRate",
-        ds.address,
-        ds.twitter,
-        ds.discord,
-        ds.email,
-        ds.warpcast,
-        ds.statement,
-        ds."topIssues"
-      FROM registered_voters rv
-      LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
-      ${orderByClause}
-      LIMIT ${pageSize}
-      OFFSET ${(pageNumber - 1) * pageSize}
-    `;
+    let filterByClause = Prisma.sql``;
+    if (filter_by === "endorsed") {
+      filterByClause = Prisma.sql`WHERE ds.endorsed = true`;
+    }
+
+    const records = await prisma.$queryRaw<DelegateWithVoterInfo[]>(
+      Prisma.sql`
+        SELECT
+          rv.registered_voter_id as "registeredVoterId",
+          rv.current_voting_power as "currentVotingPower",
+          rv.proposal_participation_rate as "proposalParticipationRate",
+          ds.address,
+          ds.twitter,
+          ds.discord,
+          ds.email,
+          ds.warpcast,
+          ds.statement,
+          ds."topIssues",
+          ds.endorsed
+        FROM registered_voters rv
+        LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+        ${filterByClause}
+        ${orderByClause}
+        LIMIT ${pageSize}
+        OFFSET ${(pageNumber - 1) * pageSize}
+      `
+    );
 
     const delegates = records.map((record) => {
       const {
@@ -99,6 +106,7 @@ export class DelegatesController {
         warpcast,
         statement,
         topIssues,
+        endorsed,
       } = record;
 
       return {
@@ -111,6 +119,7 @@ export class DelegatesController {
         warpcast,
         statement,
         topIssues,
+        endorsed,
       };
     });
 
@@ -142,7 +151,8 @@ export class DelegatesController {
           ds.message,
           ds.signature,
           ds."publicKey",
-          ds."agreeCodeConduct"
+          ds."agreeCodeConduct",
+          ds.endorsed
         FROM registered_voters rv
         LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
         WHERE rv.registered_voter_id = ${address}
@@ -222,6 +232,7 @@ export class DelegatesController {
           warpcast: data.warpcast,
           statement: data.statement,
           topIssues: data.topIssues,
+          endorsed: data.endorsed,
           votingPower: data.currentVotingPower?.toFixed(),
           forCount,
           againstCount,
