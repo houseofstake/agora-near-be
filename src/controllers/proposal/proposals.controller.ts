@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../..";
+import { proposal } from "../../generated/prisma";
 
 interface ActiveProposalQueryParams {
   page_size?: string;
@@ -10,6 +11,29 @@ interface PendingProposalQueryParams {
   created_by?: string;
   page_size?: string;
   page?: string;
+}
+
+function mapRecordToResponse(record: proposal) {
+  return {
+    id: record.id,
+    approvedAt: record.approvedAt,
+    approverId: record.approverId,
+    createdAt: record.createdAt,
+    creatorId: record.creatorId,
+    hasVote: record.hasVotes,
+    isApproved: record.isApproved,
+    isRejected: record.isRejected,
+    proposalDescription: record.proposalDescription,
+    proposalId: record.proposalId,
+    proposalTitle: record.proposalTitle,
+    proposalUrl: record.proposalUrl,
+    receiptId: record.receiptId,
+    rejectedAt: record.rejectedAt,
+    rejecterId: record.rejecterId,
+    forVotingPower: record.forVotingPower.toFixed(),
+    againstVotingPower: record.againstVotingPower.toFixed(),
+    abstainVotingPower: record.abstainVotingPower.toFixed(),
+  };
 }
 
 export class ProposalController {
@@ -33,7 +57,10 @@ export class ProposalController {
         where: { isApproved: true, isRejected: false },
       });
 
-      res.status(200).json({ proposals: records, count });
+      res.status(200).json({
+        proposals: records.map((record) => mapRecordToResponse(record)),
+        count,
+      });
     } catch (error) {
       console.error("Error fetching approved proposals:", error);
       res.status(500).json({ error: "Failed to fetch approved proposals" });
@@ -60,7 +87,10 @@ export class ProposalController {
         where: { isApproved: false, isRejected: false, creatorId: created_by },
       });
 
-      res.status(200).json({ proposals: records, count });
+      res.status(200).json({
+        proposals: records.map((record) => mapRecordToResponse(record)),
+        count,
+      });
     } catch (error) {
       console.error("Error fetching pending proposals:", error);
       res.status(500).json({ error: "Failed to fetch pending proposals" });

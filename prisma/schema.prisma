@@ -1,131 +1,13 @@
 generator client {
     provider        = "prisma-client-js"
     output          = "../src/generated/prisma"
-    previewFeatures = ["views", "multiSchema"]
+    previewFeatures = ["multiSchema", "views"]
 }
 
 datasource db {
     provider = "postgresql"
     url      = env("DATABASE_URL")
-    schemas  = ["web2", "public"]
-}
-
-// Do not remove, might be overridden by prisma db pull
-view proposal {
-    id                  String    @id
-    receiptId           String    @map("receipt_id")
-    proposalId          Int       @map("proposal_id")
-    proposalTitle       String?   @map("proposal_title")
-    proposalDescription String?   @map("proposal_description")
-    proposalUrl         String?   @map("proposal_url")
-    isApproved          Boolean   @map("is_approved")
-    isRejected          Boolean   @map("is_rejected")
-    hasVotes            Boolean   @map("has_votes")
-    createdAt           DateTime  @map("created_at") @db.Timestamp(6)
-    creatorId           String    @map("creator_id")
-    approvedAt          DateTime? @map("approved_at") @db.Timestamp(6)
-    approverId          String?   @map("approver_id")
-    rejectedAt          DateTime? @map("rejected_at") @db.Timestamp(6)
-    rejecterId          String?   @map("rejecter_id")
-    forVotingPower      Decimal   @map("for_voting_power")
-    againstVotingPower  Decimal   @map("against_voting_power")
-    abstainVotingPower  Decimal   @map("abstain_voting_power")
-
-    @@map("proposals")
-    @@schema("public")
-}
-
-// Do not remove, might be overridden by prisma db pull
-view proposalVotingHistory {
-    id                          String   @id
-    receiptId                   String   @map("receipt_id")
-    votedDate                   DateTime @map("voted_date") @db.Date
-    votedAt                     DateTime @map("voted_at") @db.Timestamp(6)
-    proposalId                  Int      @map("proposal_id")
-    proposalName                String?  @map("proposal_name")
-    voterId                     String   @map("voter_id")
-    voteOption                  Int      @map("vote_option")
-    votingPower                 Decimal? @map("voting_power")
-    extraVenearBalance          Decimal  @map("extra_venear_balance")
-    delegatorAccountId          String?  @map("delegator_account_id")
-    delegatedNearBalance        Decimal  @map("delegated_near_balance")
-    delegatedExtraVenearBalance Decimal  @map("delegated_extra_venear_balance")
-    blockHash                   String   @map("block_hash")
-    blockHeight                 Int      @map("block_height")
-
-    @@map("proposal_voting_history")
-    @@schema("public")
-}
-
-// Do not remove, might be overridden by prisma db pull
-view registeredVoters {
-    id                          String   @id
-    receiptId                   String   @map("receipt_id")
-    registeredDate              DateTime @map("registered_date") @db.Date
-    registeredAt                DateTime @map("registered_at") @db.Timestamp(6)
-    registeredVoterId           String   @map("registered_voter_id")
-    hosContractAddress          String   @map("hos_contract_address")
-    hasLockedUnlockedNear       Boolean  @map("has_locked_unlocked_near")
-    isActivelyDelegating        Boolean  @map("is_actively_delegating")
-    votingPowerFromDelegations  Decimal? @map("voting_power_from_delegations")
-    votingPowerFromLocksUnlocks Decimal? @map("voting_power_from_locks_unlocks")
-    initialVotingPower          Decimal? @map("initial_voting_power")
-    currentVotingPower          Decimal? @map("current_voting_power")
-    proposalParticipationRate   Decimal? @map("proposal_participation_rate")
-    blockHeight                 BigInt   @map("block_height")
-    blockHash                   String   @map("block_hash")
-
-    @@map("registered_voters")
-    @@schema("public")
-}
-
-// Do not remove, might be overridden by prisma db pull
-view proposalNonVoters {
-    id                String @id
-    proposalId        Int    @map("proposal_id")
-    registeredVoterId String @map("registered_voter_id")
-
-    @@map("proposal_non_voters")
-    @@schema("public")
-}
-
-// Do not remove, might be overridden by prisma db pull
-view delegationEvents {
-    id                     String   @id
-    receiptId              String   @map("receipt_id")
-    eventDate              DateTime @map("event_date") @db.Date
-    eventTimestamp         DateTime @map("event_timestamp") @db.Timestamp(6)
-    delegatorId            String   @map("delegator_id")
-    delegateeId            String?  @map("delegatee_id")
-    delegateMethod         String   @map("delegate_method")
-    delegateEvent          String   @map("delegate_event")
-    isLatestDelegatorEvent Boolean  @map("is_latest_delegator_event")
-    nearAmount             Decimal? @map("near_amount")
-    blockHeight            Int      @map("block_height")
-    blockHash              String   @map("block_hash")
-
-    @@map("delegation_events")
-    @@schema("public")
-}
-
-// Do not remove, might be overridden by prisma db pull
-view userActivities {
-    id                 String   @id
-    receiptId          String   @map("receipt_id")
-    hosContractAddress String   @map("hos_contract_address")
-    accountId          String   @map("account_id")
-    eventDate          DateTime @map("event_date") @db.Date
-    eventTimestamp     DateTime @map("event_timestamp") @db.Timestamp(6)
-    methodName         String   @map("method_name")
-    eventType          String   @map("event_type")
-    eventStatus        String   @map("event_status")
-    nearAmount         Decimal? @map("near_amount")
-    lockedNearBalance  Decimal? @map("locked_near_balance")
-    blockHeight        BigInt   @map("block_height")
-    blockHash          String   @map("block_hash")
-
-    @@map("user_activities")
-    @@schema("public")
+    schemas  = ["public", "web2"]
 }
 
 model blocks {
@@ -136,28 +18,6 @@ model blocks {
     timestamp    DateTime @db.Timestamp(6)
     gas_price    String
     total_supply String
-
-    @@schema("public")
-}
-
-model chunks {
-    height                 BigInt
-    chunk_hash             String @id
-    prev_block_hash        String
-    outcome_root           String
-    prev_state_root        String
-    encoded_merkle_root    String
-    encoded_length         BigInt
-    height_created         BigInt
-    height_included        BigInt
-    shard_id               BigInt
-    gas_used               BigInt
-    gas_limit              BigInt
-    validator_reward       String
-    balance_burnt          String
-    outgoing_receipts_root String
-    tx_root                String
-    author                 String
 
     @@schema("public")
 }
@@ -188,21 +48,9 @@ model receipt_actions {
     gas               BigInt
     deposit           String
     args_base64       String
+    args_json         String?
     action_index      Int
     block_timestamp   DateTime @db.Timestamp(6)
-
-    @@schema("public")
-}
-
-model receipts {
-    height         BigInt
-    block_hash     String
-    chunk_hash     String
-    receipt_id     String @id
-    predecessor_id String
-    receiver_id    String
-    receipt_kind   String
-    author         String
 
     @@schema("public")
 }
@@ -219,7 +67,7 @@ model substreams_history {
 }
 
 model execution_outcomes {
-    receipt_id             String   @id
+    receipt_id             String    @id
     block_height           BigInt
     block_hash             String
     chunk_hash             String
@@ -232,6 +80,9 @@ model execution_outcomes {
     outcome_receipt_ids    String[]
     executed_in_block_hash String
     logs                   String[]
+    results_base64         String?
+    results_json           String?
+    block_timestamp        DateTime? @db.Timestamp(6)
 
     @@schema("public")
 }
@@ -263,4 +114,145 @@ model cache {
     @@index([expiresAt], map: "idx_cache_expires_at")
     @@map("cache")
     @@schema("web2")
+}
+
+view proposal {
+    id                       String    @id
+    receiptId                String    @map("receipt_id")
+    proposalId               Decimal   @map("proposal_id") @db.Decimal
+    proposalTitle            String?   @map("proposal_title")
+    proposalDescription      String?   @map("proposal_description")
+    proposalUrl              String?   @map("proposal_url")
+    hos_contract_address     String?
+    isApproved               Boolean   @map("is_approved")
+    isRejected               Boolean   @map("is_rejected")
+    hasVotes                 Boolean   @map("has_votes")
+    createdAt                DateTime  @map("created_at") @db.Timestamp(6)
+    creatorId                String    @map("creator_id")
+    approvedAt               DateTime? @map("approved_at") @db.Timestamp(6)
+    approverId               String?   @map("approver_id")
+    rejectedAt               DateTime? @map("rejected_at") @db.Timestamp(6)
+    rejecterId               String?   @map("rejecter_id")
+    voting_duration_ns       Decimal?  @db.Decimal
+    total_venear_at_approval Decimal?  @db.Decimal
+    listagg_distinct_voters  String?
+    num_distinct_voters      BigInt?
+    num_for_votes            BigInt?
+    num_against_votes        BigInt?
+    forVotingPower           Decimal   @map("for_voting_power") @db.Decimal
+    againstVotingPower       Decimal   @map("against_voting_power") @db.Decimal
+    abstainVotingPower       Decimal   @map("abstain_voting_power") @db.Decimal
+    block_height             BigInt?
+    block_hash               String?
+
+    @@map("proposals")
+    @@schema("public")
+}
+
+view proposalVotingHistory {
+    id                          String   @id
+    receiptId                   String   @map("receipt_id")
+    votedDate                   DateTime @map("voted_date") @db.Date
+    votedAt                     DateTime @map("voted_at") @db.Timestamp(6)
+    proposalId                  Decimal  @map("proposal_id") @db.Decimal
+    proposalName                String?  @map("proposal_name")
+    hos_contract_address        String?
+    voterId                     String   @map("voter_id")
+    voteOption                  Decimal  @map("vote_option") @db.Decimal
+    votingPower                 Decimal? @map("voting_power") @db.Decimal
+    near_balance                Decimal? @db.Decimal
+    extraVenearBalance          Decimal  @map("extra_venear_balance") @db.Decimal
+    delegatorAccountId          String?  @map("delegator_account_id")
+    delegatedNearBalance        Decimal  @map("delegated_near_balance") @db.Decimal
+    delegatedExtraVenearBalance Decimal  @map("delegated_extra_venear_balance") @db.Decimal
+    blockHeight                 BigInt   @map("block_height")
+    blockHash                   String   @map("block_hash")
+
+    @@map("proposal_voting_history")
+    @@schema("public")
+}
+
+view registeredVoters {
+    id                          String   @id
+    receiptId                   String   @map("receipt_id")
+    registeredDate              DateTime @map("registered_date") @db.Date
+    registeredAt                DateTime @map("registered_at") @db.Timestamp(6)
+    registeredVoterId           String   @map("registered_voter_id")
+    hosContractAddress          String   @map("hos_contract_address")
+    hasLockedUnlockedNear       Boolean  @map("has_locked_unlocked_near")
+    isActivelyDelegating        Boolean  @map("is_actively_delegating")
+    votingPowerFromDelegations  Decimal? @map("voting_power_from_delegations") @db.Decimal
+    votingPowerFromLocksUnlocks Decimal? @map("voting_power_from_locks_unlocks") @db.Decimal
+    initialVotingPower          Decimal? @map("initial_voting_power") @db.Decimal
+    currentVotingPower          Decimal? @map("current_voting_power") @db.Decimal
+    proposalParticipationRate   Decimal? @map("proposal_participation_rate") @db.Decimal
+    blockHeight                 BigInt   @map("block_height")
+    blockHash                   String   @map("block_hash")
+
+    @@map("registered_voters")
+    @@schema("public")
+}
+
+view proposalNonVoters {
+    id                String  @id
+    proposalId        Decimal @map("proposal_id") @db.Decimal
+    registeredVoterId String  @map("registered_voter_id")
+
+    @@map("proposal_non_voters")
+    @@schema("public")
+}
+
+view delegationEvents {
+    id                     String   @id
+    receiptId              String   @map("receipt_id")
+    eventDate              DateTime @map("event_date") @db.Date
+    eventTimestamp         DateTime @map("event_timestamp") @db.Timestamp(6)
+    hos_contract_address   String?
+    delegatorId            String   @map("delegator_id")
+    delegateeId            String?  @map("delegatee_id")
+    delegateMethod         String   @map("delegate_method")
+    delegateEvent          String   @map("delegate_event")
+    isLatestDelegatorEvent Boolean  @map("is_latest_delegator_event")
+    owner_id               String?
+    nearAmount             Decimal? @map("near_amount") @db.Decimal
+    blockHeight            BigInt   @map("block_height")
+    blockHash              String   @map("block_hash")
+
+    @@map("delegation_events")
+    @@schema("public")
+}
+
+view userActivities {
+    id                 String   @id
+    receiptId          String   @map("receipt_id")
+    hosContractAddress String   @map("hos_contract_address")
+    accountId          String   @map("account_id")
+    eventDate          DateTime @map("event_date") @db.Date
+    eventTimestamp     DateTime @map("event_timestamp") @db.Timestamp(6)
+    methodName         String   @map("method_name")
+    eventType          String   @map("event_type")
+    eventStatus        String   @map("event_status")
+    nearAmount         Decimal? @map("near_amount") @db.Decimal
+    lockedNearBalance  Decimal? @map("locked_near_balance") @db.Decimal
+    blockHeight        BigInt   @map("block_height")
+    blockHash          String   @map("block_hash")
+
+    @@map("user_activities")
+    @@schema("public")
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view approved_proposals {
+    id                     String?
+    receipt_id             String?
+    proposal_approved_date DateTime? @db.Date
+    proposal_approved_at   DateTime? @db.Timestamp(6)
+    hos_contract_address   String?
+    proposal_id            Decimal?  @db.Decimal
+    proposal_approver_id   String?
+    block_hash             String?
+    block_height           BigInt?
+
+    @@ignore
+    @@schema("public")
 }
