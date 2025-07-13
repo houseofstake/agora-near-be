@@ -18,8 +18,8 @@ export class ProposalVotingHistoryController {
     try {
       const { proposal_id } = req.params;
       const { page_size, page } = req.query;
-      const pageSize = parseInt(page_size ?? "10");
-      const pageNumber = parseInt(page ?? "1");
+      const pageSize = parseInt(page_size ?? "10") || 10;
+      const pageNumber = parseInt(page ?? "1") || 1;
       const proposalId = parseInt(proposal_id);
 
       const records = await prisma.proposalVotingHistory.findMany({
