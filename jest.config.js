@@ -14,8 +14,5 @@ module.exports = {
   ],
   clearMocks: true,
   restoreMocks: true,
-  setupFilesAfterEnv: [
-    "<rootDir>/src/lib/tests/prismaPublicMock.ts",
-    "<rootDir>/src/lib/tests/prismaWeb2Mock.ts",
-  ],
+  setupFilesAfterEnv: ["<rootDir>/src/lib/tests/prismaMock.ts"],
 };

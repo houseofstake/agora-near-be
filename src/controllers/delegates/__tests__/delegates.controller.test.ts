@@ -1,7 +1,6 @@
 import request from "supertest";
 import app from "../../../app";
-import { prismaPublicMock } from "../../../lib/tests/prismaPublicMock";
-import { prismaWeb2Mock } from "../../../lib/tests/prismaWeb2Mock";
+import { prismaMock } from "../../../lib/tests/prismaMock";
 import { Decimal } from "@prisma/client/runtime/client";
 import { providers } from "near-api-js";
 
@@ -58,8 +57,8 @@ describe("DelegatesController", () => {
       ];
       const mockCount = 100;
 
-      prismaPublicMock.$queryRaw.mockResolvedValue(mockDelegates);
-      prismaPublicMock.registeredVoters.count.mockResolvedValue(mockCount);
+      prismaMock.$queryRaw.mockResolvedValue(mockDelegates);
+      prismaMock.registeredVoters.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -95,7 +94,7 @@ describe("DelegatesController", () => {
         count: mockCount,
       });
 
-      expect(prismaPublicMock.registeredVoters.count).toHaveBeenCalled();
+      expect(prismaMock.registeredVoters.count).toHaveBeenCalled();
     });
 
     it("should return delegates with custom pagination", async () => {
@@ -116,8 +115,8 @@ describe("DelegatesController", () => {
       ];
       const mockCount = 50;
 
-      prismaPublicMock.$queryRaw.mockResolvedValue(mockDelegates);
-      prismaPublicMock.registeredVoters.count.mockResolvedValue(mockCount);
+      prismaMock.$queryRaw.mockResolvedValue(mockDelegates);
+      prismaMock.registeredVoters.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -144,7 +143,7 @@ describe("DelegatesController", () => {
       });
 
       // Assert that the SQL query contains the correct pagination arguments
-      expect(prismaPublicMock.$queryRaw).toHaveBeenCalledWith(
+      expect(prismaMock.$queryRaw).toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
         5, // pageSize
@@ -157,8 +156,8 @@ describe("DelegatesController", () => {
       const mockDelegates: any[] = [];
       const mockCount = 0;
 
-      prismaPublicMock.$queryRaw.mockResolvedValue(mockDelegates);
-      prismaPublicMock.registeredVoters.count.mockResolvedValue(mockCount);
+      prismaMock.$queryRaw.mockResolvedValue(mockDelegates);
+      prismaMock.registeredVoters.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       await request(app)
@@ -168,7 +167,7 @@ describe("DelegatesController", () => {
         .expect("Content-Type", /json/);
 
       // Assert that the SQL query contains the correct ORDER BY clause for descending voting power
-      expect(prismaPublicMock.$queryRaw).toHaveBeenCalledWith(
+      expect(prismaMock.$queryRaw).toHaveBeenCalledWith(
         expect.anything(), // First argument: main query template
         expect.objectContaining({
           strings: expect.arrayContaining([
@@ -185,8 +184,8 @@ describe("DelegatesController", () => {
       const mockDelegates: any[] = [];
       const mockCount = 0;
 
-      prismaPublicMock.$queryRaw.mockResolvedValue(mockDelegates);
-      prismaPublicMock.registeredVoters.count.mockResolvedValue(mockCount);
+      prismaMock.$queryRaw.mockResolvedValue(mockDelegates);
+      prismaMock.registeredVoters.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       await request(app)
@@ -196,7 +195,7 @@ describe("DelegatesController", () => {
         .expect("Content-Type", /json/);
 
       // Assert that the SQL query contains the correct ORDER BY clause for ascending voting power
-      expect(prismaPublicMock.$queryRaw).toHaveBeenCalledWith(
+      expect(prismaMock.$queryRaw).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
           strings: expect.arrayContaining([
@@ -226,8 +225,8 @@ describe("DelegatesController", () => {
       ];
       const mockCount = 1;
 
-      prismaPublicMock.$queryRaw.mockResolvedValue(mockDelegates);
-      prismaPublicMock.registeredVoters.count.mockResolvedValue(mockCount);
+      prismaMock.$queryRaw.mockResolvedValue(mockDelegates);
+      prismaMock.registeredVoters.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -251,7 +250,7 @@ describe("DelegatesController", () => {
     it("should handle database error gracefully", async () => {
       // Arrange
       const errorMessage = "Database connection failed";
-      prismaPublicMock.$queryRaw.mockRejectedValue(new Error(errorMessage));
+      prismaMock.$queryRaw.mockRejectedValue(new Error(errorMessage));
 
       // Act & Assert
       const response = await request(app)
@@ -292,12 +291,12 @@ describe("DelegatesController", () => {
       const mockAbstainCount = 2;
       const mockDelegatedFromCount = 10;
 
-      prismaPublicMock.$queryRaw.mockResolvedValue(mockVoterData);
-      prismaPublicMock.proposalVotingHistory.count
+      prismaMock.$queryRaw.mockResolvedValue(mockVoterData);
+      prismaMock.proposalVotingHistory.count
         .mockResolvedValueOnce(mockForCount)
         .mockResolvedValueOnce(mockAgainstCount)
         .mockResolvedValueOnce(mockAbstainCount);
-      prismaPublicMock.delegationEvents.count.mockResolvedValue(
+      prismaMock.delegationEvents.count.mockResolvedValue(
         mockDelegatedFromCount
       );
 
@@ -328,7 +327,7 @@ describe("DelegatesController", () => {
 
     it("should return delegate with just address for valid NEAR account not in registered voters", async () => {
       // Arrange
-      prismaPublicMock.$queryRaw.mockResolvedValue([]);
+      prismaMock.$queryRaw.mockResolvedValue([]);
       mockGetRpcUrl.mockReturnValue("https://rpc.testnet.near.org");
 
       const mockProvider = {
@@ -346,7 +345,7 @@ describe("DelegatesController", () => {
         .expect(200)
         .expect("Content-Type", /json/);
 
-      expect(prismaPublicMock.$queryRaw).toHaveBeenCalled();
+      expect(prismaMock.$queryRaw).toHaveBeenCalled();
       expect(mockGetRpcUrl).toHaveBeenCalled();
       expect(mockProvider.query).toHaveBeenCalledWith({
         request_type: "view_account",
@@ -363,7 +362,7 @@ describe("DelegatesController", () => {
 
     it("should return 404 for invalid NEAR account", async () => {
       // Arrange
-      prismaPublicMock.$queryRaw.mockResolvedValue([]);
+      prismaMock.$queryRaw.mockResolvedValue([]);
       mockGetRpcUrl.mockReturnValue("https://rpc.testnet.near.org");
 
       const mockProvider = {
@@ -380,7 +379,7 @@ describe("DelegatesController", () => {
         .expect(404)
         .expect("Content-Type", /json/);
 
-      expect(prismaPublicMock.$queryRaw).toHaveBeenCalled();
+      expect(prismaMock.$queryRaw).toHaveBeenCalled();
       expect(mockGetRpcUrl).toHaveBeenCalled();
       expect(mockProvider.query).toHaveBeenCalledWith({
         request_type: "view_account",
@@ -397,7 +396,7 @@ describe("DelegatesController", () => {
     it("should handle database error gracefully", async () => {
       // Arrange
       const errorMessage = "Database timeout";
-      prismaPublicMock.$queryRaw.mockRejectedValue(new Error(errorMessage));
+      prismaMock.$queryRaw.mockRejectedValue(new Error(errorMessage));
 
       // Act & Assert
       const response = await request(app)
@@ -434,10 +433,10 @@ describe("DelegatesController", () => {
       ];
       const mockCount = 25;
 
-      prismaPublicMock.proposalVotingHistory.findMany.mockResolvedValue(
+      prismaMock.proposalVotingHistory.findMany.mockResolvedValue(
         mockVotingHistory
       );
-      prismaPublicMock.proposalVotingHistory.count.mockResolvedValue(mockCount);
+      prismaMock.proposalVotingHistory.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -467,9 +466,7 @@ describe("DelegatesController", () => {
         count: mockCount,
       });
 
-      expect(
-        prismaPublicMock.proposalVotingHistory.findMany
-      ).toHaveBeenCalledWith({
+      expect(prismaMock.proposalVotingHistory.findMany).toHaveBeenCalledWith({
         where: { voterId: "delegate1.near" },
         skip: 0,
         take: 10,
@@ -493,10 +490,10 @@ describe("DelegatesController", () => {
       ];
       const mockCount = 12;
 
-      prismaPublicMock.proposalVotingHistory.findMany.mockResolvedValue(
+      prismaMock.proposalVotingHistory.findMany.mockResolvedValue(
         mockVotingHistory
       );
-      prismaPublicMock.proposalVotingHistory.count.mockResolvedValue(mockCount);
+      prismaMock.proposalVotingHistory.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -519,9 +516,7 @@ describe("DelegatesController", () => {
         count: mockCount,
       });
 
-      expect(
-        prismaPublicMock.proposalVotingHistory.findMany
-      ).toHaveBeenCalledWith({
+      expect(prismaMock.proposalVotingHistory.findMany).toHaveBeenCalledWith({
         where: { voterId: "delegate2.near" },
         skip: 10,
         take: 5,
@@ -545,10 +540,10 @@ describe("DelegatesController", () => {
       ];
       const mockCount = 1;
 
-      prismaPublicMock.proposalVotingHistory.findMany.mockResolvedValue(
+      prismaMock.proposalVotingHistory.findMany.mockResolvedValue(
         mockVotingHistory
       );
-      prismaPublicMock.proposalVotingHistory.count.mockResolvedValue(mockCount);
+      prismaMock.proposalVotingHistory.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -562,7 +557,7 @@ describe("DelegatesController", () => {
     it("should handle database error gracefully", async () => {
       // Arrange
       const errorMessage = "Database connection failed";
-      prismaPublicMock.proposalVotingHistory.findMany.mockRejectedValue(
+      prismaMock.proposalVotingHistory.findMany.mockRejectedValue(
         new Error(errorMessage)
       );
 
@@ -601,10 +596,10 @@ describe("DelegatesController", () => {
       ];
       const mockCount = 15;
 
-      prismaPublicMock.delegationEvents.findMany.mockResolvedValue(
+      prismaMock.delegationEvents.findMany.mockResolvedValue(
         mockDelegationEvents
       );
-      prismaPublicMock.delegationEvents.count.mockResolvedValue(mockCount);
+      prismaMock.delegationEvents.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -617,7 +612,7 @@ describe("DelegatesController", () => {
         count: mockCount,
       });
 
-      expect(prismaPublicMock.delegationEvents.findMany).toHaveBeenCalledWith({
+      expect(prismaMock.delegationEvents.findMany).toHaveBeenCalledWith({
         where: {
           delegateeId: "delegate1.near",
           isLatestDelegatorEvent: true,
@@ -645,10 +640,10 @@ describe("DelegatesController", () => {
       ];
       const mockCount = 8;
 
-      prismaPublicMock.delegationEvents.findMany.mockResolvedValue(
+      prismaMock.delegationEvents.findMany.mockResolvedValue(
         mockDelegationEvents
       );
-      prismaPublicMock.delegationEvents.count.mockResolvedValue(mockCount);
+      prismaMock.delegationEvents.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -662,7 +657,7 @@ describe("DelegatesController", () => {
         count: mockCount,
       });
 
-      expect(prismaPublicMock.delegationEvents.findMany).toHaveBeenCalledWith({
+      expect(prismaMock.delegationEvents.findMany).toHaveBeenCalledWith({
         where: {
           delegateeId: "delegate2.near",
           isLatestDelegatorEvent: true,
@@ -679,7 +674,7 @@ describe("DelegatesController", () => {
     it("should handle database error gracefully", async () => {
       // Arrange
       const errorMessage = "Database timeout";
-      prismaPublicMock.delegationEvents.findMany.mockRejectedValue(
+      prismaMock.delegationEvents.findMany.mockRejectedValue(
         new Error(errorMessage)
       );
 
@@ -711,10 +706,10 @@ describe("DelegatesController", () => {
       ];
       const mockCount = 5;
 
-      prismaPublicMock.delegationEvents.findMany.mockResolvedValue(
+      prismaMock.delegationEvents.findMany.mockResolvedValue(
         mockDelegationEvents
       );
-      prismaPublicMock.delegationEvents.count.mockResolvedValue(mockCount);
+      prismaMock.delegationEvents.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -727,7 +722,7 @@ describe("DelegatesController", () => {
         count: mockCount,
       });
 
-      expect(prismaPublicMock.delegationEvents.findMany).toHaveBeenCalledWith({
+      expect(prismaMock.delegationEvents.findMany).toHaveBeenCalledWith({
         where: {
           delegatorId: "delegator1.near",
           isLatestDelegatorEvent: true,
@@ -745,7 +740,7 @@ describe("DelegatesController", () => {
     it("should handle database error gracefully", async () => {
       // Arrange
       const errorMessage = "Database connection lost";
-      prismaPublicMock.delegationEvents.findMany.mockRejectedValue(
+      prismaMock.delegationEvents.findMany.mockRejectedValue(
         new Error(errorMessage)
       );
 
@@ -786,10 +781,8 @@ describe("DelegatesController", () => {
       ];
       const mockCount = 20;
 
-      prismaPublicMock.userActivities.findMany.mockResolvedValue(
-        mockUserActivities
-      );
-      prismaPublicMock.userActivities.count.mockResolvedValue(mockCount);
+      prismaMock.userActivities.findMany.mockResolvedValue(mockUserActivities);
+      prismaMock.userActivities.count.mockResolvedValue(mockCount);
 
       mockGetRpcUrl.mockReturnValue("https://rpc.testnet.near.org");
       const mockProvider = {
@@ -832,7 +825,7 @@ describe("DelegatesController", () => {
         count: mockCount,
       });
 
-      expect(prismaPublicMock.userActivities.findMany).toHaveBeenCalledWith({
+      expect(prismaMock.userActivities.findMany).toHaveBeenCalledWith({
         where: {
           accountId: "delegate1.near",
           OR: [
@@ -881,10 +874,8 @@ describe("DelegatesController", () => {
       ];
       const mockCount = 1;
 
-      prismaPublicMock.userActivities.findMany.mockResolvedValue(
-        mockUserActivities
-      );
-      prismaPublicMock.userActivities.count.mockResolvedValue(mockCount);
+      prismaMock.userActivities.findMany.mockResolvedValue(mockUserActivities);
+      prismaMock.userActivities.count.mockResolvedValue(mockCount);
 
       mockGetRpcUrl.mockReturnValue("https://rpc.testnet.near.org");
       const mockProvider = {
@@ -918,7 +909,7 @@ describe("DelegatesController", () => {
     it("should handle database error gracefully", async () => {
       // Arrange
       const errorMessage = "Database error";
-      prismaPublicMock.userActivities.findMany.mockRejectedValue(
+      prismaMock.userActivities.findMany.mockRejectedValue(
         new Error(errorMessage)
       );
 
@@ -983,7 +974,7 @@ describe("DelegatesController", () => {
       };
 
       mockVerifySignature.mockReturnValue(true);
-      prismaWeb2Mock.delegate_statements.upsert.mockResolvedValue(
+      prismaMock.delegate_statements.upsert.mockResolvedValue(
         mockCreatedStatement
       );
 
@@ -1005,7 +996,7 @@ describe("DelegatesController", () => {
         publicKey: validStatementData.publicKey,
       });
 
-      expect(prismaWeb2Mock.delegate_statements.upsert).toHaveBeenCalledWith({
+      expect(prismaMock.delegate_statements.upsert).toHaveBeenCalledWith({
         where: { address: validStatementData.address },
         update: expect.objectContaining({
           address: validStatementData.address,
@@ -1051,14 +1042,14 @@ describe("DelegatesController", () => {
         error: "Invalid signature",
       });
 
-      expect(prismaWeb2Mock.delegate_statements.upsert).not.toHaveBeenCalled();
+      expect(prismaMock.delegate_statements.upsert).not.toHaveBeenCalled();
     });
 
     it("should handle database error gracefully", async () => {
       // Arrange
       const errorMessage = "Database constraint violation";
       mockVerifySignature.mockReturnValue(true);
-      prismaWeb2Mock.delegate_statements.upsert.mockRejectedValue(
+      prismaMock.delegate_statements.upsert.mockRejectedValue(
         new Error(errorMessage)
       );
 

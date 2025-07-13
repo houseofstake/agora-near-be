@@ -1,7 +1,7 @@
 import request from "supertest";
 import app from "../../../app";
-import { prismaPublicMock } from "../../../lib/tests/prismaPublicMock";
 import { Decimal } from "@prisma/client/runtime/client";
+import { prismaMock } from "../../../lib/tests/prismaMock";
 
 describe("ProposalVotingHistoryController", () => {
   beforeEach(() => {
@@ -32,10 +32,10 @@ describe("ProposalVotingHistoryController", () => {
       ];
       const mockCount = 50;
 
-      prismaPublicMock.proposalVotingHistory.findMany.mockResolvedValue(
+      prismaMock.proposalVotingHistory.findMany.mockResolvedValue(
         mockVotingHistory
       );
-      prismaPublicMock.proposalVotingHistory.count.mockResolvedValue(mockCount);
+      prismaMock.proposalVotingHistory.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -59,9 +59,7 @@ describe("ProposalVotingHistoryController", () => {
         count: mockCount,
       });
 
-      expect(
-        prismaPublicMock.proposalVotingHistory.findMany
-      ).toHaveBeenCalledWith({
+      expect(prismaMock.proposalVotingHistory.findMany).toHaveBeenCalledWith({
         where: { proposalId: 1 },
         skip: 0,
         take: 10,
@@ -70,11 +68,9 @@ describe("ProposalVotingHistoryController", () => {
         },
       });
 
-      expect(prismaPublicMock.proposalVotingHistory.count).toHaveBeenCalledWith(
-        {
-          where: { proposalId: 1 },
-        }
-      );
+      expect(prismaMock.proposalVotingHistory.count).toHaveBeenCalledWith({
+        where: { proposalId: 1 },
+      });
     });
 
     it("should return proposal voting history with custom pagination", async () => {
@@ -90,10 +86,10 @@ describe("ProposalVotingHistoryController", () => {
       ];
       const mockCount = 25;
 
-      prismaPublicMock.proposalVotingHistory.findMany.mockResolvedValue(
+      prismaMock.proposalVotingHistory.findMany.mockResolvedValue(
         mockVotingHistory
       );
-      prismaPublicMock.proposalVotingHistory.count.mockResolvedValue(mockCount);
+      prismaMock.proposalVotingHistory.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -113,9 +109,7 @@ describe("ProposalVotingHistoryController", () => {
         count: mockCount,
       });
 
-      expect(
-        prismaPublicMock.proposalVotingHistory.findMany
-      ).toHaveBeenCalledWith({
+      expect(prismaMock.proposalVotingHistory.findMany).toHaveBeenCalledWith({
         where: { proposalId: 2 },
         skip: 10,
         take: 5,
@@ -124,11 +118,9 @@ describe("ProposalVotingHistoryController", () => {
         },
       });
 
-      expect(prismaPublicMock.proposalVotingHistory.count).toHaveBeenCalledWith(
-        {
-          where: { proposalId: 2 },
-        }
-      );
+      expect(prismaMock.proposalVotingHistory.count).toHaveBeenCalledWith({
+        where: { proposalId: 2 },
+      });
     });
 
     it("should handle null voting power gracefully", async () => {
@@ -144,10 +136,10 @@ describe("ProposalVotingHistoryController", () => {
       ];
       const mockCount = 1;
 
-      prismaPublicMock.proposalVotingHistory.findMany.mockResolvedValue(
+      prismaMock.proposalVotingHistory.findMany.mockResolvedValue(
         mockVotingHistory
       );
-      prismaPublicMock.proposalVotingHistory.count.mockResolvedValue(mockCount);
+      prismaMock.proposalVotingHistory.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -170,7 +162,7 @@ describe("ProposalVotingHistoryController", () => {
     it("should handle database error gracefully", async () => {
       // Arrange
       const errorMessage = "Database connection failed";
-      prismaPublicMock.proposalVotingHistory.findMany.mockRejectedValue(
+      prismaMock.proposalVotingHistory.findMany.mockRejectedValue(
         new Error(errorMessage)
       );
 
@@ -186,8 +178,8 @@ describe("ProposalVotingHistoryController", () => {
     });
 
     it("should handle non-numeric pagination parameters", async () => {
-      prismaPublicMock.proposalVotingHistory.findMany.mockResolvedValue([]);
-      prismaPublicMock.proposalVotingHistory.count.mockResolvedValue(0);
+      prismaMock.proposalVotingHistory.findMany.mockResolvedValue([]);
+      prismaMock.proposalVotingHistory.count.mockResolvedValue(0);
 
       // Act & Assert
       const response = await request(app)
@@ -201,9 +193,7 @@ describe("ProposalVotingHistoryController", () => {
         count: 0,
       });
 
-      expect(
-        prismaPublicMock.proposalVotingHistory.findMany
-      ).toHaveBeenCalledWith({
+      expect(prismaMock.proposalVotingHistory.findMany).toHaveBeenCalledWith({
         where: { proposalId: 1 },
         skip: 0,
         take: 10,
@@ -225,10 +215,10 @@ describe("ProposalVotingHistoryController", () => {
         },
       ];
 
-      prismaPublicMock.proposalVotingHistory.findMany.mockResolvedValue(
+      prismaMock.proposalVotingHistory.findMany.mockResolvedValue(
         mockVotingHistory
       );
-      prismaPublicMock.proposalVotingHistory.count.mockRejectedValue(
+      prismaMock.proposalVotingHistory.count.mockRejectedValue(
         new Error("Count operation failed")
       );
 
@@ -264,7 +254,7 @@ describe("ProposalVotingHistoryController", () => {
         },
       ];
 
-      prismaPublicMock.proposalVotingHistory.findMany.mockResolvedValue(
+      prismaMock.proposalVotingHistory.findMany.mockResolvedValue(
         mockVotingHistory
       );
 
@@ -291,9 +281,7 @@ describe("ProposalVotingHistoryController", () => {
         ],
       });
 
-      expect(
-        prismaPublicMock.proposalVotingHistory.findMany
-      ).toHaveBeenCalledWith({
+      expect(prismaMock.proposalVotingHistory.findMany).toHaveBeenCalledWith({
         where: { proposalId: 1 },
         orderBy: {
           votedAt: "asc",
@@ -313,7 +301,7 @@ describe("ProposalVotingHistoryController", () => {
         },
       ];
 
-      prismaPublicMock.proposalVotingHistory.findMany.mockResolvedValue(
+      prismaMock.proposalVotingHistory.findMany.mockResolvedValue(
         mockVotingHistory
       );
 
@@ -336,7 +324,7 @@ describe("ProposalVotingHistoryController", () => {
     });
 
     it("should handle empty results for charts data", async () => {
-      prismaPublicMock.proposalVotingHistory.findMany.mockResolvedValue([]);
+      prismaMock.proposalVotingHistory.findMany.mockResolvedValue([]);
 
       // Act & Assert
       const response = await request(app)
@@ -352,7 +340,7 @@ describe("ProposalVotingHistoryController", () => {
     it("should handle database error gracefully for charts data", async () => {
       // Arrange
       const errorMessage = "Database timeout";
-      prismaPublicMock.proposalVotingHistory.findMany.mockRejectedValue(
+      prismaMock.proposalVotingHistory.findMany.mockRejectedValue(
         new Error(errorMessage)
       );
 
@@ -387,10 +375,8 @@ describe("ProposalVotingHistoryController", () => {
       ];
       const mockCount = 25;
 
-      prismaPublicMock.proposalNonVoters.findMany.mockResolvedValue(
-        mockNonVoters
-      );
-      prismaPublicMock.proposalNonVoters.count.mockResolvedValue(mockCount);
+      prismaMock.proposalNonVoters.findMany.mockResolvedValue(mockNonVoters);
+      prismaMock.proposalNonVoters.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -416,13 +402,13 @@ describe("ProposalVotingHistoryController", () => {
         count: mockCount,
       });
 
-      expect(prismaPublicMock.proposalNonVoters.findMany).toHaveBeenCalledWith({
+      expect(prismaMock.proposalNonVoters.findMany).toHaveBeenCalledWith({
         where: { proposalId: 1 },
         skip: 0,
         take: 10,
       });
 
-      expect(prismaPublicMock.proposalNonVoters.count).toHaveBeenCalledWith({
+      expect(prismaMock.proposalNonVoters.count).toHaveBeenCalledWith({
         where: { proposalId: 1 },
       });
     });
@@ -439,10 +425,8 @@ describe("ProposalVotingHistoryController", () => {
       ];
       const mockCount = 12;
 
-      prismaPublicMock.proposalNonVoters.findMany.mockResolvedValue(
-        mockNonVoters
-      );
-      prismaPublicMock.proposalNonVoters.count.mockResolvedValue(mockCount);
+      prismaMock.proposalNonVoters.findMany.mockResolvedValue(mockNonVoters);
+      prismaMock.proposalNonVoters.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -463,20 +447,20 @@ describe("ProposalVotingHistoryController", () => {
         count: mockCount,
       });
 
-      expect(prismaPublicMock.proposalNonVoters.findMany).toHaveBeenCalledWith({
+      expect(prismaMock.proposalNonVoters.findMany).toHaveBeenCalledWith({
         where: { proposalId: 2 },
         skip: 15,
         take: 15,
       });
 
-      expect(prismaPublicMock.proposalNonVoters.count).toHaveBeenCalledWith({
+      expect(prismaMock.proposalNonVoters.count).toHaveBeenCalledWith({
         where: { proposalId: 2 },
       });
     });
 
     it("should handle empty results for non-voters", async () => {
-      prismaPublicMock.proposalNonVoters.findMany.mockResolvedValue([]);
-      prismaPublicMock.proposalNonVoters.count.mockResolvedValue(0);
+      prismaMock.proposalNonVoters.findMany.mockResolvedValue([]);
+      prismaMock.proposalNonVoters.count.mockResolvedValue(0);
 
       // Act & Assert
       const response = await request(app)
@@ -493,7 +477,7 @@ describe("ProposalVotingHistoryController", () => {
     it("should handle database error gracefully for non-voters", async () => {
       // Arrange
       const errorMessage = "Database connection lost";
-      prismaPublicMock.proposalNonVoters.findMany.mockRejectedValue(
+      prismaMock.proposalNonVoters.findMany.mockRejectedValue(
         new Error(errorMessage)
       );
 
@@ -509,8 +493,8 @@ describe("ProposalVotingHistoryController", () => {
     });
 
     it("should handle non-numeric pagination parameters for non-voters", async () => {
-      prismaPublicMock.proposalNonVoters.findMany.mockResolvedValue([]);
-      prismaPublicMock.proposalNonVoters.count.mockResolvedValue(0);
+      prismaMock.proposalNonVoters.findMany.mockResolvedValue([]);
+      prismaMock.proposalNonVoters.count.mockResolvedValue(0);
 
       // Act & Assert
       const response = await request(app)
@@ -525,7 +509,7 @@ describe("ProposalVotingHistoryController", () => {
       });
 
       // Should result in NaN values (controller doesn't handle invalid parsing gracefully)
-      expect(prismaPublicMock.proposalNonVoters.findMany).toHaveBeenCalledWith({
+      expect(prismaMock.proposalNonVoters.findMany).toHaveBeenCalledWith({
         where: { proposalId: 1 },
         skip: NaN,
         take: NaN,
@@ -543,10 +527,8 @@ describe("ProposalVotingHistoryController", () => {
         },
       ];
 
-      prismaPublicMock.proposalNonVoters.findMany.mockResolvedValue(
-        mockNonVoters
-      );
-      prismaPublicMock.proposalNonVoters.count.mockRejectedValue(
+      prismaMock.proposalNonVoters.findMany.mockResolvedValue(mockNonVoters);
+      prismaMock.proposalNonVoters.count.mockRejectedValue(
         new Error("Count operation failed")
       );
 
