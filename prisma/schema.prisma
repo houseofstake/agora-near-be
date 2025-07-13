@@ -130,6 +130,7 @@ view proposal {
     createdAt                DateTime  @map("created_at") @db.Timestamp(6)
     creatorId                String    @map("creator_id")
     approvedAt               DateTime? @map("approved_at") @db.Timestamp(6)
+    voting_start_at          DateTime? @db.Timestamp(6)
     approverId               String?   @map("approver_id")
     rejectedAt               DateTime? @map("rejected_at") @db.Timestamp(6)
     rejecterId               String?   @map("rejecter_id")

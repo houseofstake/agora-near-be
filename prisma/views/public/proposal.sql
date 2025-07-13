@@ -197,7 +197,31 @@ approve_proposal_snapshot_metadata AS (
         )
       ) :: numeric
       ELSE NULL :: numeric
-    END AS voting_duration_ns
+    END AS voting_duration_ns,
+    CASE
+      WHEN (
+        (
+          safe_json_parse(ra.results_json) ->> 'error' :: text
+        ) IS NULL
+      ) THEN (
+        (
+          safe_json_parse(ra.results_json) ->> 'voting_start_time_ns' :: text
+        )
+      ) :: numeric
+      ELSE NULL :: numeric
+    END AS voting_start_time_ns,
+    CASE
+      WHEN (
+        (
+          safe_json_parse(ra.results_json) ->> 'error' :: text
+        ) IS NULL
+      ) THEN (
+        (
+          safe_json_parse(ra.results_json) ->> 'creation_time_ns' :: text
+        )
+      ) :: numeric
+      ELSE NULL :: numeric
+    END AS creation_time_ns
   FROM
     (
       receipt_actions_prep ra
@@ -315,9 +339,23 @@ SELECT
     WHEN (pv.num_distinct_voters IS NULL) THEN false
     ELSE TRUE
   END AS has_votes,
-  cp.proposal_created_at AS created_at,
+  COALESCE(
+    (
+      to_timestamp(
+        ((aps.creation_time_ns / '1000000000' :: numeric)) :: double precision
+      ) AT TIME ZONE 'UTC' :: text
+    ),
+    cp.proposal_created_at
+  ) AS created_at,
   cp.proposal_creator_id AS creator_id,
   ap.proposal_approved_at AS approved_at,
+  (
+    to_timestamp(
+      (
+        (aps.voting_start_time_ns / '1000000000' :: numeric)
+      ) :: double precision
+    ) AT TIME ZONE 'UTC' :: text
+  ) AS voting_start_at,
   ap.proposal_approver_id AS approver_id,
   rp.proposal_rejected_at AS rejected_at,
   rp.proposal_rejecter_id AS rejecter_id,

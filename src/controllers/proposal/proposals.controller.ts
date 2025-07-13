@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import { prisma } from "../..";
 import { proposal } from "../../generated/prisma";
+import {
+  convertMsToNanoSeconds,
+  convertNanoSecondsToMs,
+} from "../../lib/utils/time";
 
 interface ActiveProposalQueryParams {
   page_size?: string;
@@ -11,6 +15,33 @@ interface PendingProposalQueryParams {
   created_by?: string;
   page_size?: string;
   page?: string;
+}
+
+function getDerivedProposalStatus(proposal: proposal) {
+  const startTimeMs = proposal.voting_start_at?.getTime();
+  const votingDurationMs = convertNanoSecondsToMs(
+    proposal.voting_duration_ns?.toFixed()
+  );
+
+  if (proposal.isRejected) {
+    return "Rejected";
+  }
+
+  if (!proposal.isApproved) {
+    return "Created";
+  }
+
+  if (proposal.isApproved && startTimeMs && votingDurationMs) {
+    const endTimeMs = startTimeMs + votingDurationMs;
+    const currentTimeMs = Date.now();
+    if (currentTimeMs < endTimeMs) {
+      return "Voting";
+    } else {
+      return "Finished";
+    }
+  }
+
+  return "Unknown";
 }
 
 function mapRecordToResponse(record: proposal) {
@@ -33,6 +64,15 @@ function mapRecordToResponse(record: proposal) {
     forVotingPower: record.forVotingPower.toFixed(),
     againstVotingPower: record.againstVotingPower.toFixed(),
     abstainVotingPower: record.abstainVotingPower.toFixed(),
+    votingDurationNs: record.voting_duration_ns?.toFixed(),
+    totalVotingPower: record.total_venear_at_approval?.toFixed(),
+    status: getDerivedProposalStatus(record),
+    votingStartTimeNs: record.voting_start_at
+      ? convertMsToNanoSeconds(record.voting_start_at.getTime())
+      : null,
+    votingCreatedAtNs: record.createdAt
+      ? convertMsToNanoSeconds(record.createdAt.getTime())
+      : null,
   };
 }
 
