@@ -2,8 +2,11 @@ import { Request, Response } from "express";
 
 import { verifySignature } from "../../lib/signature/verifySignature";
 import { sanitizeContent } from "../../lib/utils/sanitizationUtils";
-import { delegate_statements, Prisma } from "../../generated/prisma-web2";
-import { registeredVoters } from "../../generated/prisma-public";
+import {
+  delegate_statements,
+  Prisma,
+  registeredVoters,
+} from "../../generated/prisma";
 import { providers } from "near-api-js";
 import { getRpcUrl } from "../../lib/utils/rpc";
 import Big from "big.js";
