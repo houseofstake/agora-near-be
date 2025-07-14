@@ -72,28 +72,38 @@ export class DelegatesController {
       filterByClause = Prisma.sql`WHERE ds.endorsed = true`;
     }
 
-    const records = await prisma.$queryRaw<DelegateWithVoterInfo[]>(
-      Prisma.sql`
-        SELECT
-          rv.registered_voter_id as "registeredVoterId",
-          rv.current_voting_power as "currentVotingPower",
-          rv.proposal_participation_rate as "proposalParticipationRate",
-          ds.address,
-          ds.twitter,
-          ds.discord,
-          ds.email,
-          ds.warpcast,
-          ds.statement,
-          ds."topIssues",
-          ds.endorsed
-        FROM registered_voters rv
-        LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
-        ${filterByClause}
-        ${orderByClause}
-        LIMIT ${pageSize}
-        OFFSET ${(pageNumber - 1) * pageSize}
-      `
-    );
+    const [records, countResult] = await Promise.all([
+      prisma.$queryRaw<DelegateWithVoterInfo[]>(
+        Prisma.sql`
+          SELECT
+            rv.registered_voter_id as "registeredVoterId",
+            rv.current_voting_power as "currentVotingPower",
+            rv.proposal_participation_rate as "proposalParticipationRate",
+            ds.address,
+            ds.twitter,
+            ds.discord,
+            ds.email,
+            ds.warpcast,
+            ds.statement,
+            ds."topIssues",
+            ds.endorsed
+          FROM registered_voters rv
+          LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+          ${filterByClause}
+          ${orderByClause}
+          LIMIT ${pageSize}
+          OFFSET ${(pageNumber - 1) * pageSize}
+        `
+      ),
+      filter_by === "endorsed"
+        ? prisma.$queryRaw<{ count: bigint }[]>`
+            SELECT COUNT(*) as count
+            FROM registered_voters rv
+            LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+            WHERE ds.endorsed = true
+          `
+        : prisma.registeredVoters.count(),
+    ]);
 
     const delegates = records.map((record) => {
       const {
@@ -123,7 +133,10 @@ export class DelegatesController {
       };
     });
 
-    const count = await prisma.registeredVoters.count();
+    const count =
+      filter_by === "endorsed"
+        ? Number((countResult as { count: bigint }[])[0].count)
+        : (countResult as number);
 
     res.status(200).json({ delegates, count });
   };
