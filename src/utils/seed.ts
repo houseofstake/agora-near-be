@@ -1,9 +1,7 @@
-import { PrismaClient as PublicPrismaClient } from "../generated/prisma-public";
-import { PrismaClient as Web2PrismaClient } from "../generated/prisma-web2";
+import { PrismaClient } from "../generated/prisma";
 import { faker } from "@faker-js/faker";
 
-const publicPrisma = new PublicPrismaClient();
-const web2Prisma = new Web2PrismaClient();
+const prisma = new PrismaClient();
 
 // Constants
 const VENEAR_CONTRACT = "v.r-1748895584.testnet";
@@ -105,7 +103,7 @@ async function seedBlocks() {
     total_supply: "1000000000000000000000000000",
   }));
 
-  await publicPrisma.blocks.createMany({
+  await prisma.blocks.createMany({
     data: blocks,
     skipDuplicates: true,
   });
@@ -281,7 +279,7 @@ async function seedReceiptActions() {
 
   const { actions, receiptIds, methodNames } = createReceiptActions();
 
-  await publicPrisma.receipt_actions.createMany({
+  await prisma.receipt_actions.createMany({
     data: actions,
     skipDuplicates: true,
   });
@@ -346,7 +344,7 @@ async function seedExecutionOutcomes(
     };
   });
 
-  await publicPrisma.execution_outcomes.createMany({
+  await prisma.execution_outcomes.createMany({
     data: outcomes,
     skipDuplicates: true,
   });
@@ -406,12 +404,12 @@ async function seedWeb2Data() {
     })
   );
 
-  await web2Prisma.delegate_statements.createMany({
+  await prisma.delegate_statements.createMany({
     data: delegateStatements,
     skipDuplicates: true,
   });
 
-  await web2Prisma.cache.createMany({
+  await prisma.cache.createMany({
     data: cacheData,
     skipDuplicates: true,
   });
@@ -429,11 +427,11 @@ async function main() {
     console.log("Database seeding completed successfully!");
 
     const stats = await Promise.all([
-      publicPrisma.blocks.count(),
-      publicPrisma.receipt_actions.count(),
-      publicPrisma.execution_outcomes.count(),
-      web2Prisma.delegate_statements.count(),
-      web2Prisma.cache.count(),
+      prisma.blocks.count(),
+      prisma.receipt_actions.count(),
+      prisma.execution_outcomes.count(),
+      prisma.delegate_statements.count(),
+      prisma.cache.count(),
     ]);
 
     console.log("\nSeeding Statistics:");
@@ -446,8 +444,7 @@ async function main() {
     console.error("Error during seeding:", error);
     process.exit(1);
   } finally {
-    await publicPrisma.$disconnect();
-    await web2Prisma.$disconnect();
+    await prisma.$disconnect();
   }
 }
 
