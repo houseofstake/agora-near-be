@@ -41,6 +41,7 @@ describe("DelegatesController", () => {
           warpcast: "delegate1",
           statement: "I am delegate 1",
           topIssues: [{ type: "governance", value: "Improve voting" }],
+          endorsed: false,
         },
         {
           registeredVoterId: "delegate2.near",
@@ -53,6 +54,7 @@ describe("DelegatesController", () => {
           warpcast: "delegate2",
           statement: "I am delegate 2",
           topIssues: [{ type: "technical", value: "Protocol upgrades" }],
+          endorsed: false,
         },
       ];
       const mockCount = 100;
@@ -78,6 +80,7 @@ describe("DelegatesController", () => {
             warpcast: "delegate1",
             statement: "I am delegate 1",
             topIssues: [{ type: "governance", value: "Improve voting" }],
+            endorsed: false,
           },
           {
             address: "delegate2.near",
@@ -89,6 +92,7 @@ describe("DelegatesController", () => {
             warpcast: "delegate2",
             statement: "I am delegate 2",
             topIssues: [{ type: "technical", value: "Protocol upgrades" }],
+            endorsed: false,
           },
         ],
         count: mockCount,
@@ -111,6 +115,7 @@ describe("DelegatesController", () => {
           warpcast: null,
           statement: "I am delegate 3",
           topIssues: [],
+          endorsed: false,
         },
       ];
       const mockCount = 50;
@@ -137,6 +142,7 @@ describe("DelegatesController", () => {
             warpcast: null,
             statement: "I am delegate 3",
             topIssues: [],
+            endorsed: false,
           },
         ],
         count: mockCount,
@@ -144,10 +150,13 @@ describe("DelegatesController", () => {
 
       // Assert that the SQL query contains the correct pagination arguments
       expect(prismaMock.$queryRaw).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        5, // pageSize
-        5 // offset
+        expect.objectContaining({
+          strings: expect.arrayContaining([
+            expect.stringContaining("LIMIT"),
+            expect.stringContaining("OFFSET"),
+          ]),
+          values: [5, 5],
+        })
       );
     });
 
@@ -168,14 +177,14 @@ describe("DelegatesController", () => {
 
       // Assert that the SQL query contains the correct ORDER BY clause for descending voting power
       expect(prismaMock.$queryRaw).toHaveBeenCalledWith(
-        expect.anything(), // First argument: main query template
         expect.objectContaining({
           strings: expect.arrayContaining([
-            "ORDER BY rv.current_voting_power DESC NULLS LAST",
+            expect.stringContaining(
+              "ORDER BY rv.current_voting_power DESC NULLS LAST"
+            ),
           ]),
-        }),
-        10, // pageSize
-        0 // offset
+          values: [10, 0],
+        })
       );
     });
 
@@ -196,14 +205,108 @@ describe("DelegatesController", () => {
 
       // Assert that the SQL query contains the correct ORDER BY clause for ascending voting power
       expect(prismaMock.$queryRaw).toHaveBeenCalledWith(
-        expect.anything(),
         expect.objectContaining({
           strings: expect.arrayContaining([
-            "ORDER BY rv.current_voting_power ASC NULLS FIRST",
+            expect.stringContaining(
+              "ORDER BY rv.current_voting_power ASC NULLS FIRST"
+            ),
           ]),
-        }),
-        10,
-        0
+          values: [10, 0],
+        })
+      );
+    });
+
+    it("should return delegates filtered by endorsed", async () => {
+      // Arrange
+      const mockEndorsedDelegates = [
+        {
+          registeredVoterId: "endorsed1.near",
+          currentVotingPower: new Decimal("2000000000000000000000000"),
+          proposalParticipationRate: new Decimal("0.90"),
+          address: "endorsed1.near",
+          twitter: "@endorsed1",
+          discord: "endorsed1#1111",
+          email: "endorsed1@example.com",
+          warpcast: "endorsed1",
+          statement: "I am an endorsed delegate",
+          topIssues: [{ type: "governance", value: "Governance improvements" }],
+          endorsed: true,
+        },
+        {
+          registeredVoterId: "endorsed2.near",
+          currentVotingPower: new Decimal("1500000000000000000000000"),
+          proposalParticipationRate: new Decimal("0.85"),
+          address: "endorsed2.near",
+          twitter: "@endorsed2",
+          discord: "endorsed2#2222",
+          email: "endorsed2@example.com",
+          warpcast: "endorsed2",
+          statement: "Another endorsed delegate",
+          topIssues: [{ type: "technical", value: "Technical excellence" }],
+          endorsed: true,
+        },
+      ];
+      const mockCount = [{ count: BigInt(15) }];
+
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce(mockEndorsedDelegates)
+        .mockResolvedValueOnce(mockCount);
+
+      // Act & Assert
+      const response = await request(app)
+        .get("/api/delegates")
+        .query({ filter_by: "endorsed" })
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        delegates: [
+          {
+            address: "endorsed1.near",
+            votingPower: "2000000000000000000000000",
+            participationRate: "0.9",
+            twitter: "@endorsed1",
+            discord: "endorsed1#1111",
+            email: "endorsed1@example.com",
+            warpcast: "endorsed1",
+            statement: "I am an endorsed delegate",
+            topIssues: [
+              { type: "governance", value: "Governance improvements" },
+            ],
+            endorsed: true,
+          },
+          {
+            address: "endorsed2.near",
+            votingPower: "1500000000000000000000000",
+            participationRate: "0.85",
+            twitter: "@endorsed2",
+            discord: "endorsed2#2222",
+            email: "endorsed2@example.com",
+            warpcast: "endorsed2",
+            statement: "Another endorsed delegate",
+            topIssues: [{ type: "technical", value: "Technical excellence" }],
+            endorsed: true,
+          },
+        ],
+        count: 15,
+      });
+
+      // Verify the SQL query contains the endorsed filter
+      expect(prismaMock.$queryRaw).toHaveBeenCalledWith(
+        expect.objectContaining({
+          strings: expect.arrayContaining([
+            expect.stringContaining("WHERE ds.endorsed = true"),
+          ]),
+          values: [10, 0],
+        })
+      );
+
+      // Verify the count query was called for endorsed delegates
+      expect(prismaMock.$queryRaw).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.stringContaining("SELECT COUNT(*) as count"),
+          expect.stringContaining("WHERE ds.endorsed = true"),
+        ])
       );
     });
 
@@ -221,6 +324,7 @@ describe("DelegatesController", () => {
           warpcast: null,
           statement: null,
           topIssues: null,
+          endorsed: null,
         },
       ];
       const mockCount = 1;
@@ -244,6 +348,7 @@ describe("DelegatesController", () => {
         warpcast: null,
         statement: null,
         topIssues: null,
+        endorsed: null,
       });
     });
 
@@ -283,6 +388,7 @@ describe("DelegatesController", () => {
           signature: "test_signature",
           publicKey: "test_public_key",
           agreeCodeConduct: true,
+          endorsed: false,
         },
       ];
 
@@ -315,6 +421,7 @@ describe("DelegatesController", () => {
           warpcast: "delegate1",
           statement: "I am delegate 1",
           topIssues: [{ type: "governance", value: "Improve voting" }],
+          endorsed: false,
           votingPower: "1000000000000000000000000",
           forCount: mockForCount,
           againstCount: mockAgainstCount,
