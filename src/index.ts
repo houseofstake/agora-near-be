@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import "./otel";
 import app from "./app";
 import { PrismaClient } from "./generated/prisma";
 
