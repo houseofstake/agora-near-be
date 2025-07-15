@@ -99,6 +99,7 @@ model delegate_statements {
     discord          String?
     email            String?
     warpcast         String?
+    endorsed        Boolean @default(false)
 
     @@index([email], map: "idx_delegate_statements_email")
     @@schema("web2")
