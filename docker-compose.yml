@@ -11,6 +11,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=8080
+      - PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
     env_file:
       - .env.cloud
     # Using curl for healthcheck (works with distroless)

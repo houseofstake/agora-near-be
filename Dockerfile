@@ -26,6 +26,7 @@ WORKDIR /app
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=8080
+ENV PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
 
 # Add health check utility before dropping privileges
 RUN apk --no-cache add curl
