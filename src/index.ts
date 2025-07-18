@@ -7,6 +7,9 @@ dotenv.config();
 
 require("dd-trace").init({
   logInjection: true,
+  plugins: [
+    "express",
+  ]
 });
 
 const port = process.env.PORT || 8080;
