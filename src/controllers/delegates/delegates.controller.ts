@@ -586,4 +586,36 @@ export class DelegatesController {
       res.status(500).json({ error: "Failed to create delegate statement" });
     }
   };
+
+  public setDelegateEndorsed = async (
+    req: Request<AddressParams>,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { address } = req.params;
+      const { endorsed } = req.body;
+
+      const updatedDelegateStatement = await prisma.delegate_statements.upsert({
+        where: { address },
+        update: { endorsed },
+        create: {
+          address,
+          endorsed,
+          signature: "",
+          statement: "",
+          publicKey: "",
+          message: "",
+          agreeCodeConduct: true,
+        },
+      });
+
+      res.status(200).json({
+        delegateStatement: updatedDelegateStatement,
+        success: true,
+      });
+    } catch (error) {
+      console.error("Error setting delegate endorsed:", error);
+      res.status(500).json({ error: "Failed to set delegate endorsed" });
+    }
+  };
 }
