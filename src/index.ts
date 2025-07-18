@@ -1,10 +1,13 @@
 import dotenv from "dotenv";
-import "./otel";
 import app from "./app";
 import { PrismaClient } from "./generated/prisma";
 
 // Load environment variables
 dotenv.config();
+
+require("dd-trace").init({
+  logInjection: true,
+});
 
 const port = process.env.PORT || 8080;
 
