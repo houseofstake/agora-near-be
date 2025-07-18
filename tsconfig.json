@@ -61,11 +61,11 @@
     "sourceRoot": "", /* Specify the root path for debuggers to find the reference source code. */
     "mapRoot": "", /* Specify the location where debugger should locate map files instead of generated locations. */
     "inlineSources": true, /* Include source code in the sourcemaps inside the emitted JavaScript. */
-    "emitBOM": true, /* Emit a UTF-8 Byte Order Mark (BOM) in the beginning of output files. */
-    "newLine": "crlf", /* Set the newline character for emitting files. */
+    // "emitBOM": true, /* Emit a UTF-8 Byte Order Mark (BOM) in the beginning of output files. */
+    // "newLine": "crlf", /* Set the newline character for emitting files. */
     "stripInternal": true, /* Disable emitting declarations that have '@internal' in their JSDoc comments. */
-    "noEmitHelpers": true, /* Disable generating custom helper functions like '__extends' in compiled output. */
-    "noEmitOnError": true, /* Disable emitting files if any type checking errors are reported. */
+    // "noEmitHelpers": true, /* Disable generating custom helper functions like '__extends' in compiled output. */
+    // "noEmitOnError": true, /* Disable emitting files if any type checking errors are reported. */
     "preserveConstEnums": true, /* Disable erasing 'const enum' declarations in generated code. */
     /* Interop Constraints */
     // "isolatedModules": true,                          /* Ensure that each file can be safely transpiled without relying on other imports. */
@@ -102,7 +102,8 @@
     "skipLibCheck": true /* Skip type checking all .d.ts files. */
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "trigger.config.ts"
   ],
   "exclude": [
     "node_modules",

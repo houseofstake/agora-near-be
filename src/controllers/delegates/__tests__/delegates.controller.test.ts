@@ -42,6 +42,11 @@ describe("DelegatesController", () => {
           statement: "I am delegate 1",
           topIssues: [{ type: "governance", value: "Improve voting" }],
           endorsed: false,
+          notificationPreferences: {
+            wants_proposal_created_email: "true",
+            wants_proposal_ending_soon_email: "prompt",
+            last_updated: "2024-01-01T00:00:00.000Z",
+          },
         },
         {
           registeredVoterId: "delegate2.near",
@@ -55,6 +60,7 @@ describe("DelegatesController", () => {
           statement: "I am delegate 2",
           topIssues: [{ type: "technical", value: "Protocol upgrades" }],
           endorsed: false,
+          notificationPreferences: null,
         },
       ];
       const mockCount = 100;
@@ -82,6 +88,11 @@ describe("DelegatesController", () => {
             statement: "I am delegate 1",
             topIssues: [{ type: "governance", value: "Improve voting" }],
             endorsed: false,
+            notificationPreferences: {
+              wants_proposal_created_email: "true",
+              wants_proposal_ending_soon_email: "prompt",
+              last_updated: "2024-01-01T00:00:00.000Z",
+            },
           },
           {
             address: "delegate2.near",
@@ -94,6 +105,7 @@ describe("DelegatesController", () => {
             statement: "I am delegate 2",
             topIssues: [{ type: "technical", value: "Protocol upgrades" }],
             endorsed: false,
+            notificationPreferences: null,
           },
         ],
         count: mockCount,
@@ -643,6 +655,11 @@ describe("DelegatesController", () => {
           publicKey: "test_public_key",
           agreeCodeConduct: true,
           endorsed: false,
+          notificationPreferences: {
+            wants_proposal_created_email: "true",
+            wants_proposal_ending_soon_email: "false",
+            last_updated: "2024-01-01T00:00:00.000Z",
+          },
         },
       ];
 
@@ -676,6 +693,11 @@ describe("DelegatesController", () => {
           statement: "I am delegate 1",
           topIssues: [{ type: "governance", value: "Improve voting" }],
           endorsed: false,
+          notificationPreferences: {
+            wants_proposal_created_email: "true",
+            wants_proposal_ending_soon_email: "false",
+            last_updated: "2024-01-01T00:00:00.000Z",
+          },
           votingPower: "1000000000000000000000000",
           forCount: mockForCount,
           againstCount: mockAgainstCount,
@@ -1442,6 +1464,86 @@ describe("DelegatesController", () => {
       expect(response.body).toEqual({
         error: "Failed to create delegate statement",
       });
+    });
+
+    it("should create delegate statement with notification preferences", async () => {
+      // Arrange
+      const statementDataWithNotifications = {
+        ...validStatementData,
+        notification_preferences: {
+          wants_proposal_created_email: "true",
+          wants_proposal_ending_soon_email: "false",
+        },
+      };
+
+      const mockCreatedStatement = {
+        id: 1,
+        ...statementDataWithNotifications,
+        statement: "I am a delegate",
+        createdAt: "2024-01-01T00:00:00.000Z",
+        updatedAt: "2024-01-01T00:00:00.000Z",
+      };
+
+      mockVerifySignature.mockReturnValue(true);
+      prismaMock.delegate_statements.findUnique.mockResolvedValue(null);
+      prismaMock.delegate_statements.upsert.mockResolvedValue(
+        mockCreatedStatement
+      );
+
+      // Act & Assert
+      const response = await request(app)
+        .post("/api/delegates/statement")
+        .send(statementDataWithNotifications)
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        delegateStatement: mockCreatedStatement,
+        success: true,
+      });
+
+      expect(prismaMock.delegate_statements.upsert).toHaveBeenCalledWith({
+        where: { address: statementDataWithNotifications.address },
+        update: expect.objectContaining({
+          notification_preferences: expect.objectContaining({
+            wants_proposal_created_email: "true",
+            wants_proposal_ending_soon_email: "false",
+            last_updated: expect.any(String),
+          }),
+        }),
+        create: expect.objectContaining({
+          notification_preferences: expect.objectContaining({
+            wants_proposal_created_email: "true",
+            wants_proposal_ending_soon_email: "false",
+            last_updated: expect.any(String),
+          }),
+        }),
+      });
+    });
+
+    it("should reject invalid notification preferences", async () => {
+      // Arrange
+      const statementDataWithInvalidNotifications = {
+        ...validStatementData,
+        notification_preferences: {
+          wants_proposal_created_email: "invalid_value",
+        },
+      };
+
+      mockVerifySignature.mockReturnValue(true);
+
+      // Act & Assert
+      const response = await request(app)
+        .post("/api/delegates/statement")
+        .send(statementDataWithInvalidNotifications)
+        .expect(400)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        error: `Invalid notification preference values. Must be 'true', 'false', or 'prompt'`,
+      });
+
+      expect(prismaMock.delegate_statements.upsert).not.toHaveBeenCalled();
     });
   });
 });
