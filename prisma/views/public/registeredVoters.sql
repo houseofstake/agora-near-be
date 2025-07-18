@@ -1,10 +1,10 @@
 WITH execution_outcomes_prep AS (
   SELECT
-    split_part(execution_outcomes.receipt_id, '-' :: text, 2) AS receipt_id,
+    execution_outcomes.receipt_id,
     execution_outcomes.status,
     execution_outcomes.logs
   FROM
-    execution_outcomes
+    fastnear.execution_outcomes
 ),
 receipt_actions_prep AS (
   SELECT
@@ -32,7 +32,7 @@ receipt_actions_prep AS (
     ra.block_timestamp
   FROM
     (
-      receipt_actions ra
+      fastnear.receipt_actions ra
       JOIN execution_outcomes_prep eo ON (
         (
           (ra.receipt_id = eo.receipt_id)
@@ -88,7 +88,7 @@ initial_voting_power_from_locks_unlocks AS (
   SELECT
     ra.block_timestamp,
     ra.args_decoded,
-    base58_encode(ra.receipt_id) AS receipt_id,
+    ra.receipt_id,
     COALESCE(
       CASE
         WHEN (
@@ -132,7 +132,7 @@ initial_voting_power_from_locks_unlocks AS (
     END AS initial_voting_power,
     ra.receiver_id AS hos_contract_address,
     ra.block_height,
-    base58_encode(ra.block_hash) AS block_hash
+    ra.block_hash
   FROM
     receipt_actions_prep ra
   WHERE
@@ -141,7 +141,7 @@ initial_voting_power_from_locks_unlocks AS (
 current_voting_power_from_locks_unlocks AS (
   SELECT
     ra.block_timestamp,
-    base58_encode(ra.receipt_id) AS receipt_id,
+    ra.receipt_id,
     COALESCE(
       CASE
         WHEN (
@@ -201,7 +201,7 @@ current_voting_power_from_locks_unlocks AS (
     END AS current_voting_power_args,
     ra.receiver_id AS hos_contract_address,
     ra.block_height,
-    base58_encode(ra.block_hash) AS block_hash,
+    ra.block_hash,
     ra.action_logs,
     row_number() OVER (
       PARTITION BY ra.signer_account_id
@@ -298,8 +298,8 @@ proposal_participation AS (
 ),
 final AS (
   SELECT
-    md5(base58_encode(ra.receipt_id)) AS id,
-    base58_encode(ra.receipt_id) AS receipt_id,
+    md5(ra.receipt_id) AS id,
+    ra.receipt_id,
     date(ra.block_timestamp) AS registered_date,
     ra.block_timestamp AS registered_at,
     ra.signer_account_id AS registered_voter_id,
@@ -320,7 +320,7 @@ final AS (
     COALESCE(ivp.initial_voting_power, (0) :: numeric) AS initial_voting_power,
     pp.proposal_participation_rate,
     ra.block_height,
-    base58_encode(ra.block_hash) AS block_hash
+    ra.block_hash
   FROM
     (
       (

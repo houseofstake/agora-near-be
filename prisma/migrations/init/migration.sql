@@ -1,5 +1,11 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "web2";
+
 -- CreateTable
-CREATE TABLE "blocks" (
+CREATE TABLE "public"."blocks" (
     "height" BIGINT NOT NULL,
     "hash" TEXT NOT NULL,
     "prev_hash" TEXT NOT NULL,
@@ -12,30 +18,7 @@ CREATE TABLE "blocks" (
 );
 
 -- CreateTable
-CREATE TABLE "chunks" (
-    "height" BIGINT NOT NULL,
-    "chunk_hash" TEXT NOT NULL,
-    "prev_block_hash" TEXT NOT NULL,
-    "outcome_root" TEXT NOT NULL,
-    "prev_state_root" TEXT NOT NULL,
-    "encoded_merkle_root" TEXT NOT NULL,
-    "encoded_length" BIGINT NOT NULL,
-    "height_created" BIGINT NOT NULL,
-    "height_included" BIGINT NOT NULL,
-    "shard_id" BIGINT NOT NULL,
-    "gas_used" BIGINT NOT NULL,
-    "gas_limit" BIGINT NOT NULL,
-    "validator_reward" TEXT NOT NULL,
-    "balance_burnt" TEXT NOT NULL,
-    "outgoing_receipts_root" TEXT NOT NULL,
-    "tx_root" TEXT NOT NULL,
-    "author" TEXT NOT NULL,
-
-    CONSTRAINT "chunks_pkey" PRIMARY KEY ("chunk_hash")
-);
-
--- CreateTable
-CREATE TABLE "cursors" (
+CREATE TABLE "public"."cursors" (
     "id" TEXT NOT NULL,
     "cursor" TEXT,
     "block_num" BIGINT,
@@ -45,7 +28,7 @@ CREATE TABLE "cursors" (
 );
 
 -- CreateTable
-CREATE TABLE "receipt_actions" (
+CREATE TABLE "public"."receipt_actions" (
     "id" TEXT NOT NULL,
     "block_height" BIGINT NOT NULL,
     "receipt_id" TEXT NOT NULL,
@@ -69,21 +52,7 @@ CREATE TABLE "receipt_actions" (
 );
 
 -- CreateTable
-CREATE TABLE "receipts" (
-    "height" BIGINT NOT NULL,
-    "block_hash" TEXT NOT NULL,
-    "chunk_hash" TEXT NOT NULL,
-    "receipt_id" TEXT NOT NULL,
-    "predecessor_id" TEXT NOT NULL,
-    "receiver_id" TEXT NOT NULL,
-    "receipt_kind" TEXT NOT NULL,
-    "author" TEXT NOT NULL,
-
-    CONSTRAINT "receipts_pkey" PRIMARY KEY ("receipt_id")
-);
-
--- CreateTable
-CREATE TABLE "substreams_history" (
+CREATE TABLE "public"."substreams_history" (
     "id" SERIAL NOT NULL,
     "op" CHAR(1),
     "table_name" TEXT,
@@ -95,7 +64,7 @@ CREATE TABLE "substreams_history" (
 );
 
 -- CreateTable
-CREATE TABLE "execution_outcomes" (
+CREATE TABLE "public"."execution_outcomes" (
     "receipt_id" TEXT NOT NULL,
     "block_height" BIGINT NOT NULL,
     "block_hash" TEXT NOT NULL,
@@ -114,7 +83,7 @@ CREATE TABLE "execution_outcomes" (
 );
 
 -- CreateTable
-CREATE TABLE "delegate_statements" (
+CREATE TABLE "web2"."delegate_statements" (
     "address" TEXT NOT NULL,
     "signature" TEXT NOT NULL,
     "statement" TEXT NOT NULL,
@@ -126,12 +95,13 @@ CREATE TABLE "delegate_statements" (
     "discord" TEXT,
     "email" TEXT,
     "warpcast" TEXT,
+    "endorsed" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "delegate_statements_pkey" PRIMARY KEY ("address")
 );
 
 -- CreateTable
-CREATE TABLE "cache" (
+CREATE TABLE "web2"."cache" (
     "key" TEXT NOT NULL,
     "data" JSONB NOT NULL,
     "expires_at" TIMESTAMP(6) NOT NULL,
@@ -142,7 +112,10 @@ CREATE TABLE "cache" (
 );
 
 -- CreateIndex
-CREATE INDEX "idx_delegate_statements_email" ON "delegate_statements"("email");
+CREATE INDEX "idx_blocks_timestamp_height" ON "public"."blocks"("timestamp" DESC, "height");
 
 -- CreateIndex
-CREATE INDEX "idx_cache_expires_at" ON "cache"("expires_at");
+CREATE INDEX "idx_delegate_statements_email" ON "web2"."delegate_statements"("email");
+
+-- CreateIndex
+CREATE INDEX "idx_cache_expires_at" ON "web2"."cache"("expires_at");

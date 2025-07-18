@@ -19,6 +19,7 @@ model blocks {
     gas_price    String
     total_supply String
 
+    @@index([timestamp(sort: Desc), height], map: "idx_blocks_timestamp_height")
     @@schema("public")
 }
 
@@ -48,7 +49,6 @@ model receipt_actions {
     gas               BigInt
     deposit           String
     args_base64       String
-    args_json         String?
     action_index      Int
     block_timestamp   DateTime @db.Timestamp(6)
 
@@ -67,7 +67,7 @@ model substreams_history {
 }
 
 model execution_outcomes {
-    receipt_id             String    @id
+    receipt_id             String   @id
     block_height           BigInt
     block_hash             String
     chunk_hash             String
@@ -80,9 +80,6 @@ model execution_outcomes {
     outcome_receipt_ids    String[]
     executed_in_block_hash String
     logs                   String[]
-    results_base64         String?
-    results_json           String?
-    block_timestamp        DateTime? @db.Timestamp(6)
 
     @@schema("public")
 }
@@ -99,7 +96,7 @@ model delegate_statements {
     discord          String?
     email            String?
     warpcast         String?
-    endorsed        Boolean @default(false)
+    endorsed         Boolean @default(false)
 
     @@index([email], map: "idx_delegate_statements_email")
     @@schema("web2")
@@ -254,5 +251,70 @@ view approved_proposals {
     block_hash             String?
     block_height           BigInt?
 
+    @@schema("public")
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view pg_stat_statements_info {
+    dealloc     BigInt?
+    stats_reset DateTime? @db.Timestamptz(6)
+
+    @@ignore
+    @@schema("public")
+}
+
+/// The underlying view does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+view pg_stat_statements {
+    userid                 Int?      @db.Oid
+    dbid                   Int?      @db.Oid
+    toplevel               Boolean?
+    queryid                BigInt?
+    query                  String?
+    plans                  BigInt?
+    total_plan_time        Float?
+    min_plan_time          Float?
+    max_plan_time          Float?
+    mean_plan_time         Float?
+    stddev_plan_time       Float?
+    calls                  BigInt?
+    total_exec_time        Float?
+    min_exec_time          Float?
+    max_exec_time          Float?
+    mean_exec_time         Float?
+    stddev_exec_time       Float?
+    rows                   BigInt?
+    shared_blks_hit        BigInt?
+    shared_blks_read       BigInt?
+    shared_blks_dirtied    BigInt?
+    shared_blks_written    BigInt?
+    local_blks_hit         BigInt?
+    local_blks_read        BigInt?
+    local_blks_dirtied     BigInt?
+    local_blks_written     BigInt?
+    temp_blks_read         BigInt?
+    temp_blks_written      BigInt?
+    shared_blk_read_time   Float?
+    shared_blk_write_time  Float?
+    local_blk_read_time    Float?
+    local_blk_write_time   Float?
+    temp_blk_read_time     Float?
+    temp_blk_write_time    Float?
+    wal_records            BigInt?
+    wal_fpi                BigInt?
+    wal_bytes              Decimal?  @db.Decimal
+    jit_functions          BigInt?
+    jit_generation_time    Float?
+    jit_inlining_count     BigInt?
+    jit_inlining_time      Float?
+    jit_optimization_count BigInt?
+    jit_optimization_time  Float?
+    jit_emission_count     BigInt?
+    jit_emission_time      Float?
+    jit_deform_count       BigInt?
+    jit_deform_time        Float?
+    stats_since            DateTime? @db.Timestamptz(6)
+    minmax_stats_since     DateTime? @db.Timestamptz(6)
+
+    @@ignore
     @@schema("public")
 }
