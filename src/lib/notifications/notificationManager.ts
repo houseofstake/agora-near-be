@@ -386,6 +386,14 @@ export class NotificationManager {
       context.proposals.forEach((proposal, index) => {
         const emoji = proposal.signalType === "proposal_created" ? "🆕" : "⚠️";
         message += `${emoji} <b>${proposal.proposalTitle}</b>\n`;
+
+        if (
+          proposal.signalType === "proposal_ending_soon" &&
+          proposal.timeRemaining
+        ) {
+          message += `⏰ Ends in: ${proposal.timeRemaining}\n`;
+        }
+
         if (proposal.proposalUrl) {
           message += `<a href="${proposal.proposalUrl}">View Proposal</a>\n`;
         }
@@ -419,11 +427,22 @@ export class NotificationManager {
           proposal.signalType === "proposal_created"
             ? "🆕 New Proposal"
             : "⚠️ Ending Soon";
-        const fieldValue = `**${proposal.proposalTitle}**\n${
+
+        let fieldValue = `**${proposal.proposalTitle}**\n`;
+
+        if (
+          proposal.signalType === "proposal_ending_soon" &&
+          proposal.timeRemaining
+        ) {
+          fieldValue += `⏰ Ends in: ${proposal.timeRemaining}\n`;
+        }
+
+        fieldValue += `${
           proposal.proposalUrl
             ? `[View Proposal](${proposal.proposalUrl})`
             : "No link available"
         }`;
+
         embed.addFields({ name: fieldName, value: fieldValue, inline: false });
       });
 
