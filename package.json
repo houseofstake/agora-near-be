@@ -11,8 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:pull": "prisma db pull",
-    "prisma:migrateDiff": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script",
-    "prisma:resetMigrationBaseline": "echo \"DELETE FROM _prisma_migrations;\" > clear_migrations.sql && npx prisma db execute --file clear_migrations.sql --schema prisma/schema.prisma"
+    "prisma:migrateDiff": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script"
   },
   "keywords": [],
   "author": "",
