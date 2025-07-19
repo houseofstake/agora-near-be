@@ -7,7 +7,7 @@ generator client {
 datasource db {
     provider = "postgresql"
     url      = env("DATABASE_URL")
-    schemas  = ["public", "web2"]
+    schemas  = ["fastnear", "public", "web2"]
 }
 
 model blocks {
@@ -112,6 +112,75 @@ model cache {
     @@index([expiresAt], map: "idx_cache_expires_at")
     @@map("cache")
     @@schema("web2")
+}
+
+model fastnear_blocks {
+    height       BigInt   @id
+    hash         String
+    prev_hash    String
+    author       String
+    timestamp    DateTime @db.Timestamp(6)
+    gas_price    String
+    total_supply String
+
+    @@map("blocks")
+    @@schema("fastnear")
+}
+
+model fastnear_cursors {
+    id        String  @id(map: "cursor_pk")
+    cursor    String?
+    block_num BigInt?
+    block_id  String?
+
+    @@map("cursors")
+    @@schema("fastnear")
+}
+
+model fastnear_execution_outcomes {
+    receipt_id             String    @id
+    block_height           BigInt
+    block_hash             String
+    chunk_hash             String
+    shard_id               String
+    gas_burnt              BigInt
+    gas_used               Float
+    tokens_burnt           Float
+    executor_account_id    String
+    status                 String
+    outcome_receipt_ids    String[]
+    executed_in_block_hash String
+    logs                   String[]
+    results_json           Json?     @db.Json
+    block_timestamp        DateTime? @db.Timestamp(6)
+
+    @@map("execution_outcomes")
+    @@schema("fastnear")
+}
+
+model fastnear_receipt_actions {
+    id                String   @id
+    block_height      BigInt
+    receipt_id        String
+    signer_account_id String
+    signer_public_key String
+    gas_price         String
+    action_kind       String
+    predecessor_id    String
+    receiver_id       String
+    block_hash        String
+    chunk_hash        String
+    author            String
+    method_name       String
+    gas               BigInt
+    deposit           String
+    args_base64       String
+    args_json         Json?    @db.Json
+    action_index      Int
+    block_timestamp   DateTime @db.Timestamp(6)
+
+    @@map("receipt_actions")
+    @@schema("fastnear")
 }
 
 view proposal {
