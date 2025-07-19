@@ -79,18 +79,3 @@ docker build -t agora-near-be .
 ```bash
 docker run -p 8080:8080 --env-file .env agora-near-be
 ```
-
-### Resetting Prisma migration history
-
-Since our database is partially managed outside of Prisma (i.e. for the indexer), changes pushed for the indexer (e.g. new tables) might result in "schema drift" where the Prisma migration history is out of sync, making it difficult to make changes to the Prisma schema.
-
-In this case, it's simpler to just reset the Prisma migration history. To do so, follow these steps:
-
-1. Delete the existing migrations in the database by running `echo "DELETE FROM \_prisma_migrations;" > clear_migrations.sql && npx prisma db execute --file clear_migrations.sql --schema prisma/schema.prisma`
-2. Run `npm run prisma:pull` to get the latest schema from remote
-3. Run `npm run prisma:migrateDiff` to get the migration SQL required to have parity with the latest schema
-4. Delete existing files/folders under the `/prisma/migrations` directory and create a new file under `/prisma/migrations/init` called `migration.sql` with the migration SQL generated from step 3.
-5. Run `npx prisma migrate resolve --applied init` to resolve that migration
-6. Run `npx prisma migrate status`. You should get 'Database schema is up to date!' if it was successful.
-7. Apply your changes to the schema
-8. Run `npm run prisma:migrate`. If done correctly the migration should be cleanly applied.
