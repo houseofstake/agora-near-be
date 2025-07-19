@@ -40,7 +40,7 @@ describe("StakingController", () => {
 
     beforeEach(() => {
       mockGetRpcUrl.mockReturnValue("https://rpc.testnet.near.org");
-      prismaMock.blocks.findFirst.mockResolvedValue(mockBlockData);
+      prismaMock.fastnear_blocks.findFirst.mockResolvedValue(mockBlockData);
     });
 
     it("should calculate APY for MetaPool contract (meta-v2.pool.testnet)", async () => {
@@ -73,7 +73,7 @@ describe("StakingController", () => {
       expect(mockProviders.JsonRpcProvider).toHaveBeenCalledWith({
         url: "https://rpc.testnet.near.org",
       });
-      expect(prismaMock.blocks.findFirst).toHaveBeenCalledWith({
+      expect(prismaMock.fastnear_blocks.findFirst).toHaveBeenCalledWith({
         select: {
           height: true,
         },
@@ -203,7 +203,7 @@ describe("StakingController", () => {
         .expect(200);
 
       // Assert
-      expect(prismaMock.blocks.findFirst).toHaveBeenCalledWith({
+      expect(prismaMock.fastnear_blocks.findFirst).toHaveBeenCalledWith({
         select: {
           height: true,
         },
@@ -245,7 +245,7 @@ describe("StakingController", () => {
         .expect(200);
 
       // Assert
-      expect(prismaMock.blocks.findFirst).toHaveBeenCalledWith({
+      expect(prismaMock.fastnear_blocks.findFirst).toHaveBeenCalledWith({
         select: {
           height: true,
         },
@@ -270,7 +270,9 @@ describe("StakingController", () => {
       const contractId = "meta-v2.pool.testnet";
       const errorMessage = "Database connection failed";
 
-      prismaMock.blocks.findFirst.mockRejectedValue(new Error(errorMessage));
+      prismaMock.fastnear_blocks.findFirst.mockRejectedValue(
+        new Error(errorMessage)
+      );
 
       // Act & Assert
       const response = await request(app)
@@ -355,7 +357,9 @@ describe("StakingController", () => {
       const errorMessage = "Promise.all failed";
 
       // Make the first promise (database query) reject
-      prismaMock.blocks.findFirst.mockRejectedValue(new Error(errorMessage));
+      prismaMock.fastnear_blocks.findFirst.mockRejectedValue(
+        new Error(errorMessage)
+      );
 
       // Act & Assert
       const response = await request(app)
