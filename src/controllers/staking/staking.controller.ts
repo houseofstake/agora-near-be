@@ -22,7 +22,7 @@ export class StakingController {
       const targetDate = new Date();
       targetDate.setDate(targetDate.getDate() - numDaysAgo);
 
-      const blockTargetDatePromise = prisma.blocks.findFirst({
+      const blockTargetDatePromise = prisma.fastnear_blocks.findFirst({
         select: {
           height: true,
         },
