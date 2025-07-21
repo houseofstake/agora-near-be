@@ -90,7 +90,7 @@ export class DelegatesController {
             ds.statement,
             ds."topIssues",
             ds.endorsed
-          FROM registered_voters rv
+          FROM fastnear.registered_voters rv
           LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
           ${filterByClause}
           ${orderByClause}
@@ -101,7 +101,7 @@ export class DelegatesController {
       filter_by === "endorsed"
         ? prisma.$queryRaw<{ count: bigint }[]>`
             SELECT COUNT(*) as count
-            FROM registered_voters rv
+            FROM fastnear.registered_voters rv
             LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
             WHERE ds.endorsed = true
           `
@@ -169,7 +169,7 @@ export class DelegatesController {
           ds."publicKey",
           ds."agreeCodeConduct",
           ds.endorsed
-        FROM registered_voters rv
+        FROM fastnear.registered_voters rv
         LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
         WHERE rv.registered_voter_id = ${address}
       `;
