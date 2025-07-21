@@ -7,6 +7,11 @@ dotenv.config();
 
 require("dd-trace").init({
   logInjection: true,
+  analytics: true,
+  runtimeMetrics: true,
+  tags: {
+    env: process.env.NODE_ENV,
+  },
   plugins: [
     "express",
   ]
