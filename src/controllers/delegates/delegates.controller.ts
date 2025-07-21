@@ -610,6 +610,7 @@ export class DelegatesController {
       }
 
       // Validate notification preferences if provided
+      let notificationPreferencesData: Record<string, unknown> | undefined;
       if (notification_preferences) {
         const invalidPrefs = Object.entries(notification_preferences).filter(
           ([, value]) => !isValidNotificationPreference(value)
@@ -620,10 +621,6 @@ export class DelegatesController {
           });
           return;
         }
-      }
-
-      let notificationPreferencesData: Record<string, unknown> | undefined;
-      if (notification_preferences) {
         const currentPrefs = await prisma.delegate_statements.findUnique({
           where: { address },
           select: { notification_preferences: true },

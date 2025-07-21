@@ -34,6 +34,9 @@ interface EmailContext {
   unsubscribeUrl: string;
 }
 
+const EMPLOYEE_DOMAINS = ["voteagora.com"];
+const TEST_ACCOUNTS = ["pedro@voteagora.com"];
+
 export class NotificationManager {
   private emailService: EmailService;
   private telegramService?: TelegramService;
@@ -152,8 +155,10 @@ export class NotificationManager {
   private shouldSendEmail(email: string): boolean {
     if (!this.SEND_EMAIL) return false;
 
-    const isEmployee = email.endsWith("voteagora.com");
-    const isTestAccount = ["pedro@voteagora.com"].includes(email);
+    const isEmployee = EMPLOYEE_DOMAINS.some((domain) =>
+      email.endsWith(domain)
+    );
+    const isTestAccount = TEST_ACCOUNTS.some((account) => email === account);
 
     return this.SAFE_MODE ? isEmployee || isTestAccount : true;
   }

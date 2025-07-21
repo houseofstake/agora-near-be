@@ -155,9 +155,6 @@ a[x-apple-data-detectors],
                   <td align="left" class="es-m-p20b" style="padding:0;Margin:0;width:170px">
                    <table cellspacing="0" width="100%" role="presentation" cellpadding="0" bgcolor="#FAFAFA" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;border-radius:3px;background-color:#FAFAFA">
                      <tr>
-                      <td align="left" style="padding:0;Margin:0;padding-top:15px;padding-right:15px;padding-left:15px"><p style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:21px;letter-spacing:0;color:#333333;font-size:14px"><strong>Starts {{ proposal.start_block }}</strong></p></td>
-                     </tr>
-                     <tr>
                       <td align="left" class="es-text-4697" style="padding:0;Margin:0;padding-right:15px;padding-left:15px;padding-bottom:15px"><p class="es-text-mobile-size-13" style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:19.5px;letter-spacing:0;color:#000;font-size:13px">{{ proposal.start_datetime }}</p></td>
                      </tr>
                    </table></td>
@@ -168,9 +165,6 @@ a[x-apple-data-detectors],
                  <tr>
                   <td align="left" class="es-m-p20b" style="padding:0;Margin:0;width:170px">
                    <table cellpadding="0" cellspacing="0" width="100%" role="presentation" bgcolor="#FAFAFA" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;border-radius:3px;background-color:#FAFAFA">
-                     <tr>
-                      <td align="left" style="padding:0;Margin:0;padding-top:15px;padding-right:15px;padding-left:15px"><p style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:21px;letter-spacing:0;color:#333333;font-size:14px"><strong>Ends {{ proposal.end_block }}</strong></p></td>
-                     </tr>
                      <tr>
                       <td align="left" class="es-text-5464" style="padding:0;Margin:0;padding-right:15px;padding-left:15px;padding-bottom:15px"><p class="es-text-mobile-size-13" style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:19.5px;letter-spacing:0;color:#000;font-size:13px">{{ proposal.end_datetime }}</p></td>
                      </tr>
@@ -231,9 +225,6 @@ a[x-apple-data-detectors],
                  <tr>
                   <td align="left" class="es-m-p20b" style="padding:0;Margin:0;width:170px">
                    <table width="100%" role="presentation" cellpadding="0" cellspacing="0" bgcolor="#FAFAFA" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;border-radius:3px;background-color:#FAFAFA">
-                     <tr>
-                      <td align="left" style="padding:0;Margin:0;padding-top:15px;padding-right:15px;padding-left:15px"><p style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:21px;letter-spacing:0;color:#333333;font-size:14px"><strong>Ends {{ proposal.end_block }}</strong></p></td>
-                     </tr>
                      <tr>
                       <td align="left" class="es-text-4193" style="padding:0;Margin:0;padding-right:15px;padding-left:15px;padding-bottom:15px"><p class="es-text-mobile-size-13" style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:19.5px;letter-spacing:0;color:#000;font-size:13px">{{ proposal.end_datetime }}</p></td>
                      </tr>
@@ -364,31 +355,29 @@ export function generateSubject(
   proposalCreatedCount: number,
   proposalEndingSoonCount: number
 ): string {
-  const tenant = "NEAR";
-
   if (proposalCreatedCount === 0) {
     if (proposalEndingSoonCount === 0) {
       throw new Error("This shouldn't be possible!");
     } else if (proposalEndingSoonCount === 1) {
-      return `One ${tenant} proposal is ending soon!`;
+      return `One proposal is ending soon!`;
     } else {
-      return `${proposalEndingSoonCount} ${tenant} proposals are ending soon!`;
+      return `${proposalEndingSoonCount} proposals are ending soon!`;
     }
   } else if (proposalCreatedCount === 1) {
     if (proposalEndingSoonCount === 0) {
-      return `A new ${tenant} proposal!`;
+      return `A new proposal!`;
     } else if (proposalEndingSoonCount === 1) {
-      return `A new ${tenant} proposal is out, and another is ending soon!`;
+      return `A new proposal is out, and another is ending soon!`;
     } else {
-      return `A new ${tenant} proposal is out, and ${proposalEndingSoonCount} are ending soon!`;
+      return `A new proposal is out, and ${proposalEndingSoonCount} are ending soon!`;
     }
   } else {
     if (proposalEndingSoonCount === 0) {
-      return `${proposalCreatedCount} new ${tenant} proposals!`;
+      return `${proposalCreatedCount} new proposals!`;
     } else if (proposalEndingSoonCount === 1) {
-      return `${proposalCreatedCount} new ${tenant} proposals, and 1 ending soon!`;
+      return `${proposalCreatedCount} new proposals, and 1 ending soon!`;
     } else {
-      return `${proposalCreatedCount} new ${tenant} proposals, and ${proposalEndingSoonCount} are ending soon!`;
+      return `${proposalCreatedCount} new proposals, and ${proposalEndingSoonCount} are ending soon!`;
     }
   }
 }

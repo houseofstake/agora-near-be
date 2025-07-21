@@ -1,7 +1,6 @@
 import { schedules } from "@trigger.dev/sdk/v3";
 import { NotificationManager } from "../lib/notifications/notificationManager";
 import { prisma } from "../index";
-import { convertNanoSecondsToMs } from "../lib/utils/time";
 
 const notificationManager = new NotificationManager();
 
@@ -21,21 +20,20 @@ const mapProposalToNotificationData = (
   proposal: any
 ): ProposalNotificationData => {
   const startDate = proposal.voting_start_at
-    ? new Date(convertNanoSecondsToMs(Number(proposal.voting_start_at)))
+    ? new Date(Number(proposal.voting_start_at))
     : new Date();
 
   const endDate =
     proposal.voting_start_at && proposal.voting_duration_ns
       ? new Date(
-          convertNanoSecondsToMs(Number(proposal.voting_start_at)) +
-            convertNanoSecondsToMs(Number(proposal.voting_duration_ns))
+          Number(proposal.voting_start_at) + Number(proposal.voting_duration_ns)
         )
       : undefined;
 
   return {
     proposalId: proposal.id.toString(),
     proposalTitle: proposal.proposalTitle || `Proposal ${proposal.id}`,
-    proposalUrl: `https://agora-near.vercel.app/proposals/${proposal.id}`,
+    proposalUrl: `${process.env.FRONTEND_URL}proposals/${proposal.id}`,
     startDate,
     endDate,
   };
@@ -67,7 +65,7 @@ export const checkNewProposalsTask = schedules.task({
             {
               // Also include proposals where voting started recently
               voting_start_at: {
-                gte: ((now.getTime() - HOURS_2_IN_MS) * 1_000_000).toString(), // Convert to nanoseconds string
+                gte: (now.getTime() - HOURS_2_IN_MS).toString(),
               },
             },
           ],
@@ -136,12 +134,8 @@ export const checkProposalsEndingSoonTask = schedules.task({
         if (!proposal.voting_start_at || !proposal.voting_duration_ns)
           return false;
 
-        const startTime = convertNanoSecondsToMs(
-          Number(proposal.voting_start_at)
-        );
-        const duration = convertNanoSecondsToMs(
-          Number(proposal.voting_duration_ns)
-        );
+        const startTime = Number(proposal.voting_start_at);
+        const duration = Number(proposal.voting_duration_ns);
         const endTime = new Date(startTime + duration);
 
         return endTime > now && endTime <= twentyFourHoursFromNow;

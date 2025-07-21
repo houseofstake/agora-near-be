@@ -184,11 +184,7 @@ export class EmailService {
         signal_type: "proposal_created",
         title: proposalTitle,
         proposal_url:
-          proposalUrl ||
-          `https://agora-near.vercel.app/proposals/${proposalId}`,
-        start_block: startDate
-          ? `Block ${Math.floor(startDate.getTime() / 1000)}`
-          : "TBD",
+          proposalUrl || `${process.env.FRONTEND_URL}proposals/${proposalId}`,
         start_datetime: startDate
           ? startDate.toLocaleDateString("en-US", {
               month: "short",
@@ -196,9 +192,6 @@ export class EmailService {
               hour: "2-digit",
               minute: "2-digit",
             })
-          : "TBD",
-        end_block: endDate
-          ? `Block ${Math.floor(endDate.getTime() / 1000)}`
           : "TBD",
         end_datetime: endDate
           ? endDate.toLocaleDateString("en-US", {
@@ -237,7 +230,7 @@ A new proposal has been created that you may be interested in:
 Proposal ID: ${proposalId}
 ${proposalUrl ? `Link: ${proposalUrl}` : ""}
 
-View the proposal at: https://agora-near.vercel.app/proposals/${proposalId}
+View the proposal at: ${process.env.FRONTEND_URL}proposals/${proposalId}
 
 You received this email because you have enabled "new proposal" notifications.
     `;
@@ -262,8 +255,7 @@ You received this email because you have enabled "new proposal" notifications.
         signal_type: "proposal_ending_soon_and_not_voted",
         title: proposalTitle,
         proposal_url:
-          proposalUrl ||
-          `https://agora-near.vercel.app/proposals/${proposalId}`,
+          proposalUrl || `${process.env.FRONTEND_URL}proposals/${proposalId}`,
         end_block: `Block ${Math.floor(endDate.getTime() / 1000)}`,
         end_datetime: endDate.toLocaleDateString("en-US", {
           month: "short",
@@ -304,7 +296,7 @@ ${proposalUrl ? `Link: ${proposalUrl}` : ""}
 
 Don't miss your chance to vote on this proposal!
 
-Vote now at: https://agora-near.vercel.app/proposals/${proposalId}
+Vote now at: ${process.env.FRONTEND_URL}proposals/${proposalId}
 
 You received this email because you have enabled "proposal ending soon" notifications.
     `;
