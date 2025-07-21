@@ -4,6 +4,7 @@ import { verifySignature } from "../../lib/signature/verifySignature";
 import { sanitizeContent } from "../../lib/utils/sanitizationUtils";
 import {
   delegate_statements,
+  delegationEvents,
   Prisma,
   registeredVoters,
 } from "../../generated/prisma";
@@ -50,6 +51,13 @@ interface PaginationQuery {
 interface HOSActivityQuery extends PaginationQuery {
   network_id: string;
   contract_id: string;
+}
+
+function mapDelegationEvent(record: delegationEvents) {
+  return {
+    ...record,
+    blockHeight: record.blockHeight?.toString(),
+  };
 }
 
 export class DelegatesController {
@@ -335,7 +343,10 @@ export class DelegatesController {
         },
       });
 
-      res.status(200).json({ events: records, count });
+      res.status(200).json({
+        events: records.map(mapDelegationEvent),
+        count,
+      });
     } catch (error) {
       console.error("Error fetching delegate delegated from events:", error);
       res
@@ -377,7 +388,10 @@ export class DelegatesController {
         },
       });
 
-      res.status(200).json({ events: records, count });
+      res.status(200).json({
+        events: records.map(mapDelegationEvent),
+        count,
+      });
     } catch (error) {
       console.error("Error fetching delegate delegated to events:", error);
       res
