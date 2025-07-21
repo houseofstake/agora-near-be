@@ -315,7 +315,6 @@ on_lockup_update_prep AS (
     )
   GROUP BY
     ra.receipt_id,
-    ra.receipt_id,
     ra.block_timestamp,
     ra.method_name,
     ra.event_status,

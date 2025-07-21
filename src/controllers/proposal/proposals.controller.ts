@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import { prisma } from "../..";
-import { proposal } from "../../generated/prisma";
+
 import { convertMsToNanoSeconds } from "../../lib/utils/time";
 import { getDerivedProposalStatus } from "../../lib/utils/proposal";
+import { proposals } from "../../generated/prisma";
 
 interface ActiveProposalQueryParams {
   page_size?: string;
@@ -15,7 +16,7 @@ interface PendingProposalQueryParams {
   page?: string;
 }
 
-function mapRecordToResponse(record: proposal) {
+function mapRecordToResponse(record: proposals) {
   return {
     id: record.id,
     approvedAt: record.approvedAt,
@@ -32,14 +33,14 @@ function mapRecordToResponse(record: proposal) {
     receiptId: record.receiptId,
     rejectedAt: record.rejectedAt,
     rejecterId: record.rejecterId,
-    forVotingPower: record.forVotingPower.toFixed(),
-    againstVotingPower: record.againstVotingPower.toFixed(),
-    abstainVotingPower: record.abstainVotingPower.toFixed(),
-    votingDurationNs: record.voting_duration_ns?.toFixed(),
-    totalVotingPower: record.total_venear_at_approval?.toFixed(),
+    forVotingPower: record.forVotingPower?.toFixed(),
+    againstVotingPower: record.againstVotingPower?.toFixed(),
+    abstainVotingPower: record.abstainVotingPower?.toFixed(),
+    votingDurationNs: record.votingDurationNs?.toFixed(),
+    totalVotingPower: record.totalVenearAtApproval?.toFixed(),
     status: getDerivedProposalStatus(record),
-    votingStartTimeNs: record.voting_start_at
-      ? convertMsToNanoSeconds(record.voting_start_at.getTime())
+    votingStartTimeNs: record.votingStartAt
+      ? convertMsToNanoSeconds(record.votingStartAt.getTime())
       : null,
     votingCreatedAtNs: record.createdAt
       ? convertMsToNanoSeconds(record.createdAt.getTime())
@@ -57,14 +58,14 @@ export class ProposalController {
       const pageSize = parseInt(page_size ?? "10") || 10;
       const pageNumber = parseInt(page ?? "1") || 1;
 
-      const records = await prisma.proposal.findMany({
+      const records = await prisma.proposals.findMany({
         where: { isApproved: true, isRejected: false },
         orderBy: { createdAt: "desc" },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
       });
 
-      const count = await prisma.proposal.count({
+      const count = await prisma.proposals.count({
         where: { isApproved: true, isRejected: false },
       });
 
@@ -87,14 +88,14 @@ export class ProposalController {
       const pageSize = parseInt(page_size ?? "10") || 10;
       const pageNumber = parseInt(page ?? "1") || 1;
 
-      const records = await prisma.proposal.findMany({
+      const records = await prisma.proposals.findMany({
         where: { isApproved: false, isRejected: false, creatorId: created_by },
         orderBy: { createdAt: "desc" },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
       });
 
-      const count = await prisma.proposal.count({
+      const count = await prisma.proposals.count({
         where: { isApproved: false, isRejected: false, creatorId: created_by },
       });
 

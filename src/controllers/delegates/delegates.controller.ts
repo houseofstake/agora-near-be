@@ -287,7 +287,7 @@ export class DelegatesController {
       });
 
       const votes = records.map((record) => ({
-        voteOption: record.voteOption.toString(),
+        voteOption: record.voteOption?.toString(),
         votingPower: record.votingPower?.toFixed() ?? "0",
         address: record.voterId,
         votedAt: record.votedAt,
@@ -492,8 +492,8 @@ export class DelegatesController {
 
       const hosActivity = records.map((record) => {
         const transactionType = getTransactionType(
-          record.methodName,
-          record.eventType
+          record.methodName ?? "",
+          record.eventType ?? ""
         );
 
         // The amount logged by the contract does not include the storage deposit so we add it to the locked balance
@@ -513,7 +513,7 @@ export class DelegatesController {
 
         return {
           receiptId: record.receiptId,
-          blockHeight: record.blockHeight.toString(),
+          blockHeight: record.blockHeight?.toString(),
           eventDate: record.eventDate,
           nearAmount,
           lockedNearBalance,

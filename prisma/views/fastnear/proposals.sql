@@ -310,7 +310,7 @@ proposal_votes AS (
       END
     ) AS abstain_voting_power
   FROM
-    proposal_voting_history
+    fastnear.proposal_voting_history
   GROUP BY
     proposal_voting_history.proposal_id
 )

@@ -1,10 +1,10 @@
+import { proposals } from "../../generated/prisma";
 import { convertNanoSecondsToMs } from "./time";
-import { proposal } from "../../generated/prisma";
 
-export function getDerivedProposalStatus(proposal: proposal) {
-  const startTimeMs = proposal.voting_start_at?.getTime();
+export function getDerivedProposalStatus(proposal: proposals) {
+  const startTimeMs = proposal.votingStartAt?.getTime();
   const votingDurationMs = convertNanoSecondsToMs(
-    proposal.voting_duration_ns?.toFixed()
+    proposal.votingDurationNs?.toFixed()
   );
 
   if (proposal.isRejected) {

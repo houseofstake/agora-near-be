@@ -25,8 +25,8 @@ describe("getDerivedProposalStatus", () => {
         id: "1",
         isRejected: true,
         isApproved: false,
-        voting_start_at: new Date("2024-01-10T10:00:00.000Z"),
-        voting_duration_ns: new Decimal("86400000000000"), // 1 day in ns
+        votingStartAt: new Date("2024-01-10T10:00:00.000Z"),
+        votingDurationNs: new Decimal("86400000000000"), // 1 day in ns
       } as any;
 
       mockConvertNanoSecondsToMs.mockReturnValue(86400000);
@@ -45,8 +45,8 @@ describe("getDerivedProposalStatus", () => {
         id: "1",
         isRejected: false,
         isApproved: false,
-        voting_start_at: new Date("2024-01-10T10:00:00.000Z"),
-        voting_duration_ns: new Decimal("86400000000000"), // 1 day in ns
+        votingStartAt: new Date("2024-01-10T10:00:00.000Z"),
+        votingDurationNs: new Decimal("86400000000000"), // 1 day in ns
       } as any;
 
       mockConvertNanoSecondsToMs.mockReturnValue(86400000);
@@ -70,8 +70,8 @@ describe("getDerivedProposalStatus", () => {
           id: "1",
           isRejected: false,
           isApproved: true,
-          voting_start_at: votingStartAt,
-          voting_duration_ns: votingDurationNs,
+          votingStartAt: votingStartAt,
+          votingDurationNs: votingDurationNs,
         } as any;
 
         mockConvertNanoSecondsToMs.mockReturnValue(votingDurationMs);
@@ -99,8 +99,8 @@ describe("getDerivedProposalStatus", () => {
           id: "1",
           isRejected: false,
           isApproved: true,
-          voting_start_at: votingStartAt,
-          voting_duration_ns: votingDurationNs,
+          votingStartAt: votingStartAt,
+          votingDurationNs: votingDurationNs,
         } as any;
 
         mockConvertNanoSecondsToMs.mockReturnValue(votingDurationMs);
@@ -128,8 +128,8 @@ describe("getDerivedProposalStatus", () => {
           id: "1",
           isRejected: false,
           isApproved: true,
-          voting_start_at: votingStartAt,
-          voting_duration_ns: votingDurationNs,
+          votingStartAt: votingStartAt,
+          votingDurationNs: votingDurationNs,
         } as any;
 
         mockConvertNanoSecondsToMs.mockReturnValue(votingDurationMs);
@@ -155,8 +155,8 @@ describe("getDerivedProposalStatus", () => {
           id: "1",
           isRejected: false,
           isApproved: true,
-          voting_start_at: null,
-          voting_duration_ns: new Decimal("86400000000000"),
+          votingStartAt: null,
+          votingDurationNs: new Decimal("86400000000000"),
         } as any;
 
         mockConvertNanoSecondsToMs.mockReturnValue(86400000);
@@ -175,8 +175,8 @@ describe("getDerivedProposalStatus", () => {
           id: "1",
           isRejected: false,
           isApproved: true,
-          voting_start_at: undefined,
-          voting_duration_ns: new Decimal("86400000000000"),
+          votingStartAt: undefined,
+          votingDurationNs: new Decimal("86400000000000"),
         } as any;
 
         mockConvertNanoSecondsToMs.mockReturnValue(86400000);
@@ -194,8 +194,8 @@ describe("getDerivedProposalStatus", () => {
           id: "1",
           isRejected: false,
           isApproved: true,
-          voting_start_at: new Date("2024-01-10T10:00:00.000Z"),
-          voting_duration_ns: null,
+          votingStartAt: new Date("2024-01-10T10:00:00.000Z"),
+          votingDurationNs: null,
         } as any;
 
         mockConvertNanoSecondsToMs.mockReturnValue(0);
@@ -212,8 +212,8 @@ describe("getDerivedProposalStatus", () => {
           id: "1",
           isRejected: false,
           isApproved: true,
-          voting_start_at: new Date("2024-01-10T10:00:00.000Z"),
-          voting_duration_ns: undefined,
+          votingStartAt: new Date("2024-01-10T10:00:00.000Z"),
+          votingDurationNs: undefined,
         } as any;
 
         mockConvertNanoSecondsToMs.mockReturnValue(0);
@@ -229,8 +229,8 @@ describe("getDerivedProposalStatus", () => {
           id: "1",
           isRejected: false,
           isApproved: true,
-          voting_start_at: new Date("2024-01-10T10:00:00.000Z"),
-          voting_duration_ns: new Decimal("0"),
+          votingStartAt: new Date("2024-01-10T10:00:00.000Z"),
+          votingDurationNs: new Decimal("0"),
         } as any;
 
         mockConvertNanoSecondsToMs.mockReturnValue(0);

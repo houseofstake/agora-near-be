@@ -219,7 +219,7 @@ actively_delegating_accounts AS (
     delegation_events.delegatee_id,
     delegation_events.near_amount
   FROM
-    delegation_events
+    fastnear.delegation_events
   WHERE
     (
       (
@@ -254,7 +254,7 @@ ten_most_recently_approved_proposals AS (
     approved_proposals.block_hash,
     approved_proposals.block_height
   FROM
-    approved_proposals
+    fastnear.approved_proposals
   ORDER BY
     approved_proposals.proposal_approved_at DESC
   LIMIT
@@ -271,7 +271,7 @@ ten_most_recently_approved_proposals AS (
     (
       (
         registered_voters_prep rv
-        JOIN proposal_voting_history pvh ON ((rv.signer_account_id = pvh.voter_id))
+        JOIN fastnear.proposal_voting_history pvh ON ((rv.signer_account_id = pvh.voter_id))
       )
       LEFT JOIN ten_most_recently_approved_proposals t ON ((t.proposal_id = pvh.proposal_id))
     )

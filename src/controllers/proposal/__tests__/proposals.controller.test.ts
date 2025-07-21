@@ -13,8 +13,8 @@ describe("ProposalController", () => {
       forVotingPower: new Decimal("1"),
       againstVotingPower: new Decimal("2"),
       abstainVotingPower: new Decimal("3"),
-      voting_duration_ns: new Decimal("864000000000000000"), // 1 day
-      voting_start_at: new Date("2024-01-02"),
+      votingDurationNs: new Decimal("864000000000000000"), // 1 day
+      votingStartAt: new Date("2024-01-02"),
     },
     {
       id: 2,
@@ -24,8 +24,8 @@ describe("ProposalController", () => {
       forVotingPower: new Decimal("1"),
       againstVotingPower: new Decimal("2"),
       abstainVotingPower: new Decimal("3"),
-      voting_duration_ns: new Decimal("864000000000000000"), // 1 day
-      voting_start_at: new Date("2024-01-02"),
+      votingDurationNs: new Decimal("864000000000000000"), // 1 day
+      votingStartAt: new Date("2024-01-02"),
     },
   ];
 
@@ -69,8 +69,8 @@ describe("ProposalController", () => {
       // Arrange
       const mockCount = 50;
 
-      prismaMock.proposal.findMany.mockResolvedValue(mockProposals);
-      prismaMock.proposal.count.mockResolvedValue(mockCount);
+      prismaMock.proposals.findMany.mockResolvedValue(mockProposals);
+      prismaMock.proposals.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -83,14 +83,14 @@ describe("ProposalController", () => {
         count: mockCount,
       });
 
-      expect(prismaMock.proposal.findMany).toHaveBeenCalledWith({
+      expect(prismaMock.proposals.findMany).toHaveBeenCalledWith({
         where: { isApproved: true, isRejected: false },
         orderBy: { createdAt: "desc" },
         skip: 0,
         take: 10,
       });
 
-      expect(prismaMock.proposal.count).toHaveBeenCalledWith({
+      expect(prismaMock.proposals.count).toHaveBeenCalledWith({
         where: { isApproved: true, isRejected: false },
       });
     });
@@ -98,8 +98,8 @@ describe("ProposalController", () => {
     it("should return approved proposals with custom pagination", async () => {
       const mockCount = 25;
 
-      prismaMock.proposal.findMany.mockResolvedValue(mockProposals);
-      prismaMock.proposal.count.mockResolvedValue(mockCount);
+      prismaMock.proposals.findMany.mockResolvedValue(mockProposals);
+      prismaMock.proposals.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -113,14 +113,14 @@ describe("ProposalController", () => {
         count: mockCount,
       });
 
-      expect(prismaMock.proposal.findMany).toHaveBeenCalledWith({
+      expect(prismaMock.proposals.findMany).toHaveBeenCalledWith({
         where: { isApproved: true, isRejected: false },
         orderBy: { createdAt: "desc" },
         skip: 10,
         take: 5,
       });
 
-      expect(prismaMock.proposal.count).toHaveBeenCalledWith({
+      expect(prismaMock.proposals.count).toHaveBeenCalledWith({
         where: { isApproved: true, isRejected: false },
       });
     });
@@ -128,7 +128,7 @@ describe("ProposalController", () => {
     it("should handle database error gracefully", async () => {
       // Arrange
       const errorMessage = "Database connection failed";
-      prismaMock.proposal.findMany.mockRejectedValue(new Error(errorMessage));
+      prismaMock.proposals.findMany.mockRejectedValue(new Error(errorMessage));
 
       // Act & Assert
       const response = await request(app)
@@ -142,8 +142,8 @@ describe("ProposalController", () => {
     });
 
     it("should handle non-numeric pagination parameters", async () => {
-      prismaMock.proposal.findMany.mockResolvedValue([]);
-      prismaMock.proposal.count.mockResolvedValue(0);
+      prismaMock.proposals.findMany.mockResolvedValue([]);
+      prismaMock.proposals.count.mockResolvedValue(0);
 
       // Act & Assert
       const response = await request(app)
@@ -158,7 +158,7 @@ describe("ProposalController", () => {
       });
 
       // Should fall back to defaults for skip and take values
-      expect(prismaMock.proposal.findMany).toHaveBeenCalledWith({
+      expect(prismaMock.proposals.findMany).toHaveBeenCalledWith({
         where: { isApproved: true, isRejected: false },
         orderBy: { createdAt: "desc" },
         skip: 0,
@@ -171,8 +171,8 @@ describe("ProposalController", () => {
     it("should return pending proposals with default pagination and no creator filter", async () => {
       const mockCount = 15;
 
-      prismaMock.proposal.findMany.mockResolvedValue(mockProposals);
-      prismaMock.proposal.count.mockResolvedValue(mockCount);
+      prismaMock.proposals.findMany.mockResolvedValue(mockProposals);
+      prismaMock.proposals.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -185,14 +185,14 @@ describe("ProposalController", () => {
         count: mockCount,
       });
 
-      expect(prismaMock.proposal.findMany).toHaveBeenCalledWith({
+      expect(prismaMock.proposals.findMany).toHaveBeenCalledWith({
         where: { isApproved: false, isRejected: false, creatorId: undefined },
         orderBy: { createdAt: "desc" },
         skip: 0,
         take: 10,
       });
 
-      expect(prismaMock.proposal.count).toHaveBeenCalledWith({
+      expect(prismaMock.proposals.count).toHaveBeenCalledWith({
         where: { isApproved: false, isRejected: false, creatorId: undefined },
       });
     });
@@ -200,8 +200,8 @@ describe("ProposalController", () => {
     it("should return pending proposals with creator filter and custom pagination", async () => {
       const mockCount = 5;
 
-      prismaMock.proposal.findMany.mockResolvedValue(mockProposals);
-      prismaMock.proposal.count.mockResolvedValue(mockCount);
+      prismaMock.proposals.findMany.mockResolvedValue(mockProposals);
+      prismaMock.proposals.count.mockResolvedValue(mockCount);
 
       // Act & Assert
       const response = await request(app)
@@ -215,14 +215,14 @@ describe("ProposalController", () => {
         count: mockCount,
       });
 
-      expect(prismaMock.proposal.findMany).toHaveBeenCalledWith({
+      expect(prismaMock.proposals.findMany).toHaveBeenCalledWith({
         where: { isApproved: false, isRejected: false, creatorId: "user123" },
         orderBy: { createdAt: "desc" },
         skip: 20,
         take: 20,
       });
 
-      expect(prismaMock.proposal.count).toHaveBeenCalledWith({
+      expect(prismaMock.proposals.count).toHaveBeenCalledWith({
         where: { isApproved: false, isRejected: false, creatorId: "user123" },
       });
     });
@@ -230,7 +230,7 @@ describe("ProposalController", () => {
     it("should handle database error gracefully", async () => {
       // Arrange
       const errorMessage = "Database timeout";
-      prismaMock.proposal.findMany.mockRejectedValue(new Error(errorMessage));
+      prismaMock.proposals.findMany.mockRejectedValue(new Error(errorMessage));
 
       // Act & Assert
       const response = await request(app)
@@ -245,8 +245,8 @@ describe("ProposalController", () => {
     });
 
     it("should handle empty results", async () => {
-      prismaMock.proposal.findMany.mockResolvedValue([]);
-      prismaMock.proposal.count.mockResolvedValue(0);
+      prismaMock.proposals.findMany.mockResolvedValue([]);
+      prismaMock.proposals.count.mockResolvedValue(0);
 
       // Act & Assert
       const response = await request(app)
@@ -262,8 +262,8 @@ describe("ProposalController", () => {
     });
 
     it("should handle count operation failing separately", async () => {
-      prismaMock.proposal.findMany.mockResolvedValue(mockProposals);
-      prismaMock.proposal.count.mockRejectedValue(
+      prismaMock.proposals.findMany.mockResolvedValue(mockProposals);
+      prismaMock.proposals.count.mockRejectedValue(
         new Error("Count operation failed")
       );
 
