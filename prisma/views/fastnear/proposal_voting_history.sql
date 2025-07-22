@@ -1,10 +1,10 @@
 WITH execution_outcomes_prep AS (
   SELECT
-    split_part(execution_outcomes.receipt_id, '-' :: text, 2) AS receipt_id,
+    execution_outcomes.receipt_id,
     execution_outcomes.status,
     execution_outcomes.logs
   FROM
-    execution_outcomes
+    fastnear.execution_outcomes
 ),
 receipt_actions_prep AS (
   SELECT
@@ -31,7 +31,7 @@ receipt_actions_prep AS (
     eo.logs
   FROM
     (
-      receipt_actions ra
+      fastnear.receipt_actions ra
       JOIN execution_outcomes_prep eo ON (
         (
           (ra.receipt_id = eo.receipt_id)
@@ -90,8 +90,8 @@ proposal_metadata AS (
 ),
 proposal_voting_history AS (
   SELECT
-    base58_encode(ra.receipt_id) AS id,
-    base58_encode(ra.receipt_id) AS receipt_id,
+    ra.receipt_id AS id,
+    ra.receipt_id,
     date(ra.block_timestamp) AS voted_date,
     ra.block_timestamp AS voted_at,
     CASE
@@ -230,7 +230,7 @@ proposal_voting_history AS (
     END AS delegated_extra_venear_balance,
     ra.logs,
     ra.block_height,
-    base58_encode(ra.block_hash) AS block_hash
+    ra.block_hash
   FROM
     receipt_actions_prep ra
   WHERE

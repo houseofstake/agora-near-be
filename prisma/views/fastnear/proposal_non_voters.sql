@@ -6,8 +6,8 @@ SELECT
   rv.registered_voter_id
 FROM
   (
-    proposals p
-    CROSS JOIN registered_voters rv
+    fastnear.proposals p
+    CROSS JOIN fastnear.registered_voters rv
   )
 WHERE
   (
@@ -16,7 +16,7 @@ WHERE
         SELECT
           1
         FROM
-          proposal_voting_history h
+          fastnear.proposal_voting_history h
         WHERE
           (
             (h.proposal_id = p.proposal_id)

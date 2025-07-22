@@ -7,84 +7,7 @@ generator client {
 datasource db {
     provider = "postgresql"
     url      = env("DATABASE_URL")
-    schemas  = ["public", "web2"]
-}
-
-model blocks {
-    height       BigInt   @id
-    hash         String
-    prev_hash    String
-    author       String
-    timestamp    DateTime @db.Timestamp(6)
-    gas_price    String
-    total_supply String
-
-    @@schema("public")
-}
-
-model cursors {
-    id        String  @id(map: "cursor_pk")
-    cursor    String?
-    block_num BigInt?
-    block_id  String?
-
-    @@schema("public")
-}
-
-model receipt_actions {
-    id                String   @id
-    block_height      BigInt
-    receipt_id        String
-    signer_account_id String
-    signer_public_key String
-    gas_price         String
-    action_kind       String
-    predecessor_id    String
-    receiver_id       String
-    block_hash        String
-    chunk_hash        String
-    author            String
-    method_name       String
-    gas               BigInt
-    deposit           String
-    args_base64       String
-    args_json         String?
-    action_index      Int
-    block_timestamp   DateTime @db.Timestamp(6)
-
-    @@schema("public")
-}
-
-model substreams_history {
-    id         Int     @id @default(autoincrement())
-    op         String? @db.Char(1)
-    table_name String?
-    pk         String?
-    prev_value String?
-    block_num  BigInt?
-
-    @@schema("public")
-}
-
-model execution_outcomes {
-    receipt_id             String    @id
-    block_height           BigInt
-    block_hash             String
-    chunk_hash             String
-    shard_id               String
-    gas_burnt              BigInt
-    gas_used               Float
-    tokens_burnt           Float
-    executor_account_id    String
-    status                 String
-    outcome_receipt_ids    String[]
-    executed_in_block_hash String
-    logs                   String[]
-    results_base64         String?
-    results_json           String?
-    block_timestamp        DateTime? @db.Timestamp(6)
-
-    @@schema("public")
+    schemas  = ["fastnear", "web2"]
 }
 
 model delegate_statements {
@@ -99,7 +22,7 @@ model delegate_statements {
     discord          String?
     email            String?
     warpcast         String?
-    endorsed        Boolean @default(false)
+    endorsed         Boolean @default(false)
 
     @@index([email], map: "idx_delegate_statements_email")
     @@schema("web2")
@@ -117,142 +40,211 @@ model cache {
     @@schema("web2")
 }
 
-view proposal {
-    id                       String    @id
-    receiptId                String    @map("receipt_id")
-    proposalId               Decimal   @map("proposal_id") @db.Decimal
-    proposalTitle            String?   @map("proposal_title")
-    proposalDescription      String?   @map("proposal_description")
-    proposalUrl              String?   @map("proposal_url")
-    hos_contract_address     String?
-    isApproved               Boolean   @map("is_approved")
-    isRejected               Boolean   @map("is_rejected")
-    hasVotes                 Boolean   @map("has_votes")
-    createdAt                DateTime  @map("created_at") @db.Timestamp(6)
-    creatorId                String    @map("creator_id")
-    approvedAt               DateTime? @map("approved_at") @db.Timestamp(6)
-    voting_start_at          DateTime? @db.Timestamp(6)
-    approverId               String?   @map("approver_id")
-    rejectedAt               DateTime? @map("rejected_at") @db.Timestamp(6)
-    rejecterId               String?   @map("rejecter_id")
-    voting_duration_ns       Decimal?  @db.Decimal
-    total_venear_at_approval Decimal?  @db.Decimal
-    listagg_distinct_voters  String?
-    num_distinct_voters      BigInt?
-    num_for_votes            BigInt?
-    num_against_votes        BigInt?
-    forVotingPower           Decimal   @map("for_voting_power") @db.Decimal
-    againstVotingPower       Decimal   @map("against_voting_power") @db.Decimal
-    abstainVotingPower       Decimal   @map("abstain_voting_power") @db.Decimal
-    block_height             BigInt?
-    block_hash               String?
+model fastnear_blocks {
+    height       BigInt   @id
+    hash         String
+    prev_hash    String
+    author       String
+    timestamp    DateTime @db.Timestamp(6)
+    gas_price    String
+    total_supply String
 
-    @@map("proposals")
-    @@schema("public")
+    @@map("blocks")
+    @@schema("fastnear")
+}
+
+model fastnear_cursors {
+    id        String  @id(map: "cursor_pk")
+    cursor    String?
+    block_num BigInt?
+    block_id  String?
+
+    @@map("cursors")
+    @@schema("fastnear")
+}
+
+model fastnear_execution_outcomes {
+    receipt_id             String    @id
+    block_height           BigInt
+    block_hash             String
+    chunk_hash             String
+    shard_id               String
+    gas_burnt              BigInt
+    gas_used               Float
+    tokens_burnt           Float
+    executor_account_id    String
+    status                 String
+    outcome_receipt_ids    String[]
+    executed_in_block_hash String
+    logs                   String[]
+    results_json           Json?     @db.Json
+    block_timestamp        DateTime? @db.Timestamp(6)
+
+    @@map("execution_outcomes")
+    @@schema("fastnear")
+}
+
+model fastnear_receipt_actions {
+    id                String   @id
+    block_height      BigInt
+    receipt_id        String
+    signer_account_id String
+    signer_public_key String
+    gas_price         String
+    action_kind       String
+    predecessor_id    String
+    receiver_id       String
+    block_hash        String
+    chunk_hash        String
+    author            String
+    method_name       String
+    gas               BigInt
+    deposit           String
+    args_base64       String
+    args_json         Json?    @db.Json
+    action_index      Int
+    block_timestamp   DateTime @db.Timestamp(6)
+
+    @@map("receipt_actions")
+    @@schema("fastnear")
 }
 
 view proposalVotingHistory {
-    id                          String   @id
-    receiptId                   String   @map("receipt_id")
-    votedDate                   DateTime @map("voted_date") @db.Date
-    votedAt                     DateTime @map("voted_at") @db.Timestamp(6)
-    proposalId                  Decimal  @map("proposal_id") @db.Decimal
-    proposalName                String?  @map("proposal_name")
-    hos_contract_address        String?
-    voterId                     String   @map("voter_id")
-    voteOption                  Decimal  @map("vote_option") @db.Decimal
-    votingPower                 Decimal? @map("voting_power") @db.Decimal
-    near_balance                Decimal? @db.Decimal
-    extraVenearBalance          Decimal  @map("extra_venear_balance") @db.Decimal
-    delegatorAccountId          String?  @map("delegator_account_id")
-    delegatedNearBalance        Decimal  @map("delegated_near_balance") @db.Decimal
-    delegatedExtraVenearBalance Decimal  @map("delegated_extra_venear_balance") @db.Decimal
-    blockHeight                 BigInt   @map("block_height")
-    blockHash                   String   @map("block_hash")
+    id                          String    @id
+    receiptId                   String?   @map("receipt_id")
+    votedDate                   DateTime? @map("voted_date") @db.Date
+    votedAt                     DateTime? @map("voted_at") @db.Timestamp(6)
+    proposalId                  Decimal?  @map("proposal_id") @db.Decimal
+    proposalName                String?   @map("proposal_name")
+    hosContractAddress          String?   @map("hos_contract_address")
+    voterId                     String?   @map("voter_id")
+    voteOption                  Decimal?  @map("vote_option") @db.Decimal
+    votingPower                 Decimal?  @map("voting_power") @db.Decimal
+    nearBalance                 Decimal?  @map("near_balance") @db.Decimal
+    extraVenearBalance          Decimal?  @map("extra_venear_balance") @db.Decimal
+    delegatorAccountId          String?   @map("delegator_account_id")
+    delegatedNearBalance        Decimal?  @map("delegated_near_balance") @db.Decimal
+    delegatedExtraVenearBalance Decimal?  @map("delegated_extra_venear_balance") @db.Decimal
+    blockHeight                 BigInt?   @map("block_height")
+    blockHash                   String?   @map("block_hash")
 
     @@map("proposal_voting_history")
-    @@schema("public")
+    @@schema("fastnear")
 }
 
-view registeredVoters {
-    id                          String   @id
-    receiptId                   String   @map("receipt_id")
-    registeredDate              DateTime @map("registered_date") @db.Date
-    registeredAt                DateTime @map("registered_at") @db.Timestamp(6)
-    registeredVoterId           String   @map("registered_voter_id")
-    hosContractAddress          String   @map("hos_contract_address")
-    hasLockedUnlockedNear       Boolean  @map("has_locked_unlocked_near")
-    isActivelyDelegating        Boolean  @map("is_actively_delegating")
-    votingPowerFromDelegations  Decimal? @map("voting_power_from_delegations") @db.Decimal
-    votingPowerFromLocksUnlocks Decimal? @map("voting_power_from_locks_unlocks") @db.Decimal
-    initialVotingPower          Decimal? @map("initial_voting_power") @db.Decimal
-    currentVotingPower          Decimal? @map("current_voting_power") @db.Decimal
-    proposalParticipationRate   Decimal? @map("proposal_participation_rate") @db.Decimal
-    blockHeight                 BigInt   @map("block_height")
-    blockHash                   String   @map("block_hash")
+view proposals {
+    id                    String    @id
+    receiptId             String?   @map("receipt_id")
+    proposalId            Decimal?  @map("proposal_id") @db.Decimal
+    proposalTitle         String?   @map("proposal_title")
+    proposalDescription   String?   @map("proposal_description")
+    proposalUrl           String?   @map("proposal_url")
+    hosContractAddress    String?   @map("hos_contract_address")
+    isApproved            Boolean?  @map("is_approved")
+    isRejected            Boolean?  @map("is_rejected")
+    hasVotes              Boolean?  @map("has_votes")
+    createdAt             DateTime? @map("created_at") @db.Timestamp(6)
+    creatorId             String?   @map("creator_id")
+    approvedAt            DateTime? @map("approved_at") @db.Timestamp(6)
+    votingStartAt         DateTime? @map("voting_start_at") @db.Timestamp(6)
+    approverId            String?   @map("approver_id")
+    rejectedAt            DateTime? @map("rejected_at") @db.Timestamp(6)
+    rejecterId            String?   @map("rejecter_id")
+    votingDurationNs      Decimal?  @map("voting_duration_ns") @db.Decimal
+    totalVenearAtApproval Decimal?  @map("total_venear_at_approval") @db.Decimal
+    listaggDistinctVoters String?   @map("listagg_distinct_voters")
+    numDistinctVoters     BigInt?   @map("num_distinct_voters")
+    numForVotes           BigInt?   @map("num_for_votes")
+    numAgainstVotes       BigInt?   @map("num_against_votes")
+    forVotingPower        Decimal?  @map("for_voting_power") @db.Decimal
+    againstVotingPower    Decimal?  @map("against_voting_power") @db.Decimal
+    abstainVotingPower    Decimal?  @map("abstain_voting_power") @db.Decimal
+    blockHeight           BigInt?   @map("block_height")
+    blockHash             String?   @map("block_hash")
 
-    @@map("registered_voters")
-    @@schema("public")
+    @@schema("fastnear")
 }
 
-view proposalNonVoters {
-    id                String  @id
-    proposalId        Decimal @map("proposal_id") @db.Decimal
-    registeredVoterId String  @map("registered_voter_id")
+view approvedProposals {
+    id                   String    @id
+    receiptId            String?   @map("receipt_id")
+    proposalApprovedDate DateTime? @map("proposal_approved_date") @db.Date
+    proposalApprovedAt   DateTime? @map("proposal_approved_at") @db.Timestamp(6)
+    hosContractAddress   String?   @map("hos_contract_address")
+    proposalId           Decimal?  @map("proposal_id") @db.Decimal
+    proposalApproverId   String?   @map("proposal_approver_id")
+    blockHash            String?   @map("block_hash")
+    blockHeight          BigInt?   @map("block_height")
 
-    @@map("proposal_non_voters")
-    @@schema("public")
+    @@map("approved_proposals")
+    @@schema("fastnear")
 }
 
 view delegationEvents {
-    id                     String   @id
-    receiptId              String   @map("receipt_id")
-    eventDate              DateTime @map("event_date") @db.Date
-    eventTimestamp         DateTime @map("event_timestamp") @db.Timestamp(6)
-    hos_contract_address   String?
-    delegatorId            String   @map("delegator_id")
-    delegateeId            String?  @map("delegatee_id")
-    delegateMethod         String   @map("delegate_method")
-    delegateEvent          String   @map("delegate_event")
-    isLatestDelegatorEvent Boolean  @map("is_latest_delegator_event")
-    owner_id               String?
-    nearAmount             Decimal? @map("near_amount") @db.Decimal
-    blockHeight            BigInt   @map("block_height")
-    blockHash              String   @map("block_hash")
+    id                     String    @id
+    receiptId              String?   @map("receipt_id")
+    eventDate              DateTime? @map("event_date") @db.Date
+    eventTimestamp         DateTime? @map("event_timestamp") @db.Timestamp(6)
+    hosContractAddress     String?   @map("hos_contract_address")
+    delegatorId            String?   @map("delegator_id")
+    delegateeId            String?   @map("delegatee_id")
+    delegateMethod         String?   @map("delegate_method")
+    delegateEvent          String?   @map("delegate_event")
+    isLatestDelegatorEvent Boolean?  @map("is_latest_delegator_event")
+    ownerId                String?   @map("owner_id")
+    nearAmount             Decimal?  @map("near_amount") @db.Decimal
+    blockHeight            BigInt?   @map("block_height")
+    blockHash              String?   @map("block_hash")
 
     @@map("delegation_events")
-    @@schema("public")
+    @@schema("fastnear")
 }
 
 view userActivities {
-    id                 String   @id
-    receiptId          String   @map("receipt_id")
-    hosContractAddress String   @map("hos_contract_address")
-    accountId          String   @map("account_id")
-    eventDate          DateTime @map("event_date") @db.Date
-    eventTimestamp     DateTime @map("event_timestamp") @db.Timestamp(6)
-    methodName         String   @map("method_name")
-    eventType          String   @map("event_type")
-    eventStatus        String   @map("event_status")
-    nearAmount         Decimal? @map("near_amount") @db.Decimal
-    lockedNearBalance  Decimal? @map("locked_near_balance") @db.Decimal
-    blockHeight        BigInt   @map("block_height")
-    blockHash          String   @map("block_hash")
+    id                 String    @id
+    receiptId          String?   @map("receipt_id")
+    hosContractAddress String?   @map("hos_contract_address")
+    accountId          String?   @map("account_id")
+    eventDate          DateTime? @map("event_date") @db.Date
+    eventTimestamp     DateTime? @map("event_timestamp") @db.Timestamp(6)
+    methodName         String?   @map("method_name")
+    eventType          String?   @map("event_type")
+    eventStatus        String?   @map("event_status")
+    nearAmount         Decimal?  @map("near_amount") @db.Decimal
+    lockedNearBalance  Decimal?  @map("locked_near_balance") @db.Decimal
+    blockHeight        BigInt?   @map("block_height")
+    blockHash          String?   @map("block_hash")
 
     @@map("user_activities")
-    @@schema("public")
+    @@schema("fastnear")
 }
 
-view approved_proposals {
-    id                     String    @id
-    receipt_id             String?
-    proposal_approved_date DateTime? @db.Date
-    proposal_approved_at   DateTime? @db.Timestamp(6)
-    hos_contract_address   String?
-    proposal_id            Decimal?  @db.Decimal
-    proposal_approver_id   String?
-    block_hash             String?
-    block_height           BigInt?
+view registeredVoters {
+    id                          String    @id
+    receiptId                   String?   @map("receipt_id")
+    registeredDate              DateTime? @map("registered_date") @db.Date
+    registeredAt                DateTime? @map("registered_at") @db.Timestamp(6)
+    registeredVoterId           String?   @map("registered_voter_id")
+    hosContractAddress          String?   @map("hos_contract_address")
+    hasLockedUnlockedNear       Boolean?  @map("has_locked_unlocked_near")
+    isActivelyDelegating        Boolean?  @map("is_actively_delegating")
+    votingPowerFromDelegations  Decimal?  @map("voting_power_from_delegations") @db.Decimal
+    votingPowerFromLocksUnlocks Decimal?  @map("voting_power_from_locks_unlocks") @db.Decimal
+    initialVotingPower          Decimal?  @map("initial_voting_power") @db.Decimal
+    currentVotingPower          Decimal?  @map("current_voting_power") @db.Decimal
+    proposalParticipationRate   Decimal?  @map("proposal_participation_rate") @db.Decimal
+    blockHeight                 BigInt?   @map("block_height")
+    blockHash                   String?   @map("block_hash")
 
-    @@schema("public")
+    @@map("registered_voters")
+    @@schema("fastnear")
+}
+
+view proposalNonVoters {
+    id                String   @id
+    proposalId        Decimal? @map("proposal_id") @db.Decimal
+    registeredVoterId String?  @map("registered_voter_id")
+
+    @@map("proposal_non_voters")
+    @@schema("fastnear")
 }

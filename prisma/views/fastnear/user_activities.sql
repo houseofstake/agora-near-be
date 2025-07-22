@@ -1,10 +1,10 @@
 WITH execution_outcomes_prep AS (
   SELECT
-    split_part(execution_outcomes.receipt_id, '-' :: text, 2) AS receipt_id,
+    execution_outcomes.receipt_id,
     execution_outcomes.status,
     execution_outcomes.logs
   FROM
-    execution_outcomes
+    fastnear.execution_outcomes
 ),
 receipt_actions_prep AS (
   SELECT
@@ -41,7 +41,7 @@ receipt_actions_prep AS (
     ra.block_timestamp
   FROM
     (
-      receipt_actions ra
+      fastnear.receipt_actions ra
       LEFT JOIN execution_outcomes_prep eo ON ((ra.receipt_id = eo.receipt_id))
     )
   WHERE
@@ -49,8 +49,8 @@ receipt_actions_prep AS (
 ),
 on_lockup_deployed AS (
   SELECT
-    base58_encode(ra.receipt_id) AS id,
-    base58_encode(ra.receipt_id) AS receipt_id,
+    ra.receipt_id AS id,
+    ra.receipt_id,
     ra.block_timestamp AS event_timestamp,
     COALESCE(
       CASE
@@ -116,7 +116,7 @@ on_lockup_deployed AS (
       ELSE NULL :: numeric
     END AS locked_near_balance,
     ra.block_height,
-    base58_encode(ra.block_hash) AS block_hash
+    ra.block_hash
   FROM
     receipt_actions_prep ra
   WHERE
@@ -131,8 +131,8 @@ on_lockup_deployed AS (
 ),
 lock_near AS (
   SELECT
-    base58_encode(ra.receipt_id) AS id,
-    base58_encode(ra.receipt_id) AS receipt_id,
+    ra.receipt_id AS id,
+    ra.receipt_id,
     ra.block_timestamp AS event_timestamp,
     COALESCE(
       CASE
@@ -202,7 +202,7 @@ lock_near AS (
       ELSE NULL :: numeric
     END AS locked_near_balance,
     ra.block_height,
-    base58_encode(ra.block_hash) AS block_hash
+    ra.block_hash
   FROM
     receipt_actions_prep ra
   WHERE
@@ -221,14 +221,14 @@ lock_near AS (
 ),
 on_lockup_update_prep AS (
   SELECT
-    base58_encode(ra.receipt_id) AS id,
-    base58_encode(ra.receipt_id) AS receipt_id,
+    ra.receipt_id AS id,
+    ra.receipt_id,
     ra.block_timestamp AS event_timestamp,
     ra.method_name,
     ra.event_status,
     ra.signer_account_id AS account_id,
     ra.receiver_id AS hos_contract_address,
-    base58_encode(ra.block_hash) AS block_hash,
+    ra.block_hash,
     ra.block_height,
     max(
       CASE
@@ -314,14 +314,13 @@ on_lockup_update_prep AS (
       )
     )
   GROUP BY
-    (base58_encode(ra.receipt_id)),
-    (base58_encode(ra.receipt_id)),
+    ra.receipt_id,
     ra.block_timestamp,
     ra.method_name,
     ra.event_status,
     ra.signer_account_id,
     ra.receiver_id,
-    (base58_encode(ra.block_hash)),
+    ra.block_hash,
     ra.block_height
 ),
 on_lockup_update AS (
@@ -350,7 +349,7 @@ delegations_undelegations AS (
   SELECT
     md5(
       concat(
-        base58_encode(ra.receipt_id),
+        ra.receipt_id,
         '_',
         CASE
           WHEN (
@@ -380,7 +379,7 @@ delegations_undelegations AS (
         END
       )
     ) AS id,
-    base58_encode(ra.receipt_id) AS receipt_id,
+    ra.receipt_id,
     ra.block_timestamp AS event_timestamp,
     COALESCE(
       (
@@ -471,7 +470,7 @@ delegations_undelegations AS (
     END AS near_amount,
     NULL :: numeric AS locked_near_balance,
     ra.block_height,
-    base58_encode(ra.block_hash) AS block_hash
+    ra.block_hash
   FROM
     (
       receipt_actions_prep ra
@@ -491,8 +490,8 @@ delegations_undelegations AS (
 ),
 begin_unlock_near AS (
   SELECT
-    base58_encode(ra.receipt_id) AS id,
-    base58_encode(ra.receipt_id) AS receipt_id,
+    ra.receipt_id AS id,
+    ra.receipt_id,
     ra.block_timestamp AS event_timestamp,
     ra.method_name AS event_type,
     ra.method_name,
@@ -527,7 +526,7 @@ begin_unlock_near AS (
     END AS near_amount,
     NULL :: numeric AS locked_near_balance,
     ra.block_height,
-    base58_encode(ra.block_hash) AS block_hash
+    ra.block_hash
   FROM
     receipt_actions_prep ra
   WHERE
@@ -546,8 +545,8 @@ begin_unlock_near AS (
 ),
 relock_pending_near AS (
   SELECT
-    base58_encode(ra.receipt_id) AS id,
-    base58_encode(ra.receipt_id) AS receipt_id,
+    ra.receipt_id AS id,
+    ra.receipt_id,
     ra.block_timestamp AS event_timestamp,
     ra.method_name AS event_type,
     ra.method_name,
@@ -582,7 +581,7 @@ relock_pending_near AS (
     END AS near_amount,
     NULL :: numeric AS locked_near_balance,
     ra.block_height,
-    base58_encode(ra.block_hash) AS block_hash
+    ra.block_hash
   FROM
     receipt_actions_prep ra
   WHERE

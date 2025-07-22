@@ -1,11 +1,11 @@
 WITH execution_outcomes_prep AS (
   SELECT
-    split_part(execution_outcomes.receipt_id, '-' :: text, 2) AS receipt_id,
+    execution_outcomes.receipt_id,
     execution_outcomes.status,
     execution_outcomes.logs,
     execution_outcomes.results_json
   FROM
-    execution_outcomes
+    fastnear.execution_outcomes
 ),
 receipt_actions_prep AS (
   SELECT
@@ -13,7 +13,6 @@ receipt_actions_prep AS (
     eo.status AS action_status,
     eo.logs AS action_logs,
     eo.results_json,
-    base58_encode(ra.receipt_id) AS receipt_id_encoded,
     ra.id,
     ra.block_height,
     ra.receipt_id,
@@ -35,7 +34,7 @@ receipt_actions_prep AS (
     ra.block_timestamp
   FROM
     (
-      receipt_actions ra
+      fastnear.receipt_actions ra
       JOIN execution_outcomes_prep eo ON (
         (
           (ra.receipt_id = eo.receipt_id)
@@ -59,8 +58,8 @@ receipt_actions_prep AS (
 ),
 create_proposal AS (
   SELECT
-    base58_encode(ra.receipt_id) AS id,
-    base58_encode(ra.receipt_id) AS receipt_id,
+    ra.receipt_id AS id,
+    ra.receipt_id,
     date(ra.block_timestamp) AS proposal_created_date,
     ra.block_timestamp AS proposal_created_at,
     ra.receiver_id AS hos_contract_address,
@@ -123,7 +122,7 @@ create_proposal AS (
     ra.signer_account_id AS proposal_creator_id,
     ra.action_logs,
     ra.block_height,
-    base58_encode(ra.block_hash) AS block_hash
+    ra.block_hash
   FROM
     receipt_actions_prep ra
   WHERE
@@ -131,17 +130,15 @@ create_proposal AS (
 ),
 approve_proposal AS (
   SELECT
-    base58_encode(ra.receipt_id) AS id,
-    base58_encode(ra.receipt_id) AS receipt_id,
+    ra.receipt_id AS id,
+    ra.receipt_id,
     CASE
       WHEN (
         (
-          safe_json_parse(ra.results_json) ->> 'error' :: text
+          safe_json_parse((ra.results_json) :: text) ->> 'error' :: text
         ) IS NULL
-      ) THEN base58_encode(
-        (
-          safe_json_parse(ra.results_json) ->> 'receipt_id' :: text
-        )
+      ) THEN (
+        safe_json_parse((ra.results_json) :: text) ->> 'receipt_id' :: text
       )
       ELSE NULL :: text
     END AS snapshot_receipt_id,
@@ -171,16 +168,16 @@ approve_proposal_snapshot_metadata AS (
   SELECT
     ap_1.proposal_id,
     ap_1.receipt_id AS approve_proposal_receipt_id,
-    ra.receipt_id_encoded AS snapshot_receipt_id,
+    ra.receipt_id AS snapshot_receipt_id,
     CASE
       WHEN (
         (
-          safe_json_parse(ra.results_json) ->> 'error' :: text
+          safe_json_parse((ra.results_json) :: text) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
           (
-            safe_json_parse(ra.results_json) -> 'snapshot_and_state' :: text
+            safe_json_parse((ra.results_json) :: text) -> 'snapshot_and_state' :: text
           ) ->> 'total_venear' :: text
         )
       ) :: numeric
@@ -189,11 +186,11 @@ approve_proposal_snapshot_metadata AS (
     CASE
       WHEN (
         (
-          safe_json_parse(ra.results_json) ->> 'error' :: text
+          safe_json_parse((ra.results_json) :: text) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse(ra.results_json) ->> 'voting_duration_ns' :: text
+          safe_json_parse((ra.results_json) :: text) ->> 'voting_duration_ns' :: text
         )
       ) :: numeric
       ELSE NULL :: numeric
@@ -201,11 +198,11 @@ approve_proposal_snapshot_metadata AS (
     CASE
       WHEN (
         (
-          safe_json_parse(ra.results_json) ->> 'error' :: text
+          safe_json_parse((ra.results_json) :: text) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse(ra.results_json) ->> 'voting_start_time_ns' :: text
+          safe_json_parse((ra.results_json) :: text) ->> 'voting_start_time_ns' :: text
         )
       ) :: numeric
       ELSE NULL :: numeric
@@ -213,11 +210,11 @@ approve_proposal_snapshot_metadata AS (
     CASE
       WHEN (
         (
-          safe_json_parse(ra.results_json) ->> 'error' :: text
+          safe_json_parse((ra.results_json) :: text) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse(ra.results_json) ->> 'creation_time_ns' :: text
+          safe_json_parse((ra.results_json) :: text) ->> 'creation_time_ns' :: text
         )
       ) :: numeric
       ELSE NULL :: numeric
@@ -225,15 +222,13 @@ approve_proposal_snapshot_metadata AS (
   FROM
     (
       receipt_actions_prep ra
-      JOIN approve_proposal ap_1 ON (
-        (ra.receipt_id_encoded = ap_1.snapshot_receipt_id)
-      )
+      JOIN approve_proposal ap_1 ON ((ra.receipt_id = ap_1.snapshot_receipt_id))
     )
 ),
 reject_proposal AS (
   SELECT
-    base58_encode(ra.receipt_id) AS id,
-    base58_encode(ra.receipt_id) AS receipt_id,
+    ra.receipt_id AS id,
+    ra.receipt_id,
     date(ra.block_timestamp) AS proposal_rejected_date,
     ra.block_timestamp AS proposal_rejected_at,
     ra.receiver_id AS hos_contract_address,
@@ -315,7 +310,7 @@ proposal_votes AS (
       END
     ) AS abstain_voting_power
   FROM
-    proposal_voting_history
+    fastnear.proposal_voting_history
   GROUP BY
     proposal_voting_history.proposal_id
 )

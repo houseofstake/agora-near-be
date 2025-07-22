@@ -41,7 +41,7 @@ export class ProposalVotingHistoryController {
         return {
           accountId: voterId,
           votingPower: votingPower?.toFixed() ?? "0",
-          voteOption: voteOption.toString(),
+          voteOption: voteOption?.toString(),
         };
       });
 
@@ -75,7 +75,7 @@ export class ProposalVotingHistoryController {
         return {
           accountId: voterId,
           votingPower: votingPower?.toFixed() ?? "0",
-          voteOption: voteOption.toString(),
+          voteOption: voteOption?.toString(),
           votedAt: record.votedAt,
         };
       });

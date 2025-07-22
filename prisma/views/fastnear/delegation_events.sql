@@ -1,10 +1,10 @@
 WITH execution_outcomes_prep AS (
   SELECT
-    split_part(execution_outcomes.receipt_id, '-' :: text, 2) AS receipt_id,
+    execution_outcomes.receipt_id,
     execution_outcomes.status,
     execution_outcomes.logs
   FROM
-    execution_outcomes
+    fastnear.execution_outcomes
 ),
 receipt_actions_prep AS (
   SELECT
@@ -32,7 +32,7 @@ receipt_actions_prep AS (
     ra_1.block_timestamp
   FROM
     (
-      receipt_actions ra_1
+      fastnear.receipt_actions ra_1
       JOIN execution_outcomes_prep eo ON (
         (
           (ra_1.receipt_id = eo.receipt_id)
@@ -93,7 +93,7 @@ delegate_undelegate_events AS (
 SELECT
   md5(
     concat(
-      base58_encode(ra.receipt_id),
+      ra.receipt_id,
       '_',
       CASE
         WHEN (
@@ -123,7 +123,7 @@ SELECT
       END
     )
   ) AS id,
-  base58_encode(ra.receipt_id) AS receipt_id,
+  ra.receipt_id,
   date(ra.block_timestamp) AS event_date,
   ra.block_timestamp AS event_timestamp,
   ra.receiver_id AS hos_contract_address,
@@ -220,7 +220,7 @@ SELECT
     ELSE NULL :: numeric
   END AS near_amount,
   ra.block_height,
-  base58_encode(ra.block_hash) AS block_hash
+  ra.block_hash
 FROM
   (
     delegate_undelegate_events ra

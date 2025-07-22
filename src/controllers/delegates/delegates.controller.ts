@@ -4,6 +4,7 @@ import { verifySignature } from "../../lib/signature/verifySignature";
 import { sanitizeContent } from "../../lib/utils/sanitizationUtils";
 import {
   delegate_statements,
+  delegationEvents,
   Prisma,
   registeredVoters,
 } from "../../generated/prisma";
@@ -52,6 +53,13 @@ interface HOSActivityQuery extends PaginationQuery {
   contract_id: string;
 }
 
+function mapDelegationEvent(record: delegationEvents) {
+  return {
+    ...record,
+    blockHeight: record.blockHeight?.toString(),
+  };
+}
+
 export class DelegatesController {
   public getAllDelegates = async (
     req: Request<{}, {}, {}, DeletesQuery>,
@@ -90,7 +98,7 @@ export class DelegatesController {
             ds.statement,
             ds."topIssues",
             ds.endorsed
-          FROM registered_voters rv
+          FROM fastnear.registered_voters rv
           LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
           ${filterByClause}
           ${orderByClause}
@@ -101,7 +109,7 @@ export class DelegatesController {
       filter_by === "endorsed"
         ? prisma.$queryRaw<{ count: bigint }[]>`
             SELECT COUNT(*) as count
-            FROM registered_voters rv
+            FROM fastnear.registered_voters rv
             LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
             WHERE ds.endorsed = true
           `
@@ -169,7 +177,7 @@ export class DelegatesController {
           ds."publicKey",
           ds."agreeCodeConduct",
           ds.endorsed
-        FROM registered_voters rv
+        FROM fastnear.registered_voters rv
         LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
         WHERE rv.registered_voter_id = ${address}
       `;
@@ -287,7 +295,7 @@ export class DelegatesController {
       });
 
       const votes = records.map((record) => ({
-        voteOption: record.voteOption.toString(),
+        voteOption: record.voteOption?.toString(),
         votingPower: record.votingPower?.toFixed() ?? "0",
         address: record.voterId,
         votedAt: record.votedAt,
@@ -335,7 +343,10 @@ export class DelegatesController {
         },
       });
 
-      res.status(200).json({ events: records, count });
+      res.status(200).json({
+        events: records.map(mapDelegationEvent),
+        count,
+      });
     } catch (error) {
       console.error("Error fetching delegate delegated from events:", error);
       res
@@ -377,7 +388,10 @@ export class DelegatesController {
         },
       });
 
-      res.status(200).json({ events: records, count });
+      res.status(200).json({
+        events: records.map(mapDelegationEvent),
+        count,
+      });
     } catch (error) {
       console.error("Error fetching delegate delegated to events:", error);
       res
@@ -492,8 +506,8 @@ export class DelegatesController {
 
       const hosActivity = records.map((record) => {
         const transactionType = getTransactionType(
-          record.methodName,
-          record.eventType
+          record.methodName ?? "",
+          record.eventType ?? ""
         );
 
         // The amount logged by the contract does not include the storage deposit so we add it to the locked balance
@@ -513,7 +527,7 @@ export class DelegatesController {
 
         return {
           receiptId: record.receiptId,
-          blockHeight: record.blockHeight.toString(),
+          blockHeight: record.blockHeight?.toString(),
           eventDate: record.eventDate,
           nearAmount,
           lockedNearBalance,
