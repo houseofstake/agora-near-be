@@ -15,6 +15,7 @@ const traceAgent = tracer.init({
 });
 
 const provider = new traceAgent.TracerProvider();
+provider.register();
 
 // Hook Prisma
 registerInstrumentations({
