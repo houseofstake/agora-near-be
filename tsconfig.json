@@ -102,8 +102,7 @@
     "skipLibCheck": true /* Skip type checking all .d.ts files. */
   },
   "include": [
-    "src/**/*",
-    "trigger.config.ts"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",

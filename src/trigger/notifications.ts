@@ -50,11 +50,11 @@ export const checkNewProposalsTask = schedules.task({
       const timeCutoff = new Date(Date.now() - HOURS_2_IN_MS);
       const now = new Date();
 
-      const newProposals = await prisma.proposal.findMany({
+      const newProposals = await prisma.proposals.findMany({
         where: {
           isApproved: true,
           isRejected: false,
-          voting_start_at: { not: null },
+          votingStartAt: { not: null },
           // Check if voting started recently (proxy for when proposal became active)
           OR: [
             {
@@ -64,7 +64,7 @@ export const checkNewProposalsTask = schedules.task({
             },
             {
               // Also include proposals where voting started recently
-              voting_start_at: {
+              votingStartAt: {
                 gte: (now.getTime() - HOURS_2_IN_MS).toString(),
               },
             },
@@ -120,22 +120,21 @@ export const checkProposalsEndingSoonTask = schedules.task({
       const twentyFourHoursFromNow = new Date(now.getTime() + HOURS_24_IN_MS);
 
       // Get active proposals that end within 24 hours
-      const endingSoonProposals = await prisma.proposal.findMany({
+      const endingSoonProposals = await prisma.proposals.findMany({
         where: {
           isApproved: true,
           isRejected: false,
-          voting_start_at: { not: null },
-          voting_duration_ns: { not: null },
+          votingStartAt: { not: null },
+          votingDurationNs: { not: null },
         },
       });
 
       // Filter proposals that are actually ending soon
       const filteredProposals = endingSoonProposals.filter((proposal) => {
-        if (!proposal.voting_start_at || !proposal.voting_duration_ns)
-          return false;
+        if (!proposal.votingStartAt || !proposal.votingDurationNs) return false;
 
-        const startTime = Number(proposal.voting_start_at);
-        const duration = Number(proposal.voting_duration_ns);
+        const startTime = Number(proposal.votingStartAt);
+        const duration = Number(proposal.votingDurationNs);
         const endTime = new Date(startTime + duration);
 
         return endTime > now && endTime <= twentyFourHoursFromNow;
