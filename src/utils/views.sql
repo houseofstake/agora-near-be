@@ -1,19 +1,50 @@
-CREATE VIEW public.approved_proposals AS
+CREATE OR REPLACE FUNCTION safe_json_parse(input_text TEXT)
+RETURNS JSON AS $$
+BEGIN
+    IF input_text IS NULL OR input_text = '' THEN
+        RETURN NULL;
+    END IF;
+    
+    BEGIN
+        RETURN input_text::JSON;
+    EXCEPTION WHEN OTHERS THEN
+        -- Wrap the invalid text in a JSON error object
+        RETURN json_build_object(
+            'error', 'invalid_json',
+            'original_text', input_text,
+            'message', 'Failed to parse as JSON'
+        );
+    END;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+/*
+ Primary key on this table is receipt_id, with base58 encoding. 
+ Every single row in this table is a unique, successful approve_proposal action.
+ ("Successful" is defined by pulling only receipt_ids flagged as successful from the execution_outcomes table.)
+ 
+ Each approve_proposal action is associated with: 
+   1. A proposal approver ID                                              (eg. lighttea2007.testnet) 
+   2. The related House of Stake Contract                                 (Voter contract address, vote.r-1745564650.testnet)
+   3. The date + timestamp at which the proposal approval action occurred 
+   4. The block-related data for this approve_proposal action             (Block hash/id, block height) 
+*/
+
+CREATE VIEW fastnear.approved_proposals AS
 WITH execution_outcomes_prep AS (
 	SELECT
-		SPLIT_PART(receipt_id, '-', 2) AS receipt_id
+		receipt_id 
 		, status
 		, logs
-	FROM execution_outcomes
+	FROM fastnear.execution_outcomes
 )
 , approve_proposal_action_prep AS (
  	SELECT
     	decode(ra.args_base64, 'base64') AS args
     	, eo.status
     	, eo.logs
-    	, ra.receipt_id AS encoded_receipt_id
     	, ra.*
-  	FROM receipt_actions AS ra
+  	FROM fastnear.receipt_actions AS ra
   	INNER JOIN execution_outcomes_prep AS eo
  		ON ra.receipt_id = eo.receipt_id
 	 	AND eo.status = 'SuccessReceiptId'
@@ -29,13 +60,17 @@ WITH execution_outcomes_prep AS (
  SELECT
  	ra.receipt_id AS id
  	, ra.receipt_id AS receipt_id
- 	, DATE(ra.block_timestamp)     AS proposal_approved_date
- 	, ra.block_timestamp           AS proposal_approved_at
+ 	, DATE(ra.block_timestamp) AS proposal_approved_date
+ 	, ra.block_timestamp AS proposal_approved_at
 
  	--Proposal Details
- 	, ra.receiver_id           												   AS hos_contract_address
- 	, (convert_from(ra.args, 'UTF8')::json->>'proposal_id')::numeric           AS proposal_id
- 	, ra.signer_account_id     												   AS proposal_approver_id
+ 	, ra.receiver_id AS hos_contract_address
+ 	, CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args, 'UTF8'))->>'error' IS NULL
+ 		    THEN (safe_json_parse(convert_from(ra.args, 'UTF8'))->>'proposal_id')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS proposal_id
+ 	, ra.signer_account_id AS proposal_approver_id
 
  	--Block details
  	, ra.block_hash
@@ -44,7 +79,7 @@ WITH execution_outcomes_prep AS (
  ORDER BY block_timestamp DESC
  ;
 
- /*
+/*
  Primary key on this table is the receipt_id (base58 encoded) + delegatee_id associated with the most recent unique delegate_all or undelegate action per delegator_id. 
  This is a dimensional table that returns, for each unique delegate_all / undelegate event, the following: 
  
@@ -60,13 +95,13 @@ WITH execution_outcomes_prep AS (
  10. The block-related data for the delegate_all or undelegate event (block hash/id, block height) 
  */
 
-CREATE VIEW public.delegation_events AS 
+CREATE VIEW fastnear.delegation_events AS 
 WITH execution_outcomes_prep AS (
 	SELECT
- 		SPLIT_PART(receipt_id, '-', 2) AS receipt_id
+ 		receipt_id 
  		, status
  		, logs
- 	FROM execution_outcomes 
+ 	FROM fastnear.execution_outcomes 
 )
 , receipt_actions_prep AS (
 	SELECT
@@ -74,14 +109,14 @@ WITH execution_outcomes_prep AS (
  		, eo.status 					 
  		, eo.logs 						 
  		, ra.*
- 	FROM receipt_actions AS ra
+ 	FROM fastnear.receipt_actions AS ra
  	INNER JOIN execution_outcomes_prep AS eo
  		ON ra.receipt_id = eo.receipt_id
  		AND eo.status IN ('SuccessReceiptId', 'SuccessValue')
  	WHERE
  		ra.action_kind = 'FunctionCall'
  		AND ra.receiver_id IN (           --House of Stake contracts
- 			'v.r-1748895584.testnet'      --veNEAR contract 
+ 			'v.r-1748895584.testnet'      --veNEAR contract --
  			, 'vote.r-1748895584.testnet' --Voting contract 
  			)
 )
@@ -95,25 +130,45 @@ WITH execution_outcomes_prep AS (
 )
 SELECT
 	MD5(CONCAT(ra.receipt_id, '_',  	
- 		REPLACE(unnested_logs, 'EVENT_JSON:', '')::json->'data'->0->>'owner_id')) AS id 
- 	    , ra.receipt_id AS receipt_id
+ 		CASE 
+ 		    WHEN safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->'data'->0->>'owner_id'
+ 		    ELSE NULL 
+ 		  END)) AS id 
+ 	, ra.receipt_id
  	, DATE(ra.block_timestamp) AS event_date
  	, ra.block_timestamp AS event_timestamp
  	, ra.receiver_id AS hos_contract_address 
  	, ra.predecessor_id AS delegator_id 
- 	, (CONVERT_FROM(ra.args, 'UTF8')::json->>'receiver_id') AS delegatee_id --null for the undelegate event 
+ 	, CASE 
+ 		    WHEN safe_json_parse(CONVERT_FROM(ra.args, 'UTF8'))->>'error' IS NULL
+ 		    THEN safe_json_parse(CONVERT_FROM(ra.args, 'UTF8'))->>'receiver_id'
+ 		    ELSE NULL 
+ 		  END AS delegatee_id --null for the undelegate event 
  	, ra.method_name AS delegate_method
-	, REPLACE(unnested_logs, 'EVENT_JSON:', '')::json->>'event' AS delegate_event 
+	, CASE 
+ 		    WHEN safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->>'event'
+ 		    ELSE NULL 
+ 		  END AS delegate_event 
 	, CASE 
  	 	WHEN row_num = 1 
  	 	THEN TRUE 
  	 	ELSE FALSE END AS is_latest_delegator_event 
-	, REPLACE(unnested_logs, 'EVENT_JSON:', '')::json->'data'->0->>'owner_id' AS owner_id
-	, (REPLACE(unnested_logs, 'EVENT_JSON:', '')::json->'data'->0->>'amount')::NUMERIC AS near_amount
+	, CASE 
+ 		    WHEN safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->'data'->0->>'owner_id'
+ 		    ELSE NULL 
+ 		  END AS owner_id
+	, CASE 
+ 		    WHEN safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN (safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->'data'->0->>'amount')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS near_amount
 		
 	--Block Data 
 	, ra.block_height
- 	, ra.block_hash AS block_hash
+ 	, ra.block_hash
  FROM delegate_undelegate_events AS ra
  LEFT JOIN LATERAL UNNEST(ra.logs) AS unnested_logs 
  	ON TRUE
@@ -135,20 +190,20 @@ SELECT
    7. The block-related data for this vote (block hash/id, block height) 
 */
 
-CREATE VIEW public.proposal_voting_history AS
+CREATE VIEW fastnear.proposal_voting_history AS
 WITH execution_outcomes_prep AS (
 	SELECT 
-		SPLIT_PART(receipt_id, '-', 2) AS receipt_id 
+		receipt_id 
 		, status
 		, logs
-	FROM execution_outcomes 
+	FROM fastnear.execution_outcomes 
 )
 , receipt_actions_prep AS (
   	SELECT 
     	decode(ra.args_base64, 'base64') AS args
     	, ra.*
     	, eo.logs 
-  	FROM receipt_actions AS ra
+  	FROM fastnear.receipt_actions AS ra
   	INNER JOIN execution_outcomes_prep AS eo 
  		ON ra.receipt_id = eo.receipt_id 
  		AND eo.status = 'SuccessValue'
@@ -161,8 +216,16 @@ WITH execution_outcomes_prep AS (
 )
 , proposal_metadata AS (
 	SELECT 
-		(convert_from(ra.args, 'UTF8')::json->'metadata'->>'title') AS proposal_name
-		, (REPLACE(ra.logs[1], 'EVENT_JSON:', '')::json->'data'->0->>'proposal_id')::NUMERIC AS proposal_id 
+		CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args, 'UTF8'))->>'error' IS NULL
+ 		    THEN safe_json_parse(convert_from(ra.args, 'UTF8'))->'metadata'->>'title'
+ 		    ELSE NULL 
+ 		  END AS proposal_name
+		, CASE 
+ 		    WHEN safe_json_parse(REPLACE(ra.logs[1], 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN (safe_json_parse(REPLACE(ra.logs[1], 'EVENT_JSON:', ''))->'data'->0->>'proposal_id')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS proposal_id 
 	FROM receipt_actions_prep AS ra
 	WHERE 
 		ra.method_name = 'create_proposal'
@@ -171,42 +234,78 @@ WITH execution_outcomes_prep AS (
 	SELECT 
 		ra.receipt_id AS id  
 		, ra.receipt_id AS receipt_id 
-		, DATE(ra.block_timestamp)     AS voted_date 
-		, ra.block_timestamp           AS voted_at 
+		, DATE(ra.block_timestamp) AS voted_date 
+		, ra.block_timestamp AS voted_at 
 	
 		--IDs 																					
-		, (convert_from(ra.args, 'UTF8')::json->>'proposal_id')::NUMERIC AS proposal_id
-		, ra.receiver_id    											 AS hos_contract_address 
-		, ra.predecessor_id 											 AS voter_id 
+		, CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args, 'UTF8'))->>'error' IS NULL
+ 		    THEN (safe_json_parse(convert_from(ra.args, 'UTF8'))->>'proposal_id')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS proposal_id
+		, ra.receiver_id AS hos_contract_address 
+		, ra.predecessor_id AS voter_id 
 	
 		/* Voter Data Per Proposal */
 		--Votes Info
-		, (convert_from(ra.args, 'UTF8')::json->>'vote')::NUMERIC                                				AS vote_option
-		, (REPLACE(ra.logs[1], 'EVENT_JSON:', '')::json->'data'->0->>'account_balance')::NUMERIC 			    AS voting_power
-		, (convert_from(ra.args, 'UTF8')::json->'v_account'->'V0'->'balance'->>'near_balance')::NUMERIC         AS near_balance 
-		, (convert_from(ra.args, 'UTF8')::json->'v_account'->'V0'->'balance'->>'extra_venear_balance')::NUMERIC AS extra_venear_balance
+		, CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args, 'UTF8'))->>'error' IS NULL
+ 		    THEN (safe_json_parse(convert_from(ra.args, 'UTF8'))->>'vote')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS vote_option
+		, CASE 
+ 		    WHEN safe_json_parse(REPLACE(ra.logs[1], 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN (safe_json_parse(REPLACE(ra.logs[1], 'EVENT_JSON:', ''))->'data'->0->>'account_balance')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS voting_power
+		, CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args, 'UTF8'))->>'error' IS NULL
+ 		    THEN (safe_json_parse(convert_from(ra.args, 'UTF8'))->'v_account'->'V0'->'balance'->>'near_balance')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS near_balance 
+		, CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args, 'UTF8'))->>'error' IS NULL
+ 		    THEN (safe_json_parse(convert_from(ra.args, 'UTF8'))->'v_account'->'V0'->'balance'->>'extra_venear_balance')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS extra_venear_balance
 	
     	--Delegation Info
-		, (convert_from(ra.args, 'UTF8')::json->'v_account'->'V0'->'delegation'->>'account_id')        					  AS delegator_account_id 
-		, (convert_from(ra.args, 'UTF8')::json->'v_account'->'V0'->'delegated_balance'->>'near_balance')::NUMERIC         AS delegated_near_balance
-		, (convert_from(ra.args, 'UTF8')::json->'v_account'->'V0'->'delegated_balance'->>'extra_venear_balance')::NUMERIC AS delegated_extra_venear_balance
+		, CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args, 'UTF8'))->>'error' IS NULL
+ 		    THEN safe_json_parse(convert_from(ra.args, 'UTF8'))->'v_account'->'V0'->'delegation'->>'account_id'
+ 		    ELSE NULL 
+ 		  END AS delegator_account_id 
+		, CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args, 'UTF8'))->>'error' IS NULL
+ 		    THEN (safe_json_parse(convert_from(ra.args, 'UTF8'))->'v_account'->'V0'->'delegated_balance'->>'near_balance')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS delegated_near_balance
+		, CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args, 'UTF8'))->>'error' IS NULL
+ 		    THEN (safe_json_parse(convert_from(ra.args, 'UTF8'))->'v_account'->'V0'->'delegated_balance'->>'extra_venear_balance')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS delegated_extra_venear_balance
 	
 		--Logs 
 		, ra.logs
 	
 		--Block Data 
 		, ra.block_height 
-		, ra.block_hash AS block_hash 
+		, ra.block_hash 
 	FROM receipt_actions_prep AS ra
  	WHERE 
 		ra.method_name = 'vote'
-		AND (convert_from(ra.args, 'UTF8')::json->>'proposal_id')::NUMERIC IS NOT NULL
+		AND CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args, 'UTF8'))->>'error' IS NULL
+ 		    THEN (safe_json_parse(convert_from(ra.args, 'UTF8'))->>'proposal_id')::NUMERIC
+ 		    ELSE NULL 
+ 		  END IS NOT NULL
 	ORDER BY proposal_id ASC, voted_at ASC 
 )
 , latest_vote_per_proposal_and_voter AS (
 	SELECT 
 		*
-		, ROW_NUMBER() OVER (PARTITION BY proposal_id, voter_id ORDER BY voted_at DESC) as row_num 
+		, ROW_NUMBER() OVER (PARTITION BY proposal_id, voter_id ORDER BY voted_at DESC) AS row_num 
 	FROM proposal_voting_history 
 )
 SELECT 
@@ -235,6 +334,239 @@ WHERE
 ;
 
 /*
+ Primary key on this table is the receipt_id (base58 encoded) associated with a unique create_proposal action. 
+ This is a dimensional table that returns, for each unique proposal id, the following: 
+ 
+ 1. Proposal metadata (name, description, URL, HoS Contract address) 
+ 2. Booleans indicating whether or not the proposal was: approved/rejected for public voting by a HoS reviewer, publicly voted on
+ 3. The timestamps of when the proposal was created, approved or rejected 
+ 4. Vote metadata (list of distinct voters, the count of distinct voters, the count of votes for or against the proposal) 
+ 5. The block-related data for the create_proposal action (block hash/id, block height) 
+ */
+
+CREATE VIEW fastnear.proposals AS 
+WITH execution_outcomes_prep AS (
+ 	SELECT 
+ 		receipt_id
+ 		, status
+ 		, logs
+		, results_json
+ 	FROM fastnear.execution_outcomes
+)
+, receipt_actions_prep AS (
+	SELECT
+ 		decode(ra.args_base64, 'base64') AS args_decoded
+ 		, eo.status AS action_status
+ 		, eo.logs AS action_logs
+		, eo.results_json
+ 		, ra.*
+ 	FROM fastnear.receipt_actions AS ra
+ 	INNER JOIN execution_outcomes_prep AS eo
+ 		ON ra.receipt_id = eo.receipt_id
+ 		AND eo.status IN ('SuccessReceiptId', 'SuccessValue')
+ 	WHERE
+ 		ra.action_kind = 'FunctionCall'
+ 		AND ra.receiver_id IN (           --House of Stake contracts
+ 			'v.r-1748895584.testnet'      --veNEAR contract 
+ 			, 'vote.r-1748895584.testnet' --Voting contract 
+ 			)
+)
+, create_proposal AS ( 
+ 	SELECT
+ 		ra.receipt_id AS id
+ 		, ra.receipt_id AS receipt_id
+ 		, DATE(ra.block_timestamp) AS proposal_created_date
+ 		, ra.block_timestamp AS proposal_created_at
+
+ 		--Proposal Details
+ 		, ra.receiver_id AS hos_contract_address
+ 		, CASE 
+ 		    WHEN safe_json_parse(REPLACE(ra.action_logs[1], 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN (safe_json_parse(REPLACE(ra.action_logs[1], 'EVENT_JSON:', ''))->'data'->0->>'proposal_id')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS proposal_id 
+ 		, CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args_decoded, 'UTF8'))->>'error' IS NULL
+ 		    THEN safe_json_parse(convert_from(ra.args_decoded, 'UTF8'))->'metadata'->>'title'
+ 		    ELSE NULL 
+ 		  END AS proposal_title
+ 		, CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args_decoded, 'UTF8'))->>'error' IS NULL
+ 		    THEN safe_json_parse(convert_from(ra.args_decoded, 'UTF8'))->'metadata'->>'description'
+ 		    ELSE NULL 
+ 		  END AS proposal_description
+ 		, CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args_decoded, 'UTF8'))->>'error' IS NULL
+ 		    THEN safe_json_parse(convert_from(ra.args_decoded, 'UTF8'))->'metadata'->>'link'
+ 		    ELSE NULL 
+ 		  END AS proposal_url
+	 	, ra.signer_account_id AS proposal_creator_id
+	 	, ra.action_logs 
+	 	
+	 	--Block Data 
+	 	, ra.block_height
+ 		, ra.block_hash
+ 	FROM receipt_actions_prep AS ra
+ 	WHERE
+ 		ra.method_name = 'create_proposal'
+)
+, approve_proposal AS (
+ 	SELECT
+ 		ra.receipt_id AS id
+ 		, ra.receipt_id AS receipt_id
+		--From associated on_get_snapshot method 
+		, CASE 
+ 			WHEN safe_json_parse(ra.results_json::TEXT)->>'error' IS NULL
+ 			THEN safe_json_parse(ra.results_json::TEXT)->>'receipt_id'
+ 			ELSE NULL
+ 		  END AS snapshot_receipt_id 
+ 		, DATE(ra.block_timestamp) AS proposal_approved_date
+ 		, ra.block_timestamp AS proposal_approved_at
+
+ 		--Proposal Details
+ 		, ra.receiver_id AS hos_contract_address
+ 		, CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args_decoded, 'UTF8'))->>'error' IS NULL
+ 		    THEN (safe_json_parse(convert_from(ra.args_decoded, 'UTF8'))->>'proposal_id')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS proposal_id
+ 		, ra.signer_account_id AS proposal_approver_id
+ 		, ra.action_logs 
+ 	FROM receipt_actions_prep AS ra
+ 	WHERE
+ 		ra.method_name = 'approve_proposal'
+ )
+ , approve_proposal_snapshot_metadata AS (
+ 	SELECT 
+ 		ap.proposal_id
+ 		, ap.receipt_id AS approve_proposal_receipt_id
+ 		, ra.receipt_id AS snapshot_receipt_id
+        , CASE 
+ 			WHEN safe_json_parse(ra.results_json::TEXT)->>'error' IS NULL
+ 			THEN (safe_json_parse(ra.results_json::TEXT)->'snapshot_and_state'->>'total_venear')::NUMERIC
+ 			ELSE NULL
+ 		  END AS total_venear_amount 
+ 	    , CASE 
+ 			WHEN safe_json_parse(ra.results_json::TEXT)->>'error' IS NULL
+ 			THEN (safe_json_parse(ra.results_json::TEXT)->>'voting_duration_ns')::NUMERIC
+ 			ELSE NULL
+ 		   END AS voting_duration_ns 
+ 		, CASE 
+ 			WHEN safe_json_parse(ra.results_json::TEXT)->>'error' IS NULL
+ 			THEN (safe_json_parse(ra.results_json::TEXT)->>'voting_start_time_ns')::NUMERIC
+ 			ELSE NULL
+ 		   END AS voting_start_time_ns 
+ 		, CASE 
+ 			WHEN safe_json_parse(ra.results_json::TEXT)->>'error' IS NULL
+ 			THEN (safe_json_parse(ra.results_json::TEXT)->>'creation_time_ns')::NUMERIC
+ 			ELSE NULL
+ 		   END AS creation_time_ns 
+ 	FROM receipt_actions_prep AS ra
+ 	INNER JOIN approve_proposal AS ap 
+ 		ON ra.receipt_id = ap.snapshot_receipt_id
+)
+ , reject_proposal as (
+ 	SELECT
+ 		ra.receipt_id AS id
+ 		, ra.receipt_id AS receipt_id
+ 		, DATE(ra.block_timestamp) AS proposal_rejected_date
+ 		, ra.block_timestamp AS proposal_rejected_at
+
+ 		--Proposal Details
+ 		, ra.receiver_id AS hos_contract_address
+ 		, CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args_decoded, 'UTF8'))->>'error' IS NULL
+ 		    THEN (safe_json_parse(convert_from(ra.args_decoded, 'UTF8'))->>'proposal_id')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS proposal_id
+ 		, ra.signer_account_id AS proposal_rejecter_id
+ 		, ra.action_logs 
+ 	FROM receipt_actions_prep AS ra
+ 	WHERE
+ 		ra.method_name = 'reject_proposal'
+ )
+ , proposal_votes AS ( 
+ 	SELECT 
+ 		proposal_id 
+		--Counts
+ 		, COUNT(DISTINCT voter_id) AS num_distinct_voters 
+ 		, STRING_AGG(DISTINCT voter_id, ', ' ORDER BY voter_id ASC)	AS listagg_distinct_voters 
+		, SUM(CASE WHEN vote_option = 0 THEN 1 ELSE 0 END) AS num_for_votes 
+ 		, SUM(CASE WHEN vote_option = 1 THEN 1 ELSE 0 END) AS num_against_votes 
+ 		, SUM(CASE WHEN vote_option = 2 THEN 1 ELSE 0 END) AS num_abstain_votes 
+        --Voting Power from Vote Options
+		, SUM(CASE WHEN vote_option = 0 THEN voting_power ELSE 0 END) AS for_voting_power
+ 		, SUM(CASE WHEN vote_option = 1 THEN voting_power ELSE 0 END) AS against_voting_power
+ 		, SUM(CASE WHEN vote_option = 2 THEN voting_power ELSE 0 END) AS abstain_voting_power
+ 	FROM fastnear.proposal_voting_history 
+ 	GROUP BY 1
+ )
+ SELECT
+ 	cp.receipt_id AS id 
+ 	, cp.receipt_id 
+ 	
+ 	--Proposal Details
+ 	, cp.proposal_id
+ 	, cp.proposal_title
+ 	, cp.proposal_description
+ 	, cp.proposal_url 
+ 	, cp.hos_contract_address 
+ 	, CASE 
+ 		WHEN ap.proposal_id IS NULL 
+ 		THEN FALSE ELSE TRUE
+ 		END AS is_approved
+ 	, CASE 
+ 		WHEN rp.proposal_id IS NULL 
+ 		THEN FALSE ELSE TRUE
+ 		END AS is_rejected
+ 	, CASE 
+ 		WHEN pv.num_distinct_voters IS NULL 
+ 		THEN FALSE ELSE TRUE 
+ 		END AS has_votes 
+ 	
+ 	--Creation Details
+ 	, COALESCE(TO_TIMESTAMP(aps.creation_time_ns / 1e9) AT TIME ZONE 'UTC', cp.proposal_created_at) AS created_at 
+ 	, cp.proposal_creator_id AS creator_id 
+ 	
+ 	--Approval Details 
+ 	, ap.proposal_approved_at AS approved_at 
+ 	, TO_TIMESTAMP(aps.voting_start_time_ns / 1e9) AT TIME ZONE 'UTC' AS voting_start_at 
+ 	, ap.proposal_approver_id AS approver_id 
+ 	
+ 	--Rejection Details 
+ 	, rp.proposal_rejected_at AS rejected_at 
+ 	, rp.proposal_rejecter_id AS rejecter_id 
+
+	--Additional Approval Metadata (Sourced from associated on_get_snapshot method)
+ 	, aps.voting_duration_ns 
+ 	, aps.total_venear_amount AS total_venear_at_approval
+ 	
+ 	--Vote Details 
+ 	, pv.listagg_distinct_voters
+ 	, COALESCE(pv.num_distinct_voters, 0) AS num_distinct_voters 
+ 	, COALESCE(pv.num_for_votes, 0) AS num_for_votes
+ 	, COALESCE(pv.num_against_votes, 0) AS num_against_votes 
+    , COALESCE(pv.for_voting_power, 0) AS for_voting_power
+    , COALESCE(pv.against_voting_power, 0) AS against_voting_power
+ 	, COALESCE(pv.abstain_voting_power, 0) AS abstain_voting_power
+ 	
+ 	--Block Data 
+	, cp.block_height 
+	, cp.block_hash 
+
+ FROM create_proposal AS cp
+ LEFT JOIN approve_proposal ap
+ 	ON cp.proposal_id = ap.proposal_id
+ LEFT JOIN approve_proposal_snapshot_metadata AS aps
+ 	ON cp.proposal_id = aps.proposal_id 
+ LEFT JOIN reject_proposal AS rp 
+ 	ON cp.proposal_id = rp.proposal_id 
+ LEFT JOIN proposal_votes AS pv 
+ 	ON ap.proposal_id = pv.proposal_id 
+ ORDER BY cp.proposal_created_at ASC
+; 
+
+/*
  Primary key on this table is receipt_id, with base58 encoding. 
  Every single row in this table is a unique, successful deploy_lockup action, which translates into a voter registration action.
  ("Successful" is defined by pulling only receipt_ids flagged as successful from the execution_outcomes table.)
@@ -249,23 +581,23 @@ WHERE
    7. The registered voter's proposal participation rate              (Calculated as a count of the vote_options - only considering the latest vote_option per proposal - a user makes on any of the 10 most recently approved proposals for the veNEAR contract; always a percentage out of 10)
 */
 
-CREATE VIEW public.registered_voters AS
+CREATE VIEW fastnear.registered_voters AS
 WITH
 /* Sourcing Registered Voters */
 execution_outcomes_prep AS (
 	SELECT
-		SPLIT_PART(receipt_id, '-', 2) AS receipt_id
+		receipt_id
 		, status
 		, logs
-	FROM execution_outcomes
+	FROM fastnear.execution_outcomes
 )
 , receipt_actions_prep AS (
 	SELECT
 		decode(ra.args_base64, 'base64') AS args_decoded
-		, eo.status                      AS action_status
-		, eo.logs                        AS action_logs
+		, eo.status AS action_status
+		, eo.logs AS action_logs
 		, ra.*
-	FROM receipt_actions AS ra
+	FROM fastnear.receipt_actions AS ra
 	INNER JOIN execution_outcomes_prep AS eo
 		ON ra.receipt_id = eo.receipt_id
 		AND eo.status IN ('SuccessReceiptId', 'SuccessValue')
@@ -290,12 +622,20 @@ execution_outcomes_prep AS (
   	SELECT
   		ra.block_timestamp
   		, args_decoded
-    	, ra.receipt_id 																		            AS receipt_id
-    	, COALESCE((REPLACE(ra.action_logs[1], 'EVENT_JSON:', '')::json->'data'->0->>'owner_id'), ra.signer_account_id) AS registered_voter_id
-    	, (REPLACE(ra.action_logs[1], 'EVENT_JSON:', '')::json->'data'->0->>'amount')::NUMERIC 					        AS initial_voting_power
-    	, ra.receiver_id 																				                AS hos_contract_address
+    	, ra.receipt_id
+    	, COALESCE(CASE 
+ 		    WHEN safe_json_parse(REPLACE(ra.action_logs[1], 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN safe_json_parse(REPLACE(ra.action_logs[1], 'EVENT_JSON:', ''))->'data'->0->>'owner_id'
+ 		    ELSE NULL 
+ 		  END, ra.signer_account_id) AS registered_voter_id
+    	, CASE 
+ 		    WHEN safe_json_parse(REPLACE(ra.action_logs[1], 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN (safe_json_parse(REPLACE(ra.action_logs[1], 'EVENT_JSON:', ''))->'data'->0->>'amount')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS initial_voting_power
+    	, ra.receiver_id AS hos_contract_address
     	, ra.block_height
-    	, ra.block_hash AS block_hash
+    	, ra.block_hash
   	FROM receipt_actions_prep AS ra
   	WHERE
     	ra.method_name = 'storage_deposit'
@@ -303,15 +643,27 @@ execution_outcomes_prep AS (
 , current_voting_power_from_locks_unlocks AS (
 	SELECT
 		ra.block_timestamp
-		, ra.receipt_id 																	    			AS receipt_id
-		, COALESCE(REPLACE(ra.action_logs[1], 'EVENT_JSON:', '')::json->'data'->0->>'account_id', ra.signer_account_id) AS registered_voter_id
-		, (REPLACE(ra.action_logs[1], 'EVENT_JSON:', '')::json->'data'->0->>'locked_near_balance')::NUMERIC             AS current_voting_power_logs
-    	, (convert_from(ra.args_decoded, 'UTF8')::json->'update'->'V1'->>'locked_near_balance')::NUMERIC                AS current_voting_power_args
-    	, ra.receiver_id 																								AS hos_contract_address
+		, ra.receipt_id
+		, COALESCE(CASE 
+ 		    WHEN safe_json_parse(REPLACE(ra.action_logs[1], 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN safe_json_parse(REPLACE(ra.action_logs[1], 'EVENT_JSON:', ''))->'data'->0->>'account_id'
+ 		    ELSE NULL 
+ 		  END, ra.signer_account_id) AS registered_voter_id
+		, CASE 
+ 		    WHEN safe_json_parse(REPLACE(ra.action_logs[1], 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN (safe_json_parse(REPLACE(ra.action_logs[1], 'EVENT_JSON:', ''))->'data'->0->>'locked_near_balance')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS current_voting_power_logs
+    	, CASE 
+ 		    WHEN safe_json_parse(convert_from(ra.args_decoded, 'UTF8'))->>'error' IS NULL
+ 		    THEN (safe_json_parse(convert_from(ra.args_decoded, 'UTF8'))->'update'->'V1'->>'locked_near_balance')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS current_voting_power_args
+    	, ra.receiver_id AS hos_contract_address
     	, ra.block_height
-    	, ra.block_hash 																					AS block_hash																				
+    	, ra.block_hash																		
     	, ra.action_logs
-    	, ROW_NUMBER() OVER (PARTITION BY signer_account_id ORDER BY block_timestamp DESC) 				                AS row_num
+    	, ROW_NUMBER() OVER (PARTITION BY signer_account_id ORDER BY block_timestamp DESC) AS row_num
   	FROM receipt_actions_prep AS ra
   	WHERE
     	ra.method_name = 'on_lockup_update'
@@ -324,7 +676,7 @@ execution_outcomes_prep AS (
 		delegator_id 
 		, delegatee_id
 		, near_amount
-	FROM delegation_events 
+	FROM fastnear.delegation_events
 	WHERE 
 		is_latest_delegator_event = TRUE 
 		AND delegate_method = 'delegate_all'
@@ -343,7 +695,7 @@ execution_outcomes_prep AS (
 , ten_most_recently_approved_proposals AS (
 	SELECT
 		*
-	FROM approved_proposals
+	FROM fastnear.approved_proposals
 	ORDER BY proposal_approved_at DESC
 	LIMIT 10
 )
@@ -355,7 +707,7 @@ execution_outcomes_prep AS (
 			WHEN t.proposal_id IS NULL THEN 0 
 			ELSE 1 END AS is_proposal_from_ten_most_recently_approved 
 	FROM registered_voters_prep AS rv 
-	INNER JOIN proposal_voting_history AS pvh 
+	INNER JOIN fastnear.proposal_voting_history AS pvh 
 		ON rv.signer_account_id = pvh.voter_id
 	LEFT JOIN ten_most_recently_approved_proposals AS t
 		ON t.proposal_id = pvh.proposal_id
@@ -363,7 +715,7 @@ execution_outcomes_prep AS (
 , proposal_participation AS (
 	SELECT
 		registered_voter_id
-		, SUM(is_proposal_from_ten_most_recently_approved)::NUMERIC      AS num_recently_approved_proposals_voted_on
+		, SUM(is_proposal_from_ten_most_recently_approved)::NUMERIC AS num_recently_approved_proposals_voted_on
 		, SUM(is_proposal_from_ten_most_recently_approved)::NUMERIC / 10 AS proposal_participation_rate 
 	FROM registered_voter_proposal_voting_history
 	GROUP BY 1
@@ -372,13 +724,13 @@ execution_outcomes_prep AS (
 /* Registered Voters + Current Voting Power */
 	SELECT
 		MD5(ra.receipt_id) AS id
- 		, ra.receipt_id AS receipt_id
- 		, DATE(ra.block_timestamp) 	   AS registered_date
- 		, ra.block_timestamp      	   AS registered_at
+ 		, ra.receipt_id
+ 		, DATE(ra.block_timestamp) AS registered_date
+ 		, ra.block_timestamp AS registered_at
 
  		--Deploy Lockup Details
- 		, ra.signer_account_id         AS registered_voter_id
- 		, ra.receiver_id       		   AS hos_contract_address
+ 		, ra.signer_account_id AS registered_voter_id
+ 		, ra.receiver_id AS hos_contract_address
  		, CASE
 	 		WHEN cvp.row_num IS NULL THEN FALSE
 	 		ELSE TRUE
@@ -390,14 +742,14 @@ execution_outcomes_prep AS (
  			END AS is_actively_delegating --TRUE if the latest delegation event for this account = 'delegate_all'
 
  		--Voting Power
-		, COALESCE(dvp.delegations_voting_power, 0)                         AS voting_power_from_delegations
+		, COALESCE(dvp.delegations_voting_power, 0) AS voting_power_from_delegations
 		, COALESCE(cvp.current_voting_power_logs, ivp.initial_voting_power) AS voting_power_from_locks_unlocks
- 		, COALESCE(ivp.initial_voting_power, 0)                             AS initial_voting_power
+ 		, COALESCE(ivp.initial_voting_power, 0) AS initial_voting_power
  		, pp.proposal_participation_rate
 
  		--Block Details (For the deploy_lockup - aka "vote registration" - action on the veNEAR HOS contract address)
  		, ra.block_height
- 		, ra.block_hash AS block_hash
+ 		, ra.block_hash
 
 	FROM registered_voters_prep AS ra 						    --Sourced from the deploy_lockup event
 	LEFT JOIN current_voting_power_from_locks_unlocks AS cvp 	--Sourced from the voter's most recent on_lockup_update event
@@ -437,3 +789,335 @@ SELECT
 	, block_hash
 FROM final 
 ;
+
+/*
+ Primary key on this table is a composite of proposal_id and registered_voter_id. 
+ This view returns a list of all the registered voters who have not yet voted on a given proposal_id. 
+ References the proposals, registered_voters and proposal_voting_history views. 
+*/
+
+CREATE VIEW fastnear.proposal_non_voters AS 
+SELECT 
+    MD5(CONCAT(p.proposal_id, '_', rv.registered_voter_id)) AS id
+    , p.proposal_id
+    , rv.registered_voter_id
+FROM fastnear.proposals AS p
+CROSS JOIN fastnear.registered_voters AS rv
+WHERE NOT EXISTS (
+    SELECT 
+    	1 
+    FROM fastnear.proposal_voting_history AS h
+    WHERE 
+    	h.proposal_id = p.proposal_id 
+    	AND h.voter_id = rv.registered_voter_id
+)
+ORDER BY 2 ASC, 3 ASC
+;
+
+/*
+ This is a dimensional table that returns all historical delegate/undelegate & stake/unstake events for a given user account; both successful and failed events are included. 
+ Primary key is the receipt_id (base58 encoded) associated with any given event per account_id.
+ Unique method_names referenced as an individual event: 
+ (1) on_lockup_deployed, (2) lock_near, (3) on_lockup_update, (4) end_unlock_near, (5) delegate_all, (6) undelegate, (7) begin_unlock_near, (8) lock_pending_near
+ 
+ 1. Timestamp / date of the event
+ 2. House of Stake contract address 
+ 3. Event Type / Method Name 
+ 4. Event Status (one of succeeded or failed)
+ 5. Account ID (the user performing the NEAR delegation) 
+ 6. Near amount 
+ 7. Locked near balance 
+ 8. The block-related data for the event (block hash, block height) 
+ */
+
+CREATE VIEW fastnear.user_activities AS
+WITH execution_outcomes_prep AS (
+	SELECT
+		receipt_id
+		, status
+		, logs
+	FROM fastnear.execution_outcomes
+)
+, receipt_actions_prep AS (
+	SELECT
+		decode(ra.args_base64, 'base64') AS args_decoded
+		, CASE 
+			WHEN eo.status IN ('SuccessReceiptId', 'SuccessValue') THEN 'succeeded'
+			WHEN eo.status IN ('Failure') THEN 'failed'
+			ELSE NULL
+			END AS event_status
+		, eo.status                      AS status
+		, eo.logs                        AS logs
+		, ra.*
+	FROM fastnear.receipt_actions AS ra
+	LEFT JOIN execution_outcomes_prep AS eo
+		ON ra.receipt_id = eo.receipt_id
+	WHERE
+		ra.action_kind = 'FunctionCall'
+)
+--------------------
+--Account Creation--
+--------------------
+, on_lockup_deployed AS (
+  	SELECT
+  		ra.receipt_id AS id 
+  		, ra.receipt_id
+  		, ra.block_timestamp AS event_timestamp
+  		, COALESCE(CASE 
+ 		    WHEN safe_json_parse(REPLACE(ra.logs[1], 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN safe_json_parse(REPLACE(ra.logs[1], 'EVENT_JSON:', ''))->>'event'
+ 		    ELSE NULL 
+ 		  END, 'lockup_deployed') AS event_type
+  		, ra.method_name 
+  		, ra.event_status
+    	, ra.signer_account_id AS account_id
+    	, ra.predecessor_id AS hos_contract_address 
+    	, CASE 
+ 		    WHEN safe_json_parse(CONVERT_FROM(DECODE(ra.args_base64, 'base64'), 'UTF8'))->>'error' IS NULL
+ 		    THEN (safe_json_parse(CONVERT_FROM(DECODE(ra.args_base64, 'base64'), 'UTF8'))->>'lockup_deposit')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS near_amount 
+    	, CASE 
+ 		    WHEN safe_json_parse(REPLACE(ra.logs[1], 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN (safe_json_parse(REPLACE(ra.logs[1], 'EVENT_JSON:', ''))->'data'->0->>'locked_near_balance')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS locked_near_balance --Field exists in the logs, but is ALWAYS NULL  
+    	, ra.block_height
+    	, ra.block_hash
+  	FROM receipt_actions_prep AS ra
+  	WHERE
+    	ra.method_name = 'on_lockup_deployed'
+		AND ra.receiver_id IN (          
+ 			'v.r-1748895584.testnet'  
+ 			, 'vote.r-1748895584.testnet' 
+ 			)
+)
+-------------
+--Lock NEAR--
+-------------
+, lock_near AS (
+  	SELECT
+  		ra.receipt_id AS id 
+  		, ra.receipt_id
+  		, ra.block_timestamp AS event_timestamp
+  		, COALESCE(CASE 
+ 		    WHEN safe_json_parse(REPLACE(ra.logs[1], 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN safe_json_parse(REPLACE(ra.logs[1], 'EVENT_JSON:', ''))->>'event'
+ 		    ELSE NULL 
+ 		  END, 'lockup_lock_near') AS event_type --COALESCE required WHEN log IS failed; RETURNS NULL otherwise 
+  		, ra.method_name 
+  		, ra.event_status
+    	, ra.signer_account_id AS account_id
+    	, SUBSTRING(ra.receiver_id FROM POSITION('.' IN ra.receiver_id) + 1) AS hos_contract_address 
+		, CASE 
+ 		    WHEN safe_json_parse(CONVERT_FROM(DECODE(ra.args_base64, 'base64'), 'UTF8'))->>'error' IS NULL
+ 		    THEN (safe_json_parse(CONVERT_FROM(DECODE(ra.args_base64, 'base64'), 'UTF8'))->>'amount')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS near_amount 
+  		, CASE 
+ 		    WHEN safe_json_parse(REPLACE(ra.logs[1], 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN (safe_json_parse(REPLACE(ra.logs[1], 'EVENT_JSON:', ''))->'data'->0->>'locked_near_balance')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS locked_near_balance 
+    	, ra.block_height
+    	, ra.block_hash
+  	FROM receipt_actions_prep AS ra
+  	WHERE
+    	ra.method_name = 'lock_near'
+		AND SUBSTRING(ra.receiver_id FROM POSITION('.' IN ra.receiver_id) + 1) IN (
+ 			'v.r-1748895584.testnet'  
+ 			, 'vote.r-1748895584.testnet' 
+ 			)
+)
+, on_lockup_update_prep AS (
+    --There are 2 event_json arrays per on_lockup_update method; 1st event is on_lockup_update; 2nd is ft_mint. 
+	-- Single pass over logs array to extract all needed values
+    SELECT 
+    	ra.receipt_id AS id
+    	, ra.receipt_id
+        , ra.block_timestamp AS event_timestamp
+        , ra.method_name 
+        , ra.event_status 
+        , ra.signer_account_id AS account_id 
+        , ra.receiver_id AS hos_contract_address 
+        , ra.block_hash AS block_hash 
+        , ra.block_height
+        -- Extract event type (ft_mint or ft_burn)
+        , MAX(CASE 
+            WHEN safe_json_parse(REPLACE(log, 'EVENT_JSON:', ''))->>'error' IS NULL
+            AND safe_json_parse(REPLACE(log, 'EVENT_JSON:', ''))->>'event' IN ('ft_mint', 'ft_burn') 
+            THEN safe_json_parse(REPLACE(log, 'EVENT_JSON:', ''))->>'event' 
+        	END) AS ft_event_type
+        -- Extract locked_near_balance from lockup_update event
+        , MAX(CASE 
+            WHEN safe_json_parse(REPLACE(log, 'EVENT_JSON:', ''))->>'error' IS NULL
+            AND safe_json_parse(REPLACE(log, 'EVENT_JSON:', ''))->>'event' = 'lockup_update' 
+            THEN (safe_json_parse(REPLACE(log, 'EVENT_JSON:', ''))->'data'->0->>'locked_near_balance')::NUMERIC 
+        	END) AS locked_near_balance
+        -- Extract amount from ft_mint or ft_burn event
+        , MAX(CASE 
+            WHEN safe_json_parse(REPLACE(log, 'EVENT_JSON:', ''))->>'error' IS NULL
+            AND safe_json_parse(REPLACE(log, 'EVENT_JSON:', ''))->>'event' IN ('ft_mint', 'ft_burn') 
+            THEN (safe_json_parse(REPLACE(log, 'EVENT_JSON:', ''))->'data'->0->>'amount')::NUMERIC 
+        	END) AS near_amount
+    FROM receipt_actions_prep AS ra
+    CROSS JOIN LATERAL UNNEST(ra.logs) AS log
+    WHERE 
+    	ra.method_name = 'on_lockup_update'
+        AND ra.receiver_id IN (        
+ 			'v.r-1748895584.testnet'  
+ 			, 'vote.r-1748895584.testnet' 
+ 			)
+    GROUP BY 1,2,3,4,5,6,7,8,9
+)
+, on_lockup_update AS (
+    SELECT
+    	id
+    	, receipt_id
+    	, event_timestamp
+    	, COALESCE(method_name || '_' || ft_event_type, method_name) AS event_type
+        , method_name 
+    	, event_status 
+    	, account_id 
+    	, hos_contract_address
+    	, near_amount 
+    	, locked_near_balance 
+    	, block_height 
+    	, block_hash
+    FROM on_lockup_update_prep
+)
+ -------------------------------
+ --Delegations / Undelegations--
+ -------------------------------
+ , delegations_undelegations AS (
+   	SELECT
+   		MD5(CONCAT(ra.receipt_id, '_',  	
+ 			CASE 
+ 		    WHEN safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->'data'->0->>'owner_id'
+ 		    ELSE NULL 
+ 		  END)) AS id 
+  		, ra.receipt_id
+  		, ra.block_timestamp AS event_timestamp
+  		, COALESCE(ra.method_name || '_' || CASE 
+ 		    WHEN safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->>'event'
+ 		    ELSE NULL 
+ 		  END, ra.method_name) AS event_type 
+  		, ra.method_name 
+  		, ra.event_status
+    	, COALESCE(CASE 
+ 		    WHEN safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->'data'->0->>'owner_id'
+ 		    ELSE NULL 
+ 		  END, ra.signer_account_id) AS account_id
+    	, ra.receiver_id AS hos_contract_address 
+	    , CASE 
+ 		    WHEN safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->>'error' IS NULL
+ 		    THEN (safe_json_parse(REPLACE(unnested_logs, 'EVENT_JSON:', ''))->'data'->0->>'amount')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS near_amount
+	    , NULL::NUMERIC AS locked_near_balance --This does NOT exist FOR delegate_all AND undelegate events 
+    	, ra.block_height
+    	, ra.block_hash
+  	FROM receipt_actions_prep AS ra
+  	LEFT JOIN LATERAL UNNEST(ra.logs) AS unnested_logs 
+ 		ON TRUE
+  	WHERE
+    	ra.method_name IN ('delegate_all', 'undelegate')
+		AND ra.receiver_id IN (           
+ 			'v.r-1748895584.testnet'  
+ 			, 'vote.r-1748895584.testnet' 
+ 			)
+)
+---------------------
+--Begin Unlock NEAR--
+---------------------
+, begin_unlock_near AS ( 
+  	SELECT 
+  		ra.receipt_id AS id 
+  		, ra.receipt_id
+  		, ra.block_timestamp AS event_timestamp
+  		, method_name AS event_type 
+  		, ra.method_name 
+  		, ra.event_status
+    	, ra.signer_account_id AS account_id
+    	, SUBSTRING(ra.receiver_id FROM POSITION('.' IN ra.receiver_id) + 1) AS hos_contract_address 
+		, CASE 
+ 		    WHEN safe_json_parse(CONVERT_FROM(DECODE(ra.args_base64, 'base64'), 'UTF8'))->>'error' IS NULL
+ 		    THEN (safe_json_parse(CONVERT_FROM(DECODE(ra.args_base64, 'base64'), 'UTF8'))->>'amount')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS near_amount 
+		, NULL::NUMERIC AS locked_near_balance --There ARE NO logs FOR this event_type
+        , ra.block_height
+    	, ra.block_hash
+  	FROM receipt_actions_prep AS ra
+  	WHERE
+    	ra.method_name = 'begin_unlock_near'
+		AND SUBSTRING(ra.receiver_id FROM POSITION('.' IN ra.receiver_id) + 1) IN (           
+ 			'v.r-1748895584.testnet'  
+ 			, 'vote.r-1748895584.testnet' 
+ 			)
+ )
+------------------------
+--Re-Lock Pending NEAR--
+------------------------
+, relock_pending_near AS ( 
+  	SELECT
+  		ra.receipt_id AS id 
+  		, ra.receipt_id
+  		, ra.block_timestamp AS event_timestamp
+  		, method_name AS event_type 
+  		, ra.method_name 
+  		, ra.event_status
+    	, ra.signer_account_id AS account_id
+    	, SUBSTRING(ra.receiver_id FROM POSITION('.' IN ra.receiver_id) + 1) AS hos_contract_address 
+		, CASE 
+ 		    WHEN safe_json_parse(CONVERT_FROM(DECODE(ra.args_base64, 'base64'), 'UTF8'))->>'error' IS NULL
+ 		    THEN (safe_json_parse(CONVERT_FROM(DECODE(ra.args_base64, 'base64'), 'UTF8'))->>'amount')::NUMERIC
+ 		    ELSE NULL 
+ 		  END AS near_amount 
+		, NULL::NUMERIC AS locked_near_balance --There ARE NO logs FOR this event_type
+    	, ra.block_height
+    	, ra.block_hash
+  	FROM receipt_actions_prep AS ra
+  	WHERE
+    	ra.method_name = 'lock_pending_near'
+		AND SUBSTRING(ra.receiver_id FROM POSITION('.' IN ra.receiver_id) + 1) IN (           
+ 			'v.r-1748895584.testnet'  
+ 			, 'vote.r-1748895584.testnet' 
+ 			)
+ )
+ ----------
+ --UNIONS--
+ ----------
+ , unioned_events AS (
+ 	SELECT * FROM on_lockup_deployed
+ 		UNION ALL 
+ 	SELECT * FROM lock_near
+ 		UNION ALL 
+ 	SELECT * FROM on_lockup_update
+ 		UNION ALL 
+ 	SELECT * FROM delegations_undelegations
+ 		UNION ALL 
+ 	SELECT * FROM begin_unlock_near
+ 	 	UNION ALL 
+ 	SELECT * FROM relock_pending_near
+)
+ SELECT 
+ 	id 
+ 	, receipt_id 
+ 	, hos_contract_address 
+ 	, account_id
+ 	, DATE(event_timestamp) AS event_date 
+ 	, event_timestamp 
+    , method_name 
+ 	, event_type 
+ 	, event_status 
+ 	, near_amount
+ 	, locked_near_balance
+ 	, block_height
+ 	, block_hash
+ FROM unioned_events 
+ ORDER BY account_id ASC, event_timestamp ASC
+ ;

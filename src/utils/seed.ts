@@ -103,7 +103,7 @@ async function seedBlocks() {
     total_supply: "1000000000000000000000000000",
   }));
 
-  await prisma.blocks.createMany({
+  await prisma.fastnear_blocks.createMany({
     data: blocks,
     skipDuplicates: true,
   });
@@ -279,7 +279,7 @@ async function seedReceiptActions() {
 
   const { actions, receiptIds, methodNames } = createReceiptActions();
 
-  await prisma.receipt_actions.createMany({
+  await prisma.fastnear_receipt_actions.createMany({
     data: actions,
     skipDuplicates: true,
   });
@@ -328,7 +328,7 @@ async function seedExecutionOutcomes(
     logs = [generateEventLog("ft_mint", eventData)];
 
     return {
-      receipt_id: `${generateBlockHash()}-${receiptId}`,
+      receipt_id: receiptId,
       block_height: blockHeight,
       block_hash: generateBlockHash(),
       chunk_hash: generateBlockHash(),
@@ -344,7 +344,7 @@ async function seedExecutionOutcomes(
     };
   });
 
-  await prisma.execution_outcomes.createMany({
+  await prisma.fastnear_execution_outcomes.createMany({
     data: outcomes,
     skipDuplicates: true,
   });
@@ -363,9 +363,16 @@ async function seedWeb2Data() {
       message: `Delegate statement for ${faker.helpers.arrayElement(
         NEAR_ACCOUNTS
       )}`,
-      topIssues: {
-        issues: Array.from({ length: 3 }, () => faker.lorem.sentence()),
-      },
+      topIssues: Array.from({ length: 3 }, () => ({
+        type: faker.helpers.arrayElement([
+          "crossChain",
+          "fundingAndGrants",
+          "incentivizedParticipation",
+          "security",
+          "houseOfStake",
+        ]),
+        value: faker.lorem.sentence(),
+      })),
       agreeCodeConduct: true,
       twitter: faker.helpers.maybe(() => `@${faker.internet.userName()}`, {
         probability: 0.7,
@@ -427,9 +434,9 @@ async function main() {
     console.log("Database seeding completed successfully!");
 
     const stats = await Promise.all([
-      prisma.blocks.count(),
-      prisma.receipt_actions.count(),
-      prisma.execution_outcomes.count(),
+      prisma.fastnear_blocks.count(),
+      prisma.fastnear_receipt_actions.count(),
+      prisma.fastnear_execution_outcomes.count(),
       prisma.delegate_statements.count(),
       prisma.cache.count(),
     ]);
