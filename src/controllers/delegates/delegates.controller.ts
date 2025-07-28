@@ -35,6 +35,7 @@ interface DeletesQuery {
   page?: string;
   order_by?: string;
   filter_by?: string;
+  issue_type?: string;
 }
 
 type DelegateWithVoterInfo = delegate_statements & registeredVoters;
@@ -65,7 +66,7 @@ export class DelegatesController {
     req: Request<{}, {}, {}, DeletesQuery>,
     res: Response
   ): Promise<void> => {
-    const { page_size, page, order_by, filter_by } = req.query;
+    const { page_size, page, order_by, filter_by, issue_type } = req.query;
     const pageSize = parseInt(page_size ?? "10");
     const pageNumber = parseInt(page ?? "1");
 
@@ -79,8 +80,27 @@ export class DelegatesController {
     }
 
     let filterByClause = Prisma.sql``;
+    const conditions: Prisma.Sql[] = [];
+
     if (filter_by === "endorsed") {
-      filterByClause = Prisma.sql`WHERE ds.endorsed = true`;
+      conditions.push(Prisma.sql`ds.endorsed = true`);
+    }
+
+    if (issue_type) {
+      const issueTypes = issue_type.split(",").map((type) => type.trim());
+      conditions.push(Prisma.sql`EXISTS (
+        SELECT 1 FROM jsonb_array_elements(
+          CASE 
+            WHEN jsonb_typeof(ds."topIssues") = 'array' THEN ds."topIssues"
+            ELSE '[]'::jsonb
+          END
+        ) AS issue
+        WHERE issue->>'type' = ANY(${issueTypes})
+      )`);
+    }
+
+    if (conditions.length > 0) {
+      filterByClause = Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
     }
 
     const [records, countResult] = await Promise.all([
@@ -106,13 +126,15 @@ export class DelegatesController {
           OFFSET ${(pageNumber - 1) * pageSize}
         `
       ),
-      filter_by === "endorsed"
-        ? prisma.$queryRaw<{ count: bigint }[]>`
-            SELECT COUNT(*) as count
-            FROM fastnear.registered_voters rv
-            LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
-            WHERE ds.endorsed = true
-          `
+      conditions.length > 0
+        ? prisma.$queryRaw<{ count: bigint }[]>(
+            Prisma.sql`
+              SELECT COUNT(*) as count
+              FROM fastnear.registered_voters rv
+              LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+              ${filterByClause}
+            `
+          )
         : prisma.registeredVoters.count(),
     ]);
 
@@ -145,7 +167,7 @@ export class DelegatesController {
     });
 
     const count =
-      filter_by === "endorsed"
+      conditions.length > 0
         ? Number((countResult as { count: bigint }[])[0].count)
         : (countResult as number);
 

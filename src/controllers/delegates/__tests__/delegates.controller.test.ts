@@ -301,13 +301,262 @@ describe("DelegatesController", () => {
         })
       );
 
-      // Verify the count query was called for endorsed delegates
+      // Verify the count query was called for endorsed delegates with Prisma.sql format
       expect(prismaMock.$queryRaw).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.stringContaining("SELECT COUNT(*) as count"),
-          expect.stringContaining("WHERE ds.endorsed = true"),
-        ])
+        expect.objectContaining({
+          strings: expect.arrayContaining([
+            expect.stringContaining("SELECT COUNT(*) as count"),
+            expect.stringContaining("WHERE ds.endorsed = true"),
+          ]),
+          values: [],
+        })
       );
+    });
+
+    it("should return delegates filtered by single issue type", async () => {
+      // Arrange
+      const mockTechnicalDelegates = [
+        {
+          registeredVoterId: "tech1.near",
+          currentVotingPower: new Decimal("1000000000000000000000000"),
+          proposalParticipationRate: new Decimal("0.80"),
+          address: "tech1.near",
+          twitter: "@tech1",
+          discord: "tech1#1111",
+          email: "tech1@example.com",
+          warpcast: "tech1",
+          statement: "I focus on technical issues",
+          topIssues: [{ type: "technical", value: "Protocol upgrades" }],
+          endorsed: false,
+        },
+      ];
+      const mockCount = [{ count: BigInt(5) }];
+
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce(mockTechnicalDelegates)
+        .mockResolvedValueOnce(mockCount);
+
+      // Act & Assert
+      const response = await request(app)
+        .get("/api/delegates")
+        .query({ issue_type: "technical" })
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        delegates: [
+          {
+            address: "tech1.near",
+            votingPower: "1000000000000000000000000",
+            participationRate: "0.8",
+            twitter: "@tech1",
+            discord: "tech1#1111",
+            email: "tech1@example.com",
+            warpcast: "tech1",
+            statement: "I focus on technical issues",
+            topIssues: [{ type: "technical", value: "Protocol upgrades" }],
+            endorsed: false,
+          },
+        ],
+        count: 5,
+      });
+
+      // Verify the SQL query contains the issue type filter
+      expect(prismaMock.$queryRaw).toHaveBeenCalledWith(
+        expect.objectContaining({
+          strings: expect.arrayContaining([
+            expect.stringContaining("WHERE"),
+            expect.stringContaining("EXISTS"),
+            expect.stringContaining("jsonb_array_elements"),
+            expect.stringContaining("issue->>'type' = ANY("),
+          ]),
+          values: expect.arrayContaining([["technical"], 10, 0]),
+        })
+      );
+    });
+
+    it("should return delegates filtered by multiple issue types", async () => {
+      // Arrange
+      const mockMultiDelegates = [
+        {
+          registeredVoterId: "multi1.near",
+          currentVotingPower: new Decimal("800000000000000000000000"),
+          proposalParticipationRate: new Decimal("0.85"),
+          address: "multi1.near",
+          twitter: "@multi1",
+          discord: "multi1#1111",
+          email: "multi1@example.com",
+          warpcast: "multi1",
+          statement: "I work on governance and technical issues",
+          topIssues: [
+            { type: "governance", value: "DAO improvements" },
+            { type: "technical", value: "Security audits" },
+          ],
+          endorsed: false,
+        },
+      ];
+      const mockCount = [{ count: BigInt(8) }];
+
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce(mockMultiDelegates)
+        .mockResolvedValueOnce(mockCount);
+
+      // Act & Assert
+      const response = await request(app)
+        .get("/api/delegates")
+        .query({ issue_type: "governance,technical" })
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        delegates: [
+          {
+            address: "multi1.near",
+            votingPower: "800000000000000000000000",
+            participationRate: "0.85",
+            twitter: "@multi1",
+            discord: "multi1#1111",
+            email: "multi1@example.com",
+            warpcast: "multi1",
+            statement: "I work on governance and technical issues",
+            topIssues: [
+              { type: "governance", value: "DAO improvements" },
+              { type: "technical", value: "Security audits" },
+            ],
+            endorsed: false,
+          },
+        ],
+        count: 8,
+      });
+
+      // Verify the SQL query contains the multiple issue types filter
+      expect(prismaMock.$queryRaw).toHaveBeenCalledWith(
+        expect.objectContaining({
+          strings: expect.arrayContaining([
+            expect.stringContaining("WHERE"),
+            expect.stringContaining("EXISTS"),
+            expect.stringContaining("jsonb_array_elements"),
+            expect.stringContaining("issue->>'type' = ANY("),
+          ]),
+          values: expect.arrayContaining([["governance", "technical"], 10, 0]),
+        })
+      );
+    });
+
+    it("should return delegates filtered by both endorsed and issue type", async () => {
+      // Arrange
+      const mockFilteredDelegates = [
+        {
+          registeredVoterId: "endorsed-tech.near",
+          currentVotingPower: new Decimal("1500000000000000000000000"),
+          proposalParticipationRate: new Decimal("0.90"),
+          address: "endorsed-tech.near",
+          twitter: "@endorsed-tech",
+          discord: "endorsed-tech#1111",
+          email: "endorsed-tech@example.com",
+          warpcast: "endorsed-tech",
+          statement: "Endorsed technical expert",
+          topIssues: [{ type: "technical", value: "Smart contract security" }],
+          endorsed: true,
+        },
+      ];
+      const mockCount = [{ count: BigInt(3) }];
+
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce(mockFilteredDelegates)
+        .mockResolvedValueOnce(mockCount);
+
+      // Act & Assert
+      const response = await request(app)
+        .get("/api/delegates")
+        .query({ filter_by: "endorsed", issue_type: "technical" })
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        delegates: [
+          {
+            address: "endorsed-tech.near",
+            votingPower: "1500000000000000000000000",
+            participationRate: "0.9",
+            twitter: "@endorsed-tech",
+            discord: "endorsed-tech#1111",
+            email: "endorsed-tech@example.com",
+            warpcast: "endorsed-tech",
+            statement: "Endorsed technical expert",
+            topIssues: [
+              { type: "technical", value: "Smart contract security" },
+            ],
+            endorsed: true,
+          },
+        ],
+        count: 3,
+      });
+
+      // Verify the SQL query contains both filters with AND condition
+      expect(prismaMock.$queryRaw).toHaveBeenCalledWith(
+        expect.objectContaining({
+          strings: expect.arrayContaining([
+            expect.stringContaining("WHERE"),
+            expect.stringContaining("ds.endorsed = true"),
+            expect.stringContaining("AND"),
+            expect.stringContaining("EXISTS"),
+            expect.stringContaining("jsonb_array_elements"),
+            expect.stringContaining("issue->>'type' = ANY("),
+          ]),
+          values: expect.arrayContaining([["technical"], 10, 0]),
+        })
+      );
+    });
+
+    it("should handle issue types with whitespace correctly", async () => {
+      // Arrange
+      const mockDelegates: any[] = [];
+      const mockCount = [{ count: BigInt(0) }];
+
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce(mockDelegates)
+        .mockResolvedValueOnce(mockCount);
+
+      // Act & Assert
+      await request(app)
+        .get("/api/delegates")
+        .query({ issue_type: " governance , technical , economic " })
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      // Verify the issue types are trimmed correctly
+      expect(prismaMock.$queryRaw).toHaveBeenCalledWith(
+        expect.objectContaining({
+          values: expect.arrayContaining([
+            ["governance", "technical", "economic"],
+            10,
+            0,
+          ]),
+        })
+      );
+    });
+
+    it("should return empty results when no delegates match issue type filter", async () => {
+      // Arrange
+      const mockDelegates: any[] = [];
+      const mockCount = [{ count: BigInt(0) }];
+
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce(mockDelegates)
+        .mockResolvedValueOnce(mockCount);
+
+      // Act & Assert
+      const response = await request(app)
+        .get("/api/delegates")
+        .query({ issue_type: "nonexistent" })
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        delegates: [],
+        count: 0,
+      });
     });
 
     it("should handle null voting power and participation rate gracefully", async () => {
