@@ -84,7 +84,7 @@ describe("DraftProposalController", () => {
         .expect("Content-Type", /json/);
 
       expect(response.body).toEqual({
-        error: "Title, description, and author are required",
+        error: "Author is required",
       });
     });
 
