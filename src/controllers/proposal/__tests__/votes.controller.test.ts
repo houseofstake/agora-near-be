@@ -364,13 +364,13 @@ describe("ProposalVotingHistoryController", () => {
           id: "1",
           proposal_id: 1,
           registered_voter_id: "nonvoter1.near",
-          current_voting_power: "1000000000000000000000000",
+          current_voting_power: new Decimal("1000000000000000000000000"),
         },
         {
           id: "2",
           proposal_id: 1,
           registered_voter_id: "nonvoter2.near",
-          current_voting_power: "500000000000000000000000",
+          current_voting_power: new Decimal("500000000000000000000000"),
         },
       ];
       const mockCount = 25;
@@ -416,7 +416,7 @@ describe("ProposalVotingHistoryController", () => {
           id: "3",
           proposal_id: 2,
           registered_voter_id: "nonvoter3.near",
-          current_voting_power: "750000000000000000000000",
+          current_voting_power: new Decimal("750000000000000000000000"),
         },
       ];
       const mockCount = 12;
@@ -508,7 +508,7 @@ describe("ProposalVotingHistoryController", () => {
           id: "1",
           proposal_id: 1,
           registered_voter_id: "nonvoter1.near",
-          current_voting_power: "1000000000000000000000000",
+          current_voting_power: new Decimal("1000000000000000000000000"),
         },
       ];
 
