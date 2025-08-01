@@ -1,5 +1,6 @@
-import { PrismaClient } from "../generated/prisma";
+import { PrismaClient, Prisma } from "../generated/prisma";
 import { faker } from "@faker-js/faker";
+import { randomUUID } from "crypto";
 
 const prisma = new PrismaClient();
 
@@ -44,33 +45,6 @@ const SEED_COUNTS = {
 const BASE_BLOCK_HEIGHT = BigInt(1000000);
 const BASE_TIMESTAMP = Date.now() - 30 * 24 * 60 * 60 * 1000; // 30 days ago
 
-// Unique ID generators with collision prevention
-const usedIds = new Set<string>();
-
-function generateUniqueId(length: number): string {
-  let id: string;
-  let attempts = 0;
-  do {
-    id = faker.string.alphanumeric(length);
-    attempts++;
-    if (attempts > 100) {
-      throw new Error(
-        `Failed to generate unique ID after ${attempts} attempts`
-      );
-    }
-  } while (usedIds.has(id));
-  usedIds.add(id);
-  return id;
-}
-
-function generateReceiptId(): string {
-  return generateUniqueId(44);
-}
-
-function generateBlockHash(): string {
-  return generateUniqueId(44);
-}
-
 function generateBase64Args(data: any): string {
   return Buffer.from(JSON.stringify(data)).toString("base64");
 }
@@ -91,17 +65,20 @@ function getTimestamp(daysAgo: number): Date {
 async function seedBlocks() {
   console.log("Seeding blocks...");
 
-  const blocks = Array.from({ length: SEED_COUNTS.BLOCKS }, (_, i) => ({
-    height: BASE_BLOCK_HEIGHT + BigInt(i),
-    hash: generateBlockHash(),
-    prev_hash: generateBlockHash(),
-    author: faker.helpers.arrayElement(NEAR_ACCOUNTS),
-    timestamp: getTimestamp(i - SEED_COUNTS.BLOCKS + 1),
-    gas_price: (
-      100000000 + faker.number.int({ min: 0, max: 50000000 })
-    ).toString(),
-    total_supply: "1000000000000000000000000000",
-  }));
+  const blocks: Prisma.fastnear_blocksCreateManyInput[] = Array.from(
+    { length: SEED_COUNTS.BLOCKS },
+    (_, i) => ({
+      height: BASE_BLOCK_HEIGHT + BigInt(i),
+      hash: randomUUID(),
+      prev_hash: randomUUID(),
+      author: faker.helpers.arrayElement(NEAR_ACCOUNTS),
+      timestamp: getTimestamp(i - SEED_COUNTS.BLOCKS + 1),
+      gas_price: (
+        100000000 + faker.number.int({ min: 0, max: 50000000 })
+      ).toString(),
+      total_supply: "1000000000000000000000000000",
+    })
+  );
 
   await prisma.fastnear_blocks.createMany({
     data: blocks,
@@ -122,8 +99,8 @@ function createActionTemplate(
     signer_public_key: faker.string.alphanumeric(88),
     gas_price: "100000000",
     action_kind: "FunctionCall",
-    block_hash: generateBlockHash(),
-    chunk_hash: generateBlockHash(),
+    block_hash: randomUUID(),
+    chunk_hash: randomUUID(),
     author: faker.helpers.arrayElement(NEAR_ACCOUNTS),
     method_name: methodName,
     gas: BigInt(faker.number.int({ min: 1000000, max: 10000000 })),
@@ -144,7 +121,7 @@ function createReceiptActions() {
     createSpecific: (base: any, i: number) => any
   ) => {
     for (let i = 0; i < count; i++) {
-      const receiptId = generateReceiptId();
+      const receiptId = randomUUID();
       receiptIds.push(receiptId);
       methodNames.push(methodName);
 
@@ -330,16 +307,16 @@ async function seedExecutionOutcomes(
     return {
       receipt_id: receiptId,
       block_height: blockHeight,
-      block_hash: generateBlockHash(),
-      chunk_hash: generateBlockHash(),
+      block_hash: randomUUID(),
+      chunk_hash: randomUUID(),
       shard_id: "0",
       gas_burnt: BigInt(faker.number.int({ min: 1000000, max: 10000000 })),
       gas_used: faker.number.float({ min: 1000000, max: 10000000 }),
       tokens_burnt: faker.number.float({ min: 0.001, max: 0.1 }),
       executor_account_id: faker.helpers.arrayElement(NEAR_ACCOUNTS),
       status: faker.helpers.arrayElement(["SuccessValue", "SuccessReceiptId"]),
-      outcome_receipt_ids: [generateReceiptId()],
-      executed_in_block_hash: generateBlockHash(),
+      outcome_receipt_ids: [randomUUID()],
+      executed_in_block_hash: randomUUID(),
       logs,
     };
   });
@@ -353,9 +330,8 @@ async function seedExecutionOutcomes(
 async function seedWeb2Data() {
   console.log("Seeding web2 data...");
 
-  const delegateStatements = Array.from(
-    { length: SEED_COUNTS.DELEGATE_STATEMENTS },
-    () => ({
+  const delegateStatements: Prisma.delegate_statementsCreateManyInput[] =
+    Array.from({ length: SEED_COUNTS.DELEGATE_STATEMENTS }, () => ({
       address: faker.helpers.arrayElement(NEAR_ACCOUNTS),
       signature: faker.string.alphanumeric(128),
       statement: faker.lorem.paragraphs(3),
@@ -392,10 +368,9 @@ async function seedWeb2Data() {
         probability: 0.3,
       }),
       endorsed: faker.helpers.maybe(() => true, { probability: 0.4 }),
-    })
-  );
+    }));
 
-  const cacheData = Array.from(
+  const cacheData: Prisma.cacheCreateManyInput[] = Array.from(
     { length: SEED_COUNTS.CACHE_ENTRIES },
     (_, i) => ({
       key: `cache_key_${i}`,
