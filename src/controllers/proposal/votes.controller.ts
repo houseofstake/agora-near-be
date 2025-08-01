@@ -10,6 +10,13 @@ interface PaginationQuery {
   page?: string;
 }
 
+interface NonVoterRecord {
+  id: number;
+  proposal_id: number;
+  registered_voter_id: string;
+  current_voting_power: number | null;
+}
+
 export class ProposalVotingHistoryController {
   public getProposalVotingHistory = async (
     req: Request<ProposalParams, {}, {}, PaginationQuery>,
@@ -100,17 +107,31 @@ export class ProposalVotingHistoryController {
       const pageNumber = parseInt(page ?? "1");
       const proposalId = parseInt(proposal_id);
 
-      const records = await prisma.proposalNonVoters.findMany({
-        where: { proposalId },
-        skip: (pageNumber - 1) * pageSize,
-        take: pageSize,
-      });
+      const records = await prisma.$queryRaw<NonVoterRecord[]>`
+        SELECT 
+          pnv.id,
+          pnv.proposal_id,
+          pnv.registered_voter_id,
+          rv.current_voting_power
+        FROM fastnear.proposal_non_voters pnv
+        LEFT JOIN fastnear.registered_voters rv ON pnv.registered_voter_id = rv.registered_voter_id
+        WHERE pnv.proposal_id = ${proposalId}
+        ORDER BY rv.current_voting_power DESC NULLS LAST
+        LIMIT ${pageSize} OFFSET ${(pageNumber - 1) * pageSize}
+      `;
 
       const count = await prisma.proposalNonVoters.count({
         where: { proposalId },
       });
 
-      res.status(200).json({ nonVoters: records, count });
+      const nonVotersWithVotingPower = records.map((record) => ({
+        id: record.id,
+        proposalId: record.proposal_id,
+        registeredVoterId: record.registered_voter_id,
+        votingPower: record.current_voting_power?.toFixed() ?? "0",
+      }));
+
+      res.status(200).json({ nonVoters: nonVotersWithVotingPower, count });
     } catch (error) {
       console.error("Error fetching proposal non voters:", error);
       res.status(500).json({ error: "Failed to fetch proposal non voters" });
