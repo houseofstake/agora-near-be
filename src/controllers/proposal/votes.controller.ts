@@ -10,6 +10,13 @@ interface PaginationQuery {
   page?: string;
 }
 
+interface NonVoterRecord {
+  id: number;
+  proposal_id: number;
+  registered_voter_id: string;
+  current_voting_power: number | null;
+}
+
 export class ProposalVotingHistoryController {
   public getProposalVotingHistory = async (
     req: Request<ProposalParams, {}, {}, PaginationQuery>,
@@ -100,7 +107,7 @@ export class ProposalVotingHistoryController {
       const pageNumber = parseInt(page ?? "1");
       const proposalId = parseInt(proposal_id);
 
-      const records = await prisma.$queryRaw`
+      const records = await prisma.$queryRaw<NonVoterRecord[]>`
         SELECT 
           pnv.id,
           pnv.proposal_id,
@@ -117,11 +124,11 @@ export class ProposalVotingHistoryController {
         where: { proposalId },
       });
 
-      const nonVotersWithVotingPower = (records as any[]).map((record) => ({
+      const nonVotersWithVotingPower = records.map((record) => ({
         id: record.id,
         proposalId: record.proposal_id,
         registeredVoterId: record.registered_voter_id,
-        votingPower: record.current_voting_power?.toString() ?? "0",
+        votingPower: record.current_voting_power?.toFixed() ?? "0",
       }));
 
       res.status(200).json({ nonVoters: nonVotersWithVotingPower, count });
