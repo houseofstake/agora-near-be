@@ -1,3 +1,4 @@
+import "./tracer";
 import dotenv from "dotenv";
 import app from "./app";
 import { PrismaClient } from "./generated/prisma";
