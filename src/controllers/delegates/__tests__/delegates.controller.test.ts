@@ -59,8 +59,9 @@ describe("DelegatesController", () => {
       ];
       const mockCount = 100;
 
-      prismaMock.$queryRaw.mockResolvedValue(mockDelegates);
-      prismaMock.registeredVoters.count.mockResolvedValue(mockCount);
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce(mockDelegates)
+        .mockResolvedValueOnce([{ count: BigInt(mockCount) }]);
 
       // Act & Assert
       const response = await request(app)
@@ -98,7 +99,7 @@ describe("DelegatesController", () => {
         count: mockCount,
       });
 
-      expect(prismaMock.registeredVoters.count).toHaveBeenCalled();
+      expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
     });
 
     it("should return delegates with custom pagination", async () => {
@@ -120,8 +121,9 @@ describe("DelegatesController", () => {
       ];
       const mockCount = 50;
 
-      prismaMock.$queryRaw.mockResolvedValue(mockDelegates);
-      prismaMock.registeredVoters.count.mockResolvedValue(mockCount);
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce(mockDelegates)
+        .mockResolvedValueOnce([{ count: BigInt(mockCount) }]);
 
       // Act & Assert
       const response = await request(app)
@@ -165,8 +167,9 @@ describe("DelegatesController", () => {
       const mockDelegates: any[] = [];
       const mockCount = 0;
 
-      prismaMock.$queryRaw.mockResolvedValue(mockDelegates);
-      prismaMock.registeredVoters.count.mockResolvedValue(mockCount);
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce(mockDelegates)
+        .mockResolvedValueOnce([{ count: BigInt(mockCount) }]);
 
       // Act & Assert
       await request(app)
@@ -193,8 +196,9 @@ describe("DelegatesController", () => {
       const mockDelegates: any[] = [];
       const mockCount = 0;
 
-      prismaMock.$queryRaw.mockResolvedValue(mockDelegates);
-      prismaMock.registeredVoters.count.mockResolvedValue(mockCount);
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce(mockDelegates)
+        .mockResolvedValueOnce([{ count: BigInt(mockCount) }]);
 
       // Act & Assert
       await request(app)
@@ -578,8 +582,9 @@ describe("DelegatesController", () => {
       ];
       const mockCount = 1;
 
-      prismaMock.$queryRaw.mockResolvedValue(mockDelegates);
-      prismaMock.registeredVoters.count.mockResolvedValue(mockCount);
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce(mockDelegates)
+        .mockResolvedValueOnce([{ count: BigInt(mockCount) }]);
 
       // Act & Assert
       const response = await request(app)

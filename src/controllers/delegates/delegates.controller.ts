@@ -76,7 +76,7 @@ export class DelegatesController {
     } else if (order_by === "least_voting_power") {
       orderByClause = Prisma.sql`ORDER BY rv.current_voting_power ASC NULLS FIRST`;
     } else {
-      orderByClause = Prisma.sql`ORDER BY -log(random()) / NULLIF(rv.current_voting_power, 0)`;
+      orderByClause = Prisma.sql`ORDER BY -log(random()) / NULLIF(rv.current_voting_power, 0) NULLS LAST`;
     }
 
     let filterByClause = Prisma.sql``;
@@ -110,7 +110,7 @@ export class DelegatesController {
             rv.registered_voter_id as "registeredVoterId",
             rv.current_voting_power as "currentVotingPower",
             rv.proposal_participation_rate as "proposalParticipationRate",
-            ds.address,
+            COALESCE(rv.registered_voter_id, ds.address) as address,
             ds.twitter,
             ds.discord,
             ds.email,
@@ -119,23 +119,21 @@ export class DelegatesController {
             ds."topIssues",
             ds.endorsed
           FROM fastnear.registered_voters rv
-          LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+          FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
           ${filterByClause}
           ${orderByClause}
           LIMIT ${pageSize}
           OFFSET ${(pageNumber - 1) * pageSize}
         `
       ),
-      conditions.length > 0
-        ? prisma.$queryRaw<{ count: bigint }[]>(
-            Prisma.sql`
-              SELECT COUNT(*) as count
-              FROM fastnear.registered_voters rv
-              LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
-              ${filterByClause}
-            `
-          )
-        : prisma.registeredVoters.count(),
+      prisma.$queryRaw<{ count: bigint }[]>(
+        Prisma.sql`
+          SELECT COUNT(*) as count
+          FROM fastnear.registered_voters rv
+          FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+          ${filterByClause}
+        `
+      ),
     ]);
 
     const delegates = records.map((record) => {
@@ -143,6 +141,7 @@ export class DelegatesController {
         registeredVoterId,
         currentVotingPower,
         proposalParticipationRate,
+        address,
         twitter,
         discord,
         email,
@@ -153,7 +152,7 @@ export class DelegatesController {
       } = record;
 
       return {
-        address: registeredVoterId,
+        address,
         votingPower: currentVotingPower?.toFixed(),
         participationRate: proposalParticipationRate?.toFixed(),
         twitter,
@@ -166,10 +165,8 @@ export class DelegatesController {
       };
     });
 
-    const count =
-      conditions.length > 0
-        ? Number((countResult as { count: bigint }[])[0].count)
-        : (countResult as number);
+    const countArray = countResult as { count: bigint }[];
+    const count = Number(countArray[0].count);
 
     res.status(200).json({ delegates, count });
   };
@@ -182,27 +179,29 @@ export class DelegatesController {
       const { address } = req.params;
       const { networkId } = req.query;
 
-      const voterData = await prisma.$queryRaw<DelegateWithVoterInfo[]>`
-        SELECT
-          rv.registered_voter_id as "registeredVoterId",
-          rv.current_voting_power as "currentVotingPower",
-          rv.proposal_participation_rate as "proposalParticipationRate",
-          ds.address,
-          ds.twitter,
-          ds.discord,
-          ds.email,
-          ds.warpcast,
-          ds.statement,
-          ds."topIssues",
-          ds.message,
-          ds.signature,
-          ds."publicKey",
-          ds."agreeCodeConduct",
-          ds.endorsed
-        FROM fastnear.registered_voters rv
-        LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
-        WHERE rv.registered_voter_id = ${address}
-      `;
+      const voterData = await prisma.$queryRaw<DelegateWithVoterInfo[]>(
+        Prisma.sql`
+          SELECT
+            rv.registered_voter_id as "registeredVoterId",
+            rv.current_voting_power as "currentVotingPower",
+            rv.proposal_participation_rate as "proposalParticipationRate",
+            COALESCE(rv.registered_voter_id, ds.address) as address,
+            ds.twitter,
+            ds.discord,
+            ds.email,
+            ds.warpcast,
+            ds.statement,
+            ds."topIssues",
+            ds.message,
+            ds.signature,
+            ds."publicKey",
+            ds."agreeCodeConduct",
+            ds.endorsed
+          FROM fastnear.registered_voters rv
+          FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+          WHERE COALESCE(rv.registered_voter_id, ds.address) = ${address}
+        `
+      );
 
       if (!voterData || voterData.length === 0) {
         // Not found in registered voters, check if it's a valid NEAR account
@@ -271,7 +270,7 @@ export class DelegatesController {
 
       res.status(200).json({
         delegate: {
-          address: data.registeredVoterId,
+          address: data.address ?? data.registeredVoterId,
           twitter: data.twitter,
           discord: data.discord,
           email: data.email,
