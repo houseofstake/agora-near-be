@@ -106,16 +106,11 @@ export class DelegatesController {
     const [records, countResult] = await Promise.all([
       prisma.$queryRaw<DelegateWithVoterInfo[]>(
         Prisma.sql`
-          WITH universe AS (
-            SELECT address FROM web2.delegate_statements
-            UNION
-            SELECT registered_voter_id AS address FROM fastnear.registered_voters
-          )
           SELECT
             rv.registered_voter_id as "registeredVoterId",
             rv.current_voting_power as "currentVotingPower",
             rv.proposal_participation_rate as "proposalParticipationRate",
-            u.address,
+            COALESCE(rv.registered_voter_id, ds.address) as address,
             ds.twitter,
             ds.discord,
             ds.email,
@@ -123,9 +118,8 @@ export class DelegatesController {
             ds.statement,
             ds."topIssues",
             ds.endorsed
-          FROM universe u
-          LEFT JOIN fastnear.registered_voters rv ON rv.registered_voter_id = u.address
-          LEFT JOIN web2.delegate_statements ds ON ds.address = u.address
+          FROM fastnear.registered_voters rv
+          FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
           ${filterByClause}
           ${orderByClause}
           LIMIT ${pageSize}
@@ -134,14 +128,9 @@ export class DelegatesController {
       ),
       prisma.$queryRaw<{ count: bigint }[]>(
         Prisma.sql`
-          WITH universe AS (
-            SELECT address FROM web2.delegate_statements
-            UNION
-            SELECT registered_voter_id AS address FROM fastnear.registered_voters
-          )
           SELECT COUNT(*) as count
-          FROM universe u
-          LEFT JOIN web2.delegate_statements ds ON ds.address = u.address
+          FROM fastnear.registered_voters rv
+          FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
           ${filterByClause}
         `
       ),
@@ -192,16 +181,11 @@ export class DelegatesController {
 
       const voterData = await prisma.$queryRaw<DelegateWithVoterInfo[]>(
         Prisma.sql`
-          WITH universe AS (
-            SELECT address FROM web2.delegate_statements
-            UNION
-            SELECT registered_voter_id AS address FROM fastnear.registered_voters
-          )
           SELECT
             rv.registered_voter_id as "registeredVoterId",
             rv.current_voting_power as "currentVotingPower",
             rv.proposal_participation_rate as "proposalParticipationRate",
-            u.address,
+            COALESCE(rv.registered_voter_id, ds.address) as address,
             ds.twitter,
             ds.discord,
             ds.email,
@@ -213,10 +197,9 @@ export class DelegatesController {
             ds."publicKey",
             ds."agreeCodeConduct",
             ds.endorsed
-          FROM universe u
-          LEFT JOIN fastnear.registered_voters rv ON rv.registered_voter_id = u.address
-          LEFT JOIN web2.delegate_statements ds ON ds.address = u.address
-          WHERE u.address = ${address}
+          FROM fastnear.registered_voters rv
+          FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+          WHERE COALESCE(rv.registered_voter_id, ds.address) = ${address}
         `
       );
 
