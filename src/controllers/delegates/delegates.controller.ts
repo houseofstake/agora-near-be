@@ -36,6 +36,7 @@ interface DeletesQuery {
   order_by?: string;
   filter_by?: string;
   issue_type?: string;
+  sorting_seed?: string;
 }
 
 type DelegateWithVoterInfo = delegate_statements & registeredVoters;
@@ -66,9 +67,10 @@ export class DelegatesController {
     req: Request<{}, {}, {}, DeletesQuery>,
     res: Response
   ): Promise<void> => {
-    const { page_size, page, order_by, filter_by, issue_type } = req.query;
+    const { page_size, page, order_by, filter_by, sorting_seed, issue_type } = req.query;
     const pageSize = parseInt(page_size ?? "10");
     const pageNumber = parseInt(page ?? "1");
+    const seed = sorting_seed ? parseFloat(sorting_seed) : Math.random();
 
     let orderByClause;
     if (order_by === "most_voting_power") {
@@ -76,7 +78,7 @@ export class DelegatesController {
     } else if (order_by === "least_voting_power") {
       orderByClause = Prisma.sql`ORDER BY rv.current_voting_power ASC NULLS FIRST`;
     } else {
-      orderByClause = Prisma.sql`ORDER BY -log(random()) / NULLIF(rv.current_voting_power, 0) NULLS LAST`;
+      orderByClause = Prisma.sql`ORDER BY -log(${seed}) / NULLIF(rv.current_voting_power, 0) NULLS LAST`;
     }
 
     let filterByClause = Prisma.sql``;
