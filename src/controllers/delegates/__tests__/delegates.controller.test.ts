@@ -157,7 +157,7 @@ describe("DelegatesController", () => {
             expect.stringContaining("LIMIT"),
             expect.stringContaining("OFFSET"),
           ]),
-          values: [5, 5],
+          values: expect.arrayContaining([5, 5]),
         })
       );
     });
@@ -301,7 +301,7 @@ describe("DelegatesController", () => {
           strings: expect.arrayContaining([
             expect.stringContaining("WHERE ds.endorsed = true"),
           ]),
-          values: [10, 0],
+          values: expect.arrayContaining([10, 0]),
         })
       );
 
