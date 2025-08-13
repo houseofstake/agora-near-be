@@ -55,6 +55,13 @@ export class DraftProposalController {
         return;
       }
 
+      if (!message || !signature || !publicKey) {
+        res
+          .status(400)
+          .json({ error: "Message, signature, and public key are required" });
+        return;
+      }
+
       const isVerified = verifySignature({
         message,
         signature,
@@ -150,6 +157,13 @@ export class DraftProposalController {
       const { id } = req.params;
       const { message, signature, publicKey, ...updateData } = req.body;
 
+      if (!message || !signature || !publicKey) {
+        res
+          .status(400)
+          .json({ error: "Message, signature, and public key are required" });
+        return;
+      }
+
       const existingProposal = await prisma.draft_proposals.findUnique({
         where: { id },
       });
@@ -201,6 +215,13 @@ export class DraftProposalController {
     try {
       const { id } = req.params;
       const { message, signature, publicKey } = req.body;
+
+      if (!message || !signature || !publicKey) {
+        res
+          .status(400)
+          .json({ error: "Message, signature, and public key are required" });
+        return;
+      }
 
       const existingProposal = await prisma.draft_proposals.findUnique({
         where: { id },

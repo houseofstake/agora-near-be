@@ -3,6 +3,13 @@ import app from "../../../app";
 import { prismaMock } from "../../../lib/tests/prismaMock";
 import { DraftProposalStage } from "../../../generated/prisma";
 
+jest.mock("../../../lib/signature/verifySignature");
+import { verifySignature } from "../../../lib/signature/verifySignature";
+
+const mockVerifySignature = verifySignature as jest.MockedFunction<
+  typeof verifySignature
+>;
+
 describe("DraftProposalController", () => {
   const mockDraftProposalPrisma = {
     id: "clp1234567890",
@@ -16,6 +23,12 @@ describe("DraftProposalController", () => {
     submittedAt: null,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
+  };
+
+  const mockSignatureData = {
+    message: "test message",
+    signature: "test signature",
+    publicKey: "testuser.near",
   };
 
   // Expected response data (with ISO strings)
@@ -40,7 +53,7 @@ describe("DraftProposalController", () => {
     jest.clearAllMocks();
   });
 
-  describe("POST /api/draft-proposal", () => {
+  describe("POST /api/proposal/draft", () => {
     it("should create a new draft proposal", async () => {
       const createData = {
         title: "Test Draft Proposal",
@@ -48,14 +61,16 @@ describe("DraftProposalController", () => {
         author: "testuser.near",
         proposalUrl: "https://example.com/proposal",
         votingOptions: { options: ["For", "Against", "Abstain"] },
+        ...mockSignatureData,
       };
 
+      mockVerifySignature.mockReturnValue(true);
       prismaMock.draft_proposals.create.mockResolvedValue(
         mockDraftProposalPrisma
       );
 
       const response = await request(app)
-        .post("/api/draft-proposal")
+        .post("/api/proposal/draft")
         .send(createData)
         .expect(201)
         .expect("Content-Type", /json/);
@@ -78,7 +93,7 @@ describe("DraftProposalController", () => {
       };
 
       const response = await request(app)
-        .post("/api/draft-proposal")
+        .post("/api/proposal/draft")
         .send(incompleteData)
         .expect(400)
         .expect("Content-Type", /json/);
@@ -88,19 +103,60 @@ describe("DraftProposalController", () => {
       });
     });
 
-    it("should handle database error gracefully", async () => {
-      const createData = {
+    it("should return 400 if signature fields are missing", async () => {
+      const incompleteData = {
         title: "Test Draft Proposal",
         description: "This is a test draft proposal",
         author: "testuser.near",
       };
 
+      const response = await request(app)
+        .post("/api/proposal/draft")
+        .send(incompleteData)
+        .expect(400)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        error: "Message, signature, and public key are required",
+      });
+    });
+
+    it("should return 400 if signature is invalid", async () => {
+      const createData = {
+        title: "Test Draft Proposal",
+        description: "This is a test draft proposal",
+        author: "testuser.near",
+        ...mockSignatureData,
+      };
+
+      mockVerifySignature.mockReturnValue(false);
+
+      const response = await request(app)
+        .post("/api/proposal/draft")
+        .send(createData)
+        .expect(400)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        error: "Invalid signature",
+      });
+    });
+
+    it("should handle database error gracefully", async () => {
+      const createData = {
+        title: "Test Draft Proposal",
+        description: "This is a test draft proposal",
+        author: "testuser.near",
+        ...mockSignatureData,
+      };
+
+      mockVerifySignature.mockReturnValue(true);
       prismaMock.draft_proposals.create.mockRejectedValue(
         new Error("Database error")
       );
 
       const response = await request(app)
-        .post("/api/draft-proposal")
+        .post("/api/proposal/draft")
         .send(createData)
         .expect(500)
         .expect("Content-Type", /json/);
@@ -111,7 +167,7 @@ describe("DraftProposalController", () => {
     });
   });
 
-  describe("GET /api/draft-proposal", () => {
+  describe("GET /api/proposal/draft", () => {
     it("should return draft proposals with default pagination", async () => {
       const mockCount = 25;
 
@@ -121,7 +177,7 @@ describe("DraftProposalController", () => {
       prismaMock.draft_proposals.count.mockResolvedValue(mockCount);
 
       const response = await request(app)
-        .get("/api/draft-proposal")
+        .get("/api/proposal/draft")
         .expect(200)
         .expect("Content-Type", /json/);
 
@@ -150,7 +206,7 @@ describe("DraftProposalController", () => {
       prismaMock.draft_proposals.count.mockResolvedValue(mockCount);
 
       const response = await request(app)
-        .get("/api/draft-proposal")
+        .get("/api/proposal/draft")
         .query({
           author: "testuser.near",
           stage: DraftProposalStage.DRAFT,
@@ -185,7 +241,7 @@ describe("DraftProposalController", () => {
       );
 
       const response = await request(app)
-        .get("/api/draft-proposal")
+        .get("/api/proposal/draft")
         .expect(500)
         .expect("Content-Type", /json/);
 
@@ -195,14 +251,14 @@ describe("DraftProposalController", () => {
     });
   });
 
-  describe("GET /api/draft-proposal/:id", () => {
+  describe("GET /api/proposal/draft/:id", () => {
     it("should return a specific draft proposal", async () => {
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
 
       const response = await request(app)
-        .get(`/api/draft-proposal/${mockDraftProposalPrisma.id}`)
+        .get(`/api/proposal/draft/${mockDraftProposalPrisma.id}`)
         .expect(200)
         .expect("Content-Type", /json/);
 
@@ -216,7 +272,7 @@ describe("DraftProposalController", () => {
       prismaMock.draft_proposals.findUnique.mockResolvedValue(null);
 
       const response = await request(app)
-        .get("/api/draft-proposal/nonexistent")
+        .get("/api/proposal/draft/nonexistent")
         .expect(404)
         .expect("Content-Type", /json/);
 
@@ -231,7 +287,7 @@ describe("DraftProposalController", () => {
       );
 
       const response = await request(app)
-        .get(`/api/draft-proposal/${mockDraftProposalPrisma.id}`)
+        .get(`/api/proposal/draft/${mockDraftProposalPrisma.id}`)
         .expect(500)
         .expect("Content-Type", /json/);
 
@@ -241,25 +297,29 @@ describe("DraftProposalController", () => {
     });
   });
 
-  describe("PUT /api/draft-proposal/:id", () => {
+  describe("PUT /api/proposal/draft/:id", () => {
     it("should update a draft proposal", async () => {
       const updateData = {
         title: "Updated Title",
         stage: DraftProposalStage.AWAITING_SUBMISSION,
+        ...mockSignatureData,
       };
 
       const updatedProposalPrisma = {
         ...mockDraftProposalPrisma,
-        ...updateData,
+        title: "Updated Title",
+        stage: DraftProposalStage.AWAITING_SUBMISSION,
         updatedAt: new Date("2024-01-02"),
       };
 
       const updatedProposalResponse = {
         ...mockDraftProposalResponse,
-        ...updateData,
+        title: "Updated Title",
+        stage: DraftProposalStage.AWAITING_SUBMISSION,
         updatedAt: "2024-01-02T00:00:00.000Z",
       };
 
+      mockVerifySignature.mockReturnValue(true);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -268,7 +328,7 @@ describe("DraftProposalController", () => {
       );
 
       const response = await request(app)
-        .put(`/api/draft-proposal/${mockDraftProposalPrisma.id}`)
+        .put(`/api/proposal/draft/${mockDraftProposalPrisma.id}`)
         .send(updateData)
         .expect(200)
         .expect("Content-Type", /json/);
@@ -276,7 +336,10 @@ describe("DraftProposalController", () => {
       expect(response.body).toEqual(updatedProposalResponse);
       expect(prismaMock.draft_proposals.update).toHaveBeenCalledWith({
         where: { id: mockDraftProposalPrisma.id },
-        data: updateData,
+        data: {
+          title: "Updated Title",
+          stage: DraftProposalStage.AWAITING_SUBMISSION,
+        },
       });
     });
 
@@ -284,8 +347,10 @@ describe("DraftProposalController", () => {
       const updateData = {
         stage: DraftProposalStage.SUBMITTED,
         receiptId: "receipt_123abc",
+        ...mockSignatureData,
       };
 
+      mockVerifySignature.mockReturnValue(true);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -296,25 +361,53 @@ describe("DraftProposalController", () => {
       });
 
       await request(app)
-        .put(`/api/draft-proposal/${mockDraftProposalPrisma.id}`)
+        .put(`/api/proposal/draft/${mockDraftProposalPrisma.id}`)
         .send(updateData)
         .expect(200);
 
       expect(prismaMock.draft_proposals.update).toHaveBeenCalledWith({
         where: { id: mockDraftProposalPrisma.id },
         data: expect.objectContaining({
-          ...updateData,
+          stage: DraftProposalStage.SUBMITTED,
+          receiptId: "receipt_123abc",
           submittedAt: expect.any(Date),
         }),
       });
     });
 
-    it("should return 404 if draft proposal not found", async () => {
-      prismaMock.draft_proposals.findUnique.mockResolvedValue(null);
+    it("should return 400 if signature is invalid", async () => {
+      const updateData = {
+        title: "Updated Title",
+        ...mockSignatureData,
+      };
+
+      mockVerifySignature.mockReturnValue(false);
+      prismaMock.draft_proposals.findUnique.mockResolvedValue(
+        mockDraftProposalPrisma
+      );
 
       const response = await request(app)
-        .put("/api/draft-proposal/nonexistent")
-        .send({ title: "Updated Title" })
+        .put(`/api/proposal/draft/${mockDraftProposalPrisma.id}`)
+        .send(updateData)
+        .expect(400)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        error: "Invalid signature",
+      });
+    });
+
+    it("should return 404 if draft proposal not found", async () => {
+      const updateData = {
+        title: "Updated Title",
+        ...mockSignatureData,
+      };
+
+      mockVerifySignature.mockReturnValue(true);
+
+      const response = await request(app)
+        .put("/api/proposal/draft/nonexistent")
+        .send(updateData)
         .expect(404)
         .expect("Content-Type", /json/);
 
@@ -324,6 +417,12 @@ describe("DraftProposalController", () => {
     });
 
     it("should handle database error gracefully", async () => {
+      const updateData = {
+        title: "Updated Title",
+        ...mockSignatureData,
+      };
+
+      mockVerifySignature.mockReturnValue(true);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -332,8 +431,8 @@ describe("DraftProposalController", () => {
       );
 
       const response = await request(app)
-        .put(`/api/draft-proposal/${mockDraftProposalPrisma.id}`)
-        .send({ title: "Updated Title" })
+        .put(`/api/proposal/draft/${mockDraftProposalPrisma.id}`)
+        .send(updateData)
         .expect(500)
         .expect("Content-Type", /json/);
 
@@ -343,8 +442,9 @@ describe("DraftProposalController", () => {
     });
   });
 
-  describe("DELETE /api/draft-proposal/:id", () => {
+  describe("DELETE /api/proposal/draft/:id", () => {
     it("should delete a draft proposal", async () => {
+      mockVerifySignature.mockReturnValue(true);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -353,7 +453,8 @@ describe("DraftProposalController", () => {
       );
 
       await request(app)
-        .delete(`/api/draft-proposal/${mockDraftProposalPrisma.id}`)
+        .delete(`/api/proposal/draft/${mockDraftProposalPrisma.id}`)
+        .send(mockSignatureData)
         .expect(204);
 
       expect(prismaMock.draft_proposals.delete).toHaveBeenCalledWith({
@@ -361,11 +462,27 @@ describe("DraftProposalController", () => {
       });
     });
 
-    it("should return 404 if draft proposal not found", async () => {
-      prismaMock.draft_proposals.findUnique.mockResolvedValue(null);
+    it("should return 400 if signature is invalid", async () => {
+      mockVerifySignature.mockReturnValue(false);
+      prismaMock.draft_proposals.findUnique.mockResolvedValue(
+        mockDraftProposalPrisma
+      );
 
       const response = await request(app)
-        .delete("/api/draft-proposal/nonexistent")
+        .delete(`/api/proposal/draft/${mockDraftProposalPrisma.id}`)
+        .send(mockSignatureData)
+        .expect(400)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        error: "Invalid signature",
+      });
+    });
+
+    it("should return 404 if draft proposal not found", async () => {
+      const response = await request(app)
+        .delete("/api/proposal/draft/nonexistent")
+        .send(mockSignatureData)
         .expect(404)
         .expect("Content-Type", /json/);
 
@@ -375,6 +492,7 @@ describe("DraftProposalController", () => {
     });
 
     it("should handle database error gracefully", async () => {
+      mockVerifySignature.mockReturnValue(true);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -383,7 +501,8 @@ describe("DraftProposalController", () => {
       );
 
       const response = await request(app)
-        .delete(`/api/draft-proposal/${mockDraftProposalPrisma.id}`)
+        .delete(`/api/proposal/draft/${mockDraftProposalPrisma.id}`)
+        .send(mockSignatureData)
         .expect(500)
         .expect("Content-Type", /json/);
 
