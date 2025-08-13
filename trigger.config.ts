@@ -17,6 +17,6 @@ export default defineConfig({
   },
   dirs: ["./src/trigger"],
   build: {
-    external: ["discord.js", "jsdom", "canvas"],
+    external: ["discord.js", "jsdom", "canvas", "dd-trace"],
   },
 });

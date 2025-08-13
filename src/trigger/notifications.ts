@@ -26,7 +26,8 @@ const mapProposalToNotificationData = (
   const endDate =
     proposal.voting_start_at && proposal.voting_duration_ns
       ? new Date(
-          Number(proposal.voting_start_at) + Number(proposal.voting_duration_ns)
+          Number(proposal.voting_start_at) +
+            Number(proposal.voting_duration_ns) / 1000000
         )
       : undefined;
 
@@ -134,7 +135,7 @@ export const checkProposalsEndingSoonTask = schedules.task({
         if (!proposal.votingStartAt || !proposal.votingDurationNs) return false;
 
         const startTime = Number(proposal.votingStartAt);
-        const duration = Number(proposal.votingDurationNs);
+        const duration = Number(proposal.votingDurationNs) / 1000000;
         const endTime = new Date(startTime + duration);
 
         return endTime > now && endTime <= twentyFourHoursFromNow;
