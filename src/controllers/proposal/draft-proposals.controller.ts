@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../..";
 import { DraftProposalStage } from "../../generated/prisma";
+import { verifySignature } from "../../lib/signature/verifySignature";
 
 interface CreateDraftProposalBody {
   title: string;
@@ -8,6 +9,9 @@ interface CreateDraftProposalBody {
   proposalUrl?: string;
   author: string;
   votingOptions?: any;
+  message: string;
+  signature: string;
+  publicKey: string;
 }
 
 interface UpdateDraftProposalBody {
@@ -17,6 +21,9 @@ interface UpdateDraftProposalBody {
   stage?: DraftProposalStage;
   votingOptions?: any;
   receiptId?: string;
+  message: string;
+  signature: string;
+  publicKey: string;
 }
 
 interface DraftProposalQueryParams {
@@ -32,11 +39,30 @@ export class DraftProposalController {
     res: Response
   ): Promise<void> => {
     try {
-      const { title, description, proposalUrl, author, votingOptions } =
-        req.body;
+      const {
+        title,
+        description,
+        proposalUrl,
+        author,
+        votingOptions,
+        message,
+        signature,
+        publicKey,
+      } = req.body;
 
       if (!author) {
         res.status(400).json({ error: "Author is required" });
+        return;
+      }
+
+      const isVerified = verifySignature({
+        message,
+        signature,
+        publicKey,
+      });
+
+      if (!isVerified) {
+        res.status(400).json({ error: "Invalid signature" });
         return;
       }
 
@@ -122,7 +148,7 @@ export class DraftProposalController {
   ): Promise<void> => {
     try {
       const { id } = req.params;
-      const updateData = req.body;
+      const { message, signature, publicKey, ...updateData } = req.body;
 
       const existingProposal = await prisma.draft_proposals.findUnique({
         where: { id },
@@ -130,6 +156,17 @@ export class DraftProposalController {
 
       if (!existingProposal) {
         res.status(404).json({ error: "Draft proposal not found" });
+        return;
+      }
+
+      const isVerified = verifySignature({
+        message,
+        signature,
+        publicKey,
+      });
+
+      if (!isVerified) {
+        res.status(400).json({ error: "Invalid signature" });
         return;
       }
 
@@ -154,11 +191,16 @@ export class DraftProposalController {
   };
 
   public deleteDraftProposal = async (
-    req: Request<{ id: string }>,
+    req: Request<
+      { id: string },
+      {},
+      { message: string; signature: string; publicKey: string }
+    >,
     res: Response
   ): Promise<void> => {
     try {
       const { id } = req.params;
+      const { message, signature, publicKey } = req.body;
 
       const existingProposal = await prisma.draft_proposals.findUnique({
         where: { id },
@@ -166,6 +208,17 @@ export class DraftProposalController {
 
       if (!existingProposal) {
         res.status(404).json({ error: "Draft proposal not found" });
+        return;
+      }
+
+      const isVerified = verifySignature({
+        message,
+        signature,
+        publicKey,
+      });
+
+      if (!isVerified) {
+        res.status(400).json({ error: "Invalid signature" });
         return;
       }
 

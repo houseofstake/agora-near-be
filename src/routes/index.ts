@@ -13,7 +13,7 @@ const router = express.Router();
 // Define routes
 router.use("/delegates", delegatesRoutes);
 router.use("/proposal", proposalRoutes);
-router.use("/draft-proposal", draftProposalRoutes);
+router.use("/proposal/draft", draftProposalRoutes);
 router.use("/rpc", rpcRoutes);
 router.use("/archival-rpc", archivalRpcRoutes);
 router.use("/staking", stakingRoutes);
