@@ -9,6 +9,10 @@ jest.mock("../../index", () => ({
 
 beforeEach(() => {
   mockReset(prismaMock);
+  (prismaMock.$transaction as any).mockImplementation(async (fn: any) => {
+    return fn(prismaMock);
+  });
+  (prismaMock.$executeRaw as any).mockResolvedValue(0);
 });
 
 export const prismaMock = prisma as unknown as DeepMockProxy<PrismaClient>;

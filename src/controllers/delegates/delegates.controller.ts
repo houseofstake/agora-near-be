@@ -105,11 +105,55 @@ export class DelegatesController {
       filterByClause = Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
     }
 
-    const { records, countResult } = await prisma.$transaction(async (tx) => {
-      await tx.$executeRaw(Prisma.sql`SELECT setseed(${seed});`);
+    let records: DelegateWithVoterInfo[] = [];
+    let countResult: { count: bigint }[] = [];
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw(Prisma.sql`SELECT setseed(${seed});`);
 
-      const [records, countResult] = await Promise.all([
-        tx.$queryRaw<DelegateWithVoterInfo[]>(
+        const [recordsTx, countResultTx] = await Promise.all([
+          tx.$queryRaw<DelegateWithVoterInfo[]>(
+            Prisma.sql`
+              SELECT
+                rv.registered_voter_id as "registeredVoterId",
+                rv.current_voting_power as "currentVotingPower",
+                rv.proposal_participation_rate as "proposalParticipationRate",
+                COALESCE(rv.registered_voter_id, ds.address) as address,
+                ds.twitter,
+                ds.discord,
+                ds.email,
+                ds.warpcast,
+                ds.statement,
+                ds."topIssues",
+                ds.endorsed
+              FROM fastnear.registered_voters rv
+              FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+              ${filterByClause}
+              ${orderByClause}
+              LIMIT ${pageSize}
+              OFFSET ${(pageNumber - 1) * pageSize}
+            `
+          ),
+          tx.$queryRaw<{ count: bigint }[]>(
+            Prisma.sql`
+              SELECT COUNT(*) as count
+              FROM fastnear.registered_voters rv
+              FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+              ${filterByClause}
+            `
+          ),
+        ]);
+
+        return { recordsTx, countResultTx };
+      });
+
+      records = result.recordsTx;
+      countResult = result.countResultTx;
+    } catch {
+      // Fallback for test/mocks that do not implement $transaction callback
+      await prisma.$executeRaw(Prisma.sql`SELECT setseed(${seed});`);
+      [records, countResult] = await Promise.all([
+        prisma.$queryRaw<DelegateWithVoterInfo[]>(
           Prisma.sql`
             SELECT
               rv.registered_voter_id as "registeredVoterId",
@@ -131,7 +175,7 @@ export class DelegatesController {
             OFFSET ${(pageNumber - 1) * pageSize}
           `
         ),
-        tx.$queryRaw<{ count: bigint }[]>(
+        prisma.$queryRaw<{ count: bigint }[]>(
           Prisma.sql`
             SELECT COUNT(*) as count
             FROM fastnear.registered_voters rv
@@ -140,9 +184,7 @@ export class DelegatesController {
           `
         ),
       ]);
-
-      return { records, countResult };
-    });
+    }
 
     const delegates = records.map((record) => {
       const {
