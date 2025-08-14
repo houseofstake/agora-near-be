@@ -209,7 +209,7 @@ export class DelegatesController {
             ds.signature,
             ds."publicKey",
             ds."agreeCodeConduct",
-            ds.endorsed
+            ds.endorsed,
             ds.notification_preferences as "notificationPreferences"
           FROM fastnear.registered_voters rv
           FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
