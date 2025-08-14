@@ -1343,6 +1343,10 @@ describe("DelegatesController", () => {
       statement: "I am a delegate",
       topIssues: [{ type: "governance", value: "Improve voting" }],
       agreeCodeConduct: true,
+      notification_preferences: {
+        wants_proposal_created_email: "true",
+        wants_proposal_ending_soon_email: "false",
+      },
     };
 
     it("should create delegate statement successfully", async () => {
@@ -1359,7 +1363,7 @@ describe("DelegatesController", () => {
           statement: validStatementData.statement,
           topIssues: validStatementData.topIssues,
           agreeCodeConduct: validStatementData.agreeCodeConduct,
-          action: "create",
+          notification_preferences: validStatementData.notification_preferences,
         }),
         statement: "I am a delegate", // Sanitized
         createdAt: "2024-01-01T00:00:00.000Z",
@@ -1393,7 +1397,7 @@ describe("DelegatesController", () => {
           statement: validStatementData.statement,
           topIssues: validStatementData.topIssues,
           agreeCodeConduct: validStatementData.agreeCodeConduct,
-          action: "create",
+          notification_preferences: validStatementData.notification_preferences,
         }),
         signature: validStatementData.signature,
         publicKey: validStatementData.publicKey,
@@ -1403,7 +1407,7 @@ describe("DelegatesController", () => {
 
       expect(prismaMock.delegate_statements.upsert).toHaveBeenCalledWith({
         where: { address: validStatementData.address },
-        update: expect.objectContaining({
+        update: {
           address: validStatementData.address,
           message: expect.any(String),
           signature: validStatementData.signature,
@@ -1415,8 +1419,13 @@ describe("DelegatesController", () => {
           topIssues: validStatementData.topIssues,
           agreeCodeConduct: validStatementData.agreeCodeConduct,
           publicKey: validStatementData.publicKey,
-        }),
-        create: expect.objectContaining({
+          notification_preferences: {
+            wants_proposal_created_email: "true",
+            wants_proposal_ending_soon_email: "false",
+            last_updated: expect.any(String),
+          },
+        },
+        create: {
           address: validStatementData.address,
           message: expect.any(String),
           signature: validStatementData.signature,
@@ -1428,7 +1437,12 @@ describe("DelegatesController", () => {
           topIssues: validStatementData.topIssues,
           agreeCodeConduct: validStatementData.agreeCodeConduct,
           publicKey: validStatementData.publicKey,
-        }),
+          notification_preferences: {
+            wants_proposal_created_email: "true",
+            wants_proposal_ending_soon_email: "false",
+            last_updated: expect.any(String),
+          },
+        },
       });
     });
 

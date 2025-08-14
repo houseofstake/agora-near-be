@@ -55,26 +55,9 @@ describe("DraftProposalController", () => {
   describe("POST /api/proposal/draft", () => {
     it("should create a new draft proposal", async () => {
       const createData = {
-        title: "Test Draft Proposal",
-        description: "This is a test draft proposal",
         author: "testuser.near",
-        proposalUrl: "https://example.com/proposal",
-        votingOptions: { options: ["For", "Against", "Abstain"] },
-        ...mockSignatureData,
       };
 
-      mockVerifySignature.mockReturnValue({ 
-        isValid: true, 
-        signedData: {
-          title: createData.title,
-          description: createData.description,
-          proposalUrl: createData.proposalUrl,
-          author: createData.author,
-          votingOptions: createData.votingOptions,
-          action: "create",
-          timestamp: expect.any(Number)
-        }
-      });
       prismaMock.draft_proposals.create.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -88,11 +71,11 @@ describe("DraftProposalController", () => {
       expect(response.body).toEqual(mockDraftProposalResponse);
       expect(prismaMock.draft_proposals.create).toHaveBeenCalledWith({
         data: {
-          title: createData.title,
-          description: createData.description,
-          proposalUrl: createData.proposalUrl,
+          title: "",
+          description: "",
+          proposalUrl: "",
           author: createData.author,
-          votingOptions: createData.votingOptions,
+          votingOptions: ["For", "Against", "Abstain"],
         },
       });
     });
@@ -117,7 +100,6 @@ describe("DraftProposalController", () => {
       const incompleteData = {
         title: "Test Draft Proposal",
         description: "This is a test draft proposal",
-        author: "testuser.near",
       };
 
       const response = await request(app)
@@ -127,7 +109,7 @@ describe("DraftProposalController", () => {
         .expect("Content-Type", /json/);
 
       expect(response.body).toEqual({
-        error: "Signature and public key are required",
+        error: "Author is required",
       });
     });
 
@@ -139,17 +121,17 @@ describe("DraftProposalController", () => {
         ...mockSignatureData,
       };
 
-      mockVerifySignature.mockReturnValue({ isValid: false });
+      prismaMock.draft_proposals.create.mockResolvedValue(
+        mockDraftProposalPrisma
+      );
 
       const response = await request(app)
         .post("/api/proposal/draft")
         .send(createData)
-        .expect(400)
+        .expect(201)
         .expect("Content-Type", /json/);
 
-      expect(response.body).toEqual({
-        error: "Invalid signature or proposal data mismatch",
-      });
+      expect(response.body).toEqual(mockDraftProposalResponse);
     });
 
     it("should handle database error gracefully", async () => {
@@ -160,7 +142,10 @@ describe("DraftProposalController", () => {
         ...mockSignatureData,
       };
 
-      mockVerifySignature.mockReturnValue({ isValid: true, signedData: expect.anything() });
+      mockVerifySignature.mockReturnValue({
+        isValid: true,
+        signedData: expect.anything(),
+      });
       prismaMock.draft_proposals.create.mockRejectedValue(
         new Error("Database error")
       );
@@ -329,15 +314,15 @@ describe("DraftProposalController", () => {
         updatedAt: "2024-01-02T00:00:00.000Z",
       };
 
-      mockVerifySignature.mockReturnValue({ 
-        isValid: true, 
+      mockVerifySignature.mockReturnValue({
+        isValid: true,
         signedData: {
           id: mockDraftProposalPrisma.id,
           title: updateData.title,
           stage: updateData.stage,
           action: "update",
-          timestamp: expect.any(Number)
-        }
+          timestamp: expect.any(Number),
+        },
       });
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
@@ -369,15 +354,15 @@ describe("DraftProposalController", () => {
         ...mockSignatureData,
       };
 
-      mockVerifySignature.mockReturnValue({ 
-        isValid: true, 
+      mockVerifySignature.mockReturnValue({
+        isValid: true,
         signedData: {
           id: mockDraftProposalPrisma.id,
           stage: updateData.stage,
           receiptId: updateData.receiptId,
           action: "update",
-          timestamp: expect.any(Number)
-        }
+          timestamp: expect.any(Number),
+        },
       });
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
@@ -431,7 +416,10 @@ describe("DraftProposalController", () => {
         ...mockSignatureData,
       };
 
-      mockVerifySignature.mockReturnValue({ isValid: true, signedData: expect.anything() });
+      mockVerifySignature.mockReturnValue({
+        isValid: true,
+        signedData: expect.anything(),
+      });
 
       const response = await request(app)
         .put("/api/proposal/draft/nonexistent")
@@ -450,7 +438,10 @@ describe("DraftProposalController", () => {
         ...mockSignatureData,
       };
 
-      mockVerifySignature.mockReturnValue({ isValid: true, signedData: expect.anything() });
+      mockVerifySignature.mockReturnValue({
+        isValid: true,
+        signedData: expect.anything(),
+      });
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -472,13 +463,13 @@ describe("DraftProposalController", () => {
 
   describe("DELETE /api/proposal/draft/:id", () => {
     it("should delete a draft proposal", async () => {
-      mockVerifySignature.mockReturnValue({ 
-        isValid: true, 
+      mockVerifySignature.mockReturnValue({
+        isValid: true,
         signedData: {
           id: mockDraftProposalPrisma.id,
           action: "delete",
-          timestamp: expect.any(Number)
-        }
+          timestamp: expect.any(Number),
+        },
       });
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
@@ -527,7 +518,10 @@ describe("DraftProposalController", () => {
     });
 
     it("should handle database error gracefully", async () => {
-      mockVerifySignature.mockReturnValue({ isValid: true, signedData: expect.anything() });
+      mockVerifySignature.mockReturnValue({
+        isValid: true,
+        signedData: expect.anything(),
+      });
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
