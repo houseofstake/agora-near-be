@@ -26,7 +26,6 @@ describe("DraftProposalController", () => {
   };
 
   const mockSignatureData = {
-    message: "test message",
     signature: "test signature",
     publicKey: "testuser.near",
   };
@@ -64,7 +63,18 @@ describe("DraftProposalController", () => {
         ...mockSignatureData,
       };
 
-      mockVerifySignature.mockReturnValue(true);
+      mockVerifySignature.mockReturnValue({ 
+        isValid: true, 
+        signedData: {
+          title: createData.title,
+          description: createData.description,
+          proposalUrl: createData.proposalUrl,
+          author: createData.author,
+          votingOptions: createData.votingOptions,
+          action: "create",
+          timestamp: expect.any(Number)
+        }
+      });
       prismaMock.draft_proposals.create.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -117,7 +127,7 @@ describe("DraftProposalController", () => {
         .expect("Content-Type", /json/);
 
       expect(response.body).toEqual({
-        error: "Message, signature, and public key are required",
+        error: "Signature and public key are required",
       });
     });
 
@@ -129,7 +139,7 @@ describe("DraftProposalController", () => {
         ...mockSignatureData,
       };
 
-      mockVerifySignature.mockReturnValue(false);
+      mockVerifySignature.mockReturnValue({ isValid: false });
 
       const response = await request(app)
         .post("/api/proposal/draft")
@@ -138,7 +148,7 @@ describe("DraftProposalController", () => {
         .expect("Content-Type", /json/);
 
       expect(response.body).toEqual({
-        error: "Invalid signature",
+        error: "Invalid signature or proposal data mismatch",
       });
     });
 
@@ -150,7 +160,7 @@ describe("DraftProposalController", () => {
         ...mockSignatureData,
       };
 
-      mockVerifySignature.mockReturnValue(true);
+      mockVerifySignature.mockReturnValue({ isValid: true, signedData: expect.anything() });
       prismaMock.draft_proposals.create.mockRejectedValue(
         new Error("Database error")
       );
@@ -319,7 +329,16 @@ describe("DraftProposalController", () => {
         updatedAt: "2024-01-02T00:00:00.000Z",
       };
 
-      mockVerifySignature.mockReturnValue(true);
+      mockVerifySignature.mockReturnValue({ 
+        isValid: true, 
+        signedData: {
+          id: mockDraftProposalPrisma.id,
+          title: updateData.title,
+          stage: updateData.stage,
+          action: "update",
+          timestamp: expect.any(Number)
+        }
+      });
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -350,7 +369,16 @@ describe("DraftProposalController", () => {
         ...mockSignatureData,
       };
 
-      mockVerifySignature.mockReturnValue(true);
+      mockVerifySignature.mockReturnValue({ 
+        isValid: true, 
+        signedData: {
+          id: mockDraftProposalPrisma.id,
+          stage: updateData.stage,
+          receiptId: updateData.receiptId,
+          action: "update",
+          timestamp: expect.any(Number)
+        }
+      });
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -381,7 +409,7 @@ describe("DraftProposalController", () => {
         ...mockSignatureData,
       };
 
-      mockVerifySignature.mockReturnValue(false);
+      mockVerifySignature.mockReturnValue({ isValid: false });
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -393,7 +421,7 @@ describe("DraftProposalController", () => {
         .expect("Content-Type", /json/);
 
       expect(response.body).toEqual({
-        error: "Invalid signature",
+        error: "Invalid signature or proposal data mismatch",
       });
     });
 
@@ -403,7 +431,7 @@ describe("DraftProposalController", () => {
         ...mockSignatureData,
       };
 
-      mockVerifySignature.mockReturnValue(true);
+      mockVerifySignature.mockReturnValue({ isValid: true, signedData: expect.anything() });
 
       const response = await request(app)
         .put("/api/proposal/draft/nonexistent")
@@ -422,7 +450,7 @@ describe("DraftProposalController", () => {
         ...mockSignatureData,
       };
 
-      mockVerifySignature.mockReturnValue(true);
+      mockVerifySignature.mockReturnValue({ isValid: true, signedData: expect.anything() });
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -444,7 +472,14 @@ describe("DraftProposalController", () => {
 
   describe("DELETE /api/proposal/draft/:id", () => {
     it("should delete a draft proposal", async () => {
-      mockVerifySignature.mockReturnValue(true);
+      mockVerifySignature.mockReturnValue({ 
+        isValid: true, 
+        signedData: {
+          id: mockDraftProposalPrisma.id,
+          action: "delete",
+          timestamp: expect.any(Number)
+        }
+      });
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -463,7 +498,7 @@ describe("DraftProposalController", () => {
     });
 
     it("should return 400 if signature is invalid", async () => {
-      mockVerifySignature.mockReturnValue(false);
+      mockVerifySignature.mockReturnValue({ isValid: false });
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -475,7 +510,7 @@ describe("DraftProposalController", () => {
         .expect("Content-Type", /json/);
 
       expect(response.body).toEqual({
-        error: "Invalid signature",
+        error: "Invalid signature or proposal data mismatch",
       });
     });
 
@@ -492,7 +527,7 @@ describe("DraftProposalController", () => {
     });
 
     it("should handle database error gracefully", async () => {
-      mockVerifySignature.mockReturnValue(true);
+      mockVerifySignature.mockReturnValue({ isValid: true, signedData: expect.anything() });
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );

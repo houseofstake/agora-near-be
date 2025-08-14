@@ -4,14 +4,7 @@ import { DraftProposalStage } from "../../generated/prisma";
 import { verifySignature } from "../../lib/signature/verifySignature";
 
 interface CreateDraftProposalBody {
-  title: string;
-  description: string;
-  proposalUrl?: string;
   author: string;
-  votingOptions?: any;
-  message: string;
-  signature: string;
-  publicKey: string;
 }
 
 interface UpdateDraftProposalBody {
@@ -21,9 +14,28 @@ interface UpdateDraftProposalBody {
   stage?: DraftProposalStage;
   votingOptions?: any;
   receiptId?: string;
-  message: string;
   signature: string;
   publicKey: string;
+}
+
+interface UpdateDraftProposalData {
+  id: string;
+  title?: string;
+  description?: string;
+  proposalUrl?: string;
+  stage?: DraftProposalStage;
+  votingOptions?: any;
+  receiptId?: string;
+}
+
+interface UpdateDraftProposalStageBody {
+  stage: DraftProposalStage;
+  receiptId?: string;
+}
+
+interface DeleteDraftProposalData {
+  id: string;
+  action: "delete";
 }
 
 interface DraftProposalQueryParams {
@@ -39,47 +51,20 @@ export class DraftProposalController {
     res: Response
   ): Promise<void> => {
     try {
-      const {
-        title,
-        description,
-        proposalUrl,
-        author,
-        votingOptions,
-        message,
-        signature,
-        publicKey,
-      } = req.body;
+      const { author } = req.body;
 
       if (!author) {
         res.status(400).json({ error: "Author is required" });
         return;
       }
 
-      if (!message || !signature || !publicKey) {
-        res
-          .status(400)
-          .json({ error: "Message, signature, and public key are required" });
-        return;
-      }
-
-      const isVerified = verifySignature({
-        message,
-        signature,
-        publicKey,
-      });
-
-      if (!isVerified) {
-        res.status(400).json({ error: "Invalid signature" });
-        return;
-      }
-
       const draftProposal = await prisma.draft_proposals.create({
         data: {
-          title,
-          description,
-          proposalUrl,
+          title: "",
+          description: "",
+          proposalUrl: "",
           author,
-          votingOptions,
+          votingOptions: ["For", "Against", "Abstain"],
         },
       });
 
@@ -155,12 +140,12 @@ export class DraftProposalController {
   ): Promise<void> => {
     try {
       const { id } = req.params;
-      const { message, signature, publicKey, ...updateData } = req.body;
+      const { signature, publicKey, ...updateData } = req.body;
 
-      if (!message || !signature || !publicKey) {
+      if (!signature || !publicKey) {
         res
           .status(400)
-          .json({ error: "Message, signature, and public key are required" });
+          .json({ error: "Signature and public key are required" });
         return;
       }
 
@@ -173,20 +158,46 @@ export class DraftProposalController {
         return;
       }
 
-      const isVerified = verifySignature({
-        message,
+      const proposalUpdateData: UpdateDraftProposalData = {
+        id,
+        title: updateData.title,
+        description: updateData.description,
+        proposalUrl: updateData.proposalUrl,
+        stage: updateData.stage,
+        votingOptions: updateData.votingOptions,
+        receiptId: updateData.receiptId,
+      };
+
+      const { isValid, signedData } = verifySignature({
+        expectedData: proposalUpdateData,
         signature,
         publicKey,
       });
 
-      if (!isVerified) {
-        res.status(400).json({ error: "Invalid signature" });
+      if (!isValid || !signedData) {
+        res
+          .status(400)
+          .json({ error: "Invalid signature or proposal data mismatch" });
         return;
       }
 
-      const updatedData: any = { ...updateData };
+      const updatedData: any = {
+        title: signedData.title,
+        description: signedData.description,
+        proposalUrl: signedData.proposalUrl,
+        stage: signedData.stage,
+        votingOptions: signedData.votingOptions,
+        receiptId: signedData.receiptId,
+      };
+
+      Object.keys(updatedData).forEach((key) => {
+        if (updatedData[key] === undefined) {
+          delete updatedData[key];
+        }
+      });
+
       if (
-        updateData.stage === DraftProposalStage.SUBMITTED &&
+        signedData.stage === DraftProposalStage.SUBMITTED &&
         !existingProposal.submittedAt
       ) {
         updatedData.submittedAt = new Date();
@@ -204,22 +215,16 @@ export class DraftProposalController {
     }
   };
 
-  public deleteDraftProposal = async (
-    req: Request<
-      { id: string },
-      {},
-      { message: string; signature: string; publicKey: string }
-    >,
+  public updateDraftProposalStage = async (
+    req: Request<{ id: string }, {}, UpdateDraftProposalStageBody>,
     res: Response
   ): Promise<void> => {
     try {
       const { id } = req.params;
-      const { message, signature, publicKey } = req.body;
+      const { stage, receiptId } = req.body;
 
-      if (!message || !signature || !publicKey) {
-        res
-          .status(400)
-          .json({ error: "Message, signature, and public key are required" });
+      if (!stage) {
+        res.status(400).json({ error: "Stage is required" });
         return;
       }
 
@@ -232,14 +237,66 @@ export class DraftProposalController {
         return;
       }
 
-      const isVerified = verifySignature({
-        message,
+      const updatedData: any = { stage, receiptId };
+
+      if (
+        stage === DraftProposalStage.SUBMITTED &&
+        !existingProposal.submittedAt
+      ) {
+        updatedData.submittedAt = new Date();
+      }
+
+      const updatedProposal = await prisma.draft_proposals.update({
+        where: { id },
+        data: updatedData,
+      });
+
+      res.status(200).json(updatedProposal);
+    } catch (error) {
+      console.error("Error updating draft proposal stage:", error);
+      res.status(500).json({ error: "Failed to update draft proposal stage" });
+    }
+  };
+
+  public deleteDraftProposal = async (
+    req: Request<{ id: string }, {}, { signature: string; publicKey: string }>,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { signature, publicKey } = req.body;
+
+      if (!signature || !publicKey) {
+        res
+          .status(400)
+          .json({ error: "Signature and public key are required" });
+        return;
+      }
+
+      const existingProposal = await prisma.draft_proposals.findUnique({
+        where: { id },
+      });
+
+      if (!existingProposal) {
+        res.status(404).json({ error: "Draft proposal not found" });
+        return;
+      }
+
+      const proposalDeleteData: DeleteDraftProposalData = {
+        id,
+        action: "delete",
+      };
+
+      const { isValid, signedData } = verifySignature({
+        expectedData: proposalDeleteData,
         signature,
         publicKey,
       });
 
-      if (!isVerified) {
-        res.status(400).json({ error: "Invalid signature" });
+      if (!isValid || !signedData) {
+        res
+          .status(400)
+          .json({ error: "Invalid signature or proposal data mismatch" });
         return;
       }
 

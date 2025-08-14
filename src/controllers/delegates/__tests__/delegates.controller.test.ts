@@ -1334,7 +1334,6 @@ describe("DelegatesController", () => {
   describe("POST /api/delegates/statement", () => {
     const validStatementData = {
       address: "delegate1.near",
-      message: "Test message",
       signature: "test_signature",
       publicKey: "test_public_key",
       twitter: "@delegate1",
@@ -1351,6 +1350,17 @@ describe("DelegatesController", () => {
       const mockCreatedStatement = {
         id: 1,
         ...validStatementData,
+        message: JSON.stringify({
+          address: validStatementData.address,
+          twitter: validStatementData.twitter,
+          discord: validStatementData.discord,
+          email: validStatementData.email,
+          warpcast: validStatementData.warpcast,
+          statement: validStatementData.statement,
+          topIssues: validStatementData.topIssues,
+          agreeCodeConduct: validStatementData.agreeCodeConduct,
+          action: "create",
+        }),
         statement: "I am a delegate", // Sanitized
         createdAt: "2024-01-01T00:00:00.000Z",
         updatedAt: "2024-01-01T00:00:00.000Z",
@@ -1374,7 +1384,17 @@ describe("DelegatesController", () => {
       });
 
       expect(mockVerifySignature).toHaveBeenCalledWith({
-        message: validStatementData.message,
+        expectedData: expect.objectContaining({
+          address: validStatementData.address,
+          twitter: validStatementData.twitter,
+          discord: validStatementData.discord,
+          email: validStatementData.email,
+          warpcast: validStatementData.warpcast,
+          statement: validStatementData.statement,
+          topIssues: validStatementData.topIssues,
+          agreeCodeConduct: validStatementData.agreeCodeConduct,
+          action: "create",
+        }),
         signature: validStatementData.signature,
         publicKey: validStatementData.publicKey,
         networkId: "mainnet",
@@ -1385,7 +1405,7 @@ describe("DelegatesController", () => {
         where: { address: validStatementData.address },
         update: expect.objectContaining({
           address: validStatementData.address,
-          message: validStatementData.message,
+          message: expect.any(String),
           signature: validStatementData.signature,
           statement: validStatementData.statement,
           twitter: validStatementData.twitter,
@@ -1398,7 +1418,7 @@ describe("DelegatesController", () => {
         }),
         create: expect.objectContaining({
           address: validStatementData.address,
-          message: validStatementData.message,
+          message: expect.any(String),
           signature: validStatementData.signature,
           statement: validStatementData.statement,
           twitter: validStatementData.twitter,
@@ -1424,7 +1444,7 @@ describe("DelegatesController", () => {
         .expect("Content-Type", /json/);
 
       expect(response.body).toEqual({
-        error: "Invalid signature",
+        error: "Invalid signature or delegate statement data mismatch",
       });
 
       expect(prismaMock.delegate_statements.upsert).not.toHaveBeenCalled();
