@@ -29,3 +29,5 @@ src/generated/
 
 # Testing
 coverage/
+
+.trigger
