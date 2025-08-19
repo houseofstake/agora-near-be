@@ -579,7 +579,7 @@ export class DelegatesController {
   };
 
   public createDelegateStatement = async (
-    req: Request<{}, {}, DelegateStatementInput>,
+    req: Request<{ network_id: string }, {}, DelegateStatementInput>,
     res: Response
   ): Promise<void> => {
     try {
@@ -598,10 +598,28 @@ export class DelegatesController {
         notification_preferences,
       } = req.body;
 
-      const isVerified = verifySignature({
+      const networkId = req.params.network_id || "mainnet";
+
+      const cachedEntry = await prisma.cache.findFirst({
+        where: {
+          key: `nonce-${address}`,
+          expiresAt: {
+            gt: new Date(),
+          },
+        },
+      });
+
+      const cachedNonce = cachedEntry?.data as { nonce: string } | undefined;
+
+      const isVerified = await verifySignature({
         message,
         signature,
         publicKey,
+        networkId,
+        accountId: address,
+        nonce: cachedNonce?.nonce
+          ? Buffer.from(cachedNonce.nonce, "hex")
+          : undefined,
       });
 
       if (!isVerified) {

@@ -4,7 +4,10 @@ import { DelegatesController } from "../../controllers/delegates/delegates.contr
 const router = express.Router();
 const delegatesController = new DelegatesController();
 
-router.post("/statement", delegatesController.createDelegateStatement);
+router.post(
+  "/statement/:network_id",
+  delegatesController.createDelegateStatement
+);
 
 router.get(
   "/:address/voting-history",
