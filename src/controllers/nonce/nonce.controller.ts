@@ -4,11 +4,11 @@ import { prisma } from "../..";
 
 export class NonceController {
   public generateNonce = async (
-    req: Request<{}, {}, {}, { account_id: string }>,
+    req: Request<{}, {}, { account_id: string }, {}>,
     res: Response
   ): Promise<void> => {
     try {
-      const accountId = req.query.account_id;
+      const accountId = req.body.account_id;
 
       if (!accountId) {
         res.status(400).json({ error: "Account ID is required" });
