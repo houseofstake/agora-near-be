@@ -2,6 +2,7 @@ import * as borsh from "borsh";
 import * as js_sha256 from "js-sha256";
 import { utils } from "near-api-js";
 import { getRpcUrl } from "../utils/rpc";
+import { retrieveNonceForAccount } from "./nonce";
 
 class Payload {
   tag: number;
@@ -120,19 +121,21 @@ export const verifySignature = async ({
   message,
   signature,
   publicKey,
-  recipient = RECIPIENT,
-  nonce = NONCE,
   networkId,
   accountId,
 }: {
   message: string;
   signature: string;
   publicKey: string;
-  recipient?: string;
-  nonce?: Buffer;
   networkId: string;
   accountId: string;
 }) => {
+  const nonce = await retrieveNonceForAccount(accountId);
+
+  if (!nonce) {
+    throw new Error("No nonce found");
+  }
+
   const keyBelongsToUser = await verifyFullKeyBelongsToUser({
     accountId,
     publicKey,
@@ -143,7 +146,7 @@ export const verifySignature = async ({
     message,
     signature,
     publicKey,
-    recipient,
+    recipient: RECIPIENT,
     nonce,
   });
 
