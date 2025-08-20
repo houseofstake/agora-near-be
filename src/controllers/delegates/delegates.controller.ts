@@ -579,7 +579,7 @@ export class DelegatesController {
   };
 
   public createDelegateStatement = async (
-    req: Request<{}, {}, DelegateStatementInput>,
+    req: Request<{}, {}, DelegateStatementInput, { network_id: string }>,
     res: Response
   ): Promise<void> => {
     try {
@@ -598,10 +598,14 @@ export class DelegatesController {
         notification_preferences,
       } = req.body;
 
-      const isVerified = verifySignature({
+      const networkId = req.query.network_id || "mainnet";
+
+      const isVerified = await verifySignature({
         message,
         signature,
         publicKey,
+        networkId,
+        accountId: address,
       });
 
       if (!isVerified) {
