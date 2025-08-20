@@ -1,22 +1,22 @@
 import { Request, Response } from "express";
 import { prisma } from "../..";
-import { DraftProposalStage } from "../../generated/prisma";
+import { DraftProposalStage, Prisma } from "../../generated/prisma";
 import { verifySignature } from "../../lib/signature/verifySignature";
+import { SignedPayload } from "../../lib/signature/verifySignature";
 
 interface CreateDraftProposalBody {
   author: string;
 }
 
-interface UpdateDraftProposalBody {
-  title?: string;
-  description?: string;
-  proposalUrl?: string;
-  stage?: DraftProposalStage;
-  votingOptions?: any;
-  receiptId?: string;
-  signature: string;
-  publicKey: string;
-}
+interface UpdateDraftProposalBody
+  extends SignedPayload<{
+    title?: string;
+    description?: string;
+    proposalUrl?: string;
+    stage?: DraftProposalStage;
+    votingOptions?: any;
+    receiptId?: string;
+  }> {}
 
 interface UpdateDraftProposalData {
   id: string;
@@ -46,6 +46,9 @@ interface DraftProposalQueryParams {
 }
 
 export class DraftProposalController {
+  // This is used for the initial creation of a draft proposal. It takes no data intentionally to match FE UX expectations.
+  // The FE will then prompt the user to fill in the title, description, and proposal URL using updateDraftProposal.
+  // Even though this function doesn't validate signatures our biggest risk here is simply spam.
   public createDraftProposal = async (
     req: Request<{}, {}, CreateDraftProposalBody>,
     res: Response
@@ -84,7 +87,7 @@ export class DraftProposalController {
       const pageSize = parseInt(page_size ?? "10") || 10;
       const pageNumber = parseInt(page ?? "1") || 1;
 
-      const where: any = {};
+      const where: Prisma.draft_proposalsWhereInput = {};
       if (author) where.author = author;
       if (stage) where.stage = stage;
 
@@ -140,7 +143,7 @@ export class DraftProposalController {
   ): Promise<void> => {
     try {
       const { id } = req.params;
-      const { signature, publicKey, ...updateData } = req.body;
+      const { signature, publicKey, data: updateData } = req.body;
 
       if (!signature || !publicKey) {
         res
@@ -169,7 +172,7 @@ export class DraftProposalController {
       };
 
       const { isValid, signedData } = verifySignature({
-        expectedData: proposalUpdateData,
+        expectedData: updateData,
         signature,
         publicKey,
       });
@@ -215,6 +218,8 @@ export class DraftProposalController {
     }
   };
 
+  // This is used to update the stage of a draft proposal. It is used to move the proposal from draft to submitted.
+  // Even though this function doesn't validate signatures our biggest risk here is simply spam.
   public updateDraftProposalStage = async (
     req: Request<{ id: string }, {}, UpdateDraftProposalStageBody>,
     res: Response
@@ -237,7 +242,10 @@ export class DraftProposalController {
         return;
       }
 
-      const updatedData: any = { stage, receiptId };
+      const updatedData: Prisma.draft_proposalsUpdateInput = {
+        stage,
+        receiptId,
+      };
 
       if (
         stage === DraftProposalStage.SUBMITTED &&

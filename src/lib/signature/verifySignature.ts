@@ -4,6 +4,12 @@ import { utils } from "near-api-js";
 import { getRpcUrl } from "../utils/rpc";
 import { retrieveNonceForAccount } from "./nonce";
 
+export interface SignedPayload<T extends Record<string, any>> {
+  signature: string;
+  publicKey: string;
+  data: T;
+}
+
 class Payload {
   tag: number;
   message: string;

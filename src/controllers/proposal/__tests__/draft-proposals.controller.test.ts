@@ -28,6 +28,7 @@ describe("DraftProposalController", () => {
   const mockSignatureData = {
     signature: "test signature",
     publicKey: "testuser.near",
+    data: {},
   };
 
   // Expected response data (with ISO strings)
@@ -295,9 +296,12 @@ describe("DraftProposalController", () => {
   describe("PUT /api/proposal/draft/:id", () => {
     it("should update a draft proposal", async () => {
       const updateData = {
-        title: "Updated Title",
-        stage: DraftProposalStage.AWAITING_SUBMISSION,
-        ...mockSignatureData,
+        signature: mockSignatureData.signature,
+        publicKey: mockSignatureData.publicKey,
+        data: {
+          title: "Updated Title",
+          stage: DraftProposalStage.AWAITING_SUBMISSION,
+        },
       };
 
       const updatedProposalPrisma = {
@@ -318,8 +322,8 @@ describe("DraftProposalController", () => {
         isValid: true,
         signedData: {
           id: mockDraftProposalPrisma.id,
-          title: updateData.title,
-          stage: updateData.stage,
+          title: updateData.data.title,
+          stage: updateData.data.stage,
           action: "update",
           timestamp: expect.any(Number),
         },
@@ -349,17 +353,20 @@ describe("DraftProposalController", () => {
 
     it("should set submittedAt when stage changes to SUBMITTED", async () => {
       const updateData = {
-        stage: DraftProposalStage.SUBMITTED,
-        receiptId: "receipt_123abc",
-        ...mockSignatureData,
+        signature: mockSignatureData.signature,
+        publicKey: mockSignatureData.publicKey,
+        data: {
+          stage: DraftProposalStage.SUBMITTED,
+          receiptId: "receipt_123abc",
+        },
       };
 
       mockVerifySignature.mockReturnValue({
         isValid: true,
         signedData: {
           id: mockDraftProposalPrisma.id,
-          stage: updateData.stage,
-          receiptId: updateData.receiptId,
+          stage: updateData.data.stage,
+          receiptId: updateData.data.receiptId,
           action: "update",
           timestamp: expect.any(Number),
         },
@@ -390,8 +397,11 @@ describe("DraftProposalController", () => {
 
     it("should return 400 if signature is invalid", async () => {
       const updateData = {
-        title: "Updated Title",
-        ...mockSignatureData,
+        signature: mockSignatureData.signature,
+        publicKey: mockSignatureData.publicKey,
+        data: {
+          title: "Updated Title",
+        },
       };
 
       mockVerifySignature.mockReturnValue({ isValid: false });
@@ -412,8 +422,11 @@ describe("DraftProposalController", () => {
 
     it("should return 404 if draft proposal not found", async () => {
       const updateData = {
-        title: "Updated Title",
-        ...mockSignatureData,
+        signature: mockSignatureData.signature,
+        publicKey: mockSignatureData.publicKey,
+        data: {
+          title: "Updated Title",
+        },
       };
 
       mockVerifySignature.mockReturnValue({
@@ -434,8 +447,11 @@ describe("DraftProposalController", () => {
 
     it("should handle database error gracefully", async () => {
       const updateData = {
-        title: "Updated Title",
-        ...mockSignatureData,
+        signature: mockSignatureData.signature,
+        publicKey: mockSignatureData.publicKey,
+        data: {
+          title: "Updated Title",
+        },
       };
 
       mockVerifySignature.mockReturnValue({
@@ -480,7 +496,11 @@ describe("DraftProposalController", () => {
 
       await request(app)
         .delete(`/api/proposal/draft/${mockDraftProposalPrisma.id}`)
-        .send(mockSignatureData)
+        .send({
+          signature: mockSignatureData.signature,
+          publicKey: mockSignatureData.publicKey,
+          data: { action: "delete" },
+        })
         .expect(204);
 
       expect(prismaMock.draft_proposals.delete).toHaveBeenCalledWith({
@@ -496,7 +516,11 @@ describe("DraftProposalController", () => {
 
       const response = await request(app)
         .delete(`/api/proposal/draft/${mockDraftProposalPrisma.id}`)
-        .send(mockSignatureData)
+        .send({
+          signature: mockSignatureData.signature,
+          publicKey: mockSignatureData.publicKey,
+          data: { action: "delete" },
+        })
         .expect(400)
         .expect("Content-Type", /json/);
 
@@ -508,7 +532,11 @@ describe("DraftProposalController", () => {
     it("should return 404 if draft proposal not found", async () => {
       const response = await request(app)
         .delete("/api/proposal/draft/nonexistent")
-        .send(mockSignatureData)
+        .send({
+          signature: mockSignatureData.signature,
+          publicKey: mockSignatureData.publicKey,
+          data: { action: "delete" },
+        })
         .expect(404)
         .expect("Content-Type", /json/);
 
@@ -531,7 +559,11 @@ describe("DraftProposalController", () => {
 
       const response = await request(app)
         .delete(`/api/proposal/draft/${mockDraftProposalPrisma.id}`)
-        .send(mockSignatureData)
+        .send({
+          signature: mockSignatureData.signature,
+          publicKey: mockSignatureData.publicKey,
+          data: { action: "delete" },
+        })
         .expect(500)
         .expect("Content-Type", /json/);
 
