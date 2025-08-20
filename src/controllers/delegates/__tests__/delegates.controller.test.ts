@@ -1356,7 +1356,7 @@ describe("DelegatesController", () => {
         updatedAt: "2024-01-01T00:00:00.000Z",
       };
 
-      mockVerifySignature.mockReturnValue(true);
+      mockVerifySignature.mockResolvedValue(true);
       prismaMock.delegate_statements.upsert.mockResolvedValue(
         mockCreatedStatement
       );
@@ -1377,6 +1377,8 @@ describe("DelegatesController", () => {
         message: validStatementData.message,
         signature: validStatementData.signature,
         publicKey: validStatementData.publicKey,
+        networkId: "mainnet",
+        accountId: validStatementData.address,
       });
 
       expect(prismaMock.delegate_statements.upsert).toHaveBeenCalledWith({
@@ -1412,7 +1414,7 @@ describe("DelegatesController", () => {
 
     it("should reject invalid signature", async () => {
       // Arrange
-      mockVerifySignature.mockReturnValue(false);
+      mockVerifySignature.mockResolvedValue(false);
 
       // Act & Assert
       const response = await request(app)
@@ -1431,7 +1433,7 @@ describe("DelegatesController", () => {
     it("should handle database error gracefully", async () => {
       // Arrange
       const errorMessage = "Database constraint violation";
-      mockVerifySignature.mockReturnValue(true);
+      mockVerifySignature.mockResolvedValue(true);
       prismaMock.delegate_statements.upsert.mockRejectedValue(
         new Error(errorMessage)
       );
@@ -1450,9 +1452,9 @@ describe("DelegatesController", () => {
 
     it("should handle signature verification throwing error", async () => {
       // Arrange
-      mockVerifySignature.mockImplementation(() => {
-        throw new Error("Signature verification failed");
-      });
+      mockVerifySignature.mockRejectedValue(
+        new Error("Signature verification failed")
+      );
 
       // Act & Assert
       const response = await request(app)
@@ -1484,7 +1486,7 @@ describe("DelegatesController", () => {
         updatedAt: "2024-01-01T00:00:00.000Z",
       };
 
-      mockVerifySignature.mockReturnValue(true);
+      mockVerifySignature.mockResolvedValue(true);
       prismaMock.delegate_statements.findUnique.mockResolvedValue(null);
       prismaMock.delegate_statements.upsert.mockResolvedValue(
         mockCreatedStatement
@@ -1530,7 +1532,7 @@ describe("DelegatesController", () => {
         },
       };
 
-      mockVerifySignature.mockReturnValue(true);
+      mockVerifySignature.mockResolvedValue(true);
 
       // Act & Assert
       const response = await request(app)
