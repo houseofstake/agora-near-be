@@ -1,28 +1,16 @@
 import { Request, Response } from "express";
 import { prisma } from "../..";
 import { DraftProposalStage, Prisma } from "../../generated/prisma";
-import { verifySignature } from "../../lib/signature/verifySignature";
+import {
+  verifySignedPayload,
+  SignedPayload,
+} from "../../lib/signature/verifySignature";
 
 interface CreateDraftProposalBody {
   author: string;
 }
 
-interface UpdateDraftProposalBody {
-  signature: string;
-  publicKey: string;
-  message: string;
-  data: {
-    title?: string;
-    description?: string;
-    proposalUrl?: string;
-    stage?: DraftProposalStage;
-    votingOptions?: any;
-    receiptId?: string;
-  };
-}
-
 interface UpdateDraftProposalData {
-  id: string;
   title?: string;
   description?: string;
   proposalUrl?: string;
@@ -31,19 +19,20 @@ interface UpdateDraftProposalData {
   receiptId?: string;
 }
 
+interface UpdateDraftProposalBody
+  extends SignedPayload<UpdateDraftProposalData> {}
+
 interface UpdateDraftProposalStageBody {
   stage: DraftProposalStage;
   receiptId?: string;
 }
 
-interface DeleteDraftProposalBody {
-  signature: string;
-  publicKey: string;
-  message: string;
-  data: {
-    action: "delete";
-  };
+interface DeleteDraftProposalData {
+  action: "delete";
 }
+
+interface DeleteDraftProposalBody
+  extends SignedPayload<DeleteDraftProposalData> {}
 
 interface DraftProposalQueryParams {
   author?: string;
@@ -175,10 +164,8 @@ export class DraftProposalController {
       }
 
       const networkId = network_id || "mainnet";
-      const isVerified = await verifySignature({
-        message,
-        signature,
-        publicKey,
+      const isVerified = await verifySignedPayload({
+        signedPayload: { signature, publicKey, message, data: updateData },
         networkId,
         accountId: existingProposal.author,
       });
@@ -301,10 +288,13 @@ export class DraftProposalController {
       }
 
       const networkId = network_id || "mainnet";
-      const isVerified = await verifySignature({
-        message,
-        signature,
-        publicKey,
+      const isVerified = await verifySignedPayload({
+        signedPayload: {
+          signature,
+          publicKey,
+          message,
+          data: { action: "delete" },
+        },
         networkId,
         accountId: existingProposal.author,
       });

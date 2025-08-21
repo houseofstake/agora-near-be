@@ -9,11 +9,11 @@ jest.mock("../../../lib/signature/verifySignature");
 jest.mock("near-api-js");
 jest.mock("../../../lib/utils/rpc");
 
-import { verifySignature } from "../../../lib/signature/verifySignature";
+import { verifySignedPayload } from "../../../lib/signature/verifySignature";
 import { getRpcUrl } from "../../../lib/utils/rpc";
 
-const mockVerifySignature = verifySignature as jest.MockedFunction<
-  typeof verifySignature
+const mockVerifySignedPayload = verifySignedPayload as jest.MockedFunction<
+  typeof verifySignedPayload
 >;
 const mockGetRpcUrl = getRpcUrl as jest.MockedFunction<typeof getRpcUrl>;
 const mockProviders = providers as jest.Mocked<typeof providers>;
@@ -1333,17 +1333,19 @@ describe("DelegatesController", () => {
 
   describe("POST /api/delegates/statement", () => {
     const validStatementData = {
-      address: "delegate1.near",
       message: "Test message",
       signature: "test_signature",
       publicKey: "test_public_key",
-      twitter: "@delegate1",
-      discord: "delegate1#1234",
-      email: "delegate1@example.com",
-      warpcast: "delegate1",
-      statement: "I am a delegate",
-      topIssues: [{ type: "governance", value: "Improve voting" }],
-      agreeCodeConduct: true,
+      data: {
+        address: "delegate1.near",
+        twitter: "@delegate1",
+        discord: "delegate1#1234",
+        email: "delegate1@example.com",
+        warpcast: "delegate1",
+        statement: "I am a delegate",
+        topIssues: [{ type: "governance", value: "Improve voting" }],
+        agreeCodeConduct: true,
+      },
     };
 
     it("should create delegate statement successfully", async () => {
@@ -1356,7 +1358,7 @@ describe("DelegatesController", () => {
         updatedAt: "2024-01-01T00:00:00.000Z",
       };
 
-      mockVerifySignature.mockResolvedValue(true);
+      mockVerifySignedPayload.mockResolvedValue(true);
       prismaMock.delegate_statements.upsert.mockResolvedValue(
         mockCreatedStatement
       );
@@ -1373,40 +1375,43 @@ describe("DelegatesController", () => {
         success: true,
       });
 
-      expect(mockVerifySignature).toHaveBeenCalledWith({
-        message: validStatementData.message,
-        signature: validStatementData.signature,
-        publicKey: validStatementData.publicKey,
+      expect(mockVerifySignedPayload).toHaveBeenCalledWith({
+        signedPayload: {
+          signature: validStatementData.signature,
+          publicKey: validStatementData.publicKey,
+          message: validStatementData.message,
+          data: validStatementData.data,
+        },
         networkId: "mainnet",
-        accountId: validStatementData.address,
+        accountId: validStatementData.data.address,
       });
 
       expect(prismaMock.delegate_statements.upsert).toHaveBeenCalledWith({
-        where: { address: validStatementData.address },
+        where: { address: validStatementData.data.address },
         update: expect.objectContaining({
-          address: validStatementData.address,
+          address: validStatementData.data.address,
           message: validStatementData.message,
           signature: validStatementData.signature,
-          statement: validStatementData.statement,
-          twitter: validStatementData.twitter,
-          discord: validStatementData.discord,
-          email: validStatementData.email,
-          warpcast: validStatementData.warpcast,
-          topIssues: validStatementData.topIssues,
-          agreeCodeConduct: validStatementData.agreeCodeConduct,
+          statement: validStatementData.data.statement,
+          twitter: validStatementData.data.twitter,
+          discord: validStatementData.data.discord,
+          email: validStatementData.data.email,
+          warpcast: validStatementData.data.warpcast,
+          topIssues: validStatementData.data.topIssues,
+          agreeCodeConduct: validStatementData.data.agreeCodeConduct,
           publicKey: validStatementData.publicKey,
         }),
         create: expect.objectContaining({
-          address: validStatementData.address,
+          address: validStatementData.data.address,
           message: validStatementData.message,
           signature: validStatementData.signature,
-          statement: validStatementData.statement,
-          twitter: validStatementData.twitter,
-          discord: validStatementData.discord,
-          email: validStatementData.email,
-          warpcast: validStatementData.warpcast,
-          topIssues: validStatementData.topIssues,
-          agreeCodeConduct: validStatementData.agreeCodeConduct,
+          statement: validStatementData.data.statement,
+          twitter: validStatementData.data.twitter,
+          discord: validStatementData.data.discord,
+          email: validStatementData.data.email,
+          warpcast: validStatementData.data.warpcast,
+          topIssues: validStatementData.data.topIssues,
+          agreeCodeConduct: validStatementData.data.agreeCodeConduct,
           publicKey: validStatementData.publicKey,
         }),
       });
@@ -1414,7 +1419,7 @@ describe("DelegatesController", () => {
 
     it("should reject invalid signature", async () => {
       // Arrange
-      mockVerifySignature.mockResolvedValue(false);
+      mockVerifySignedPayload.mockResolvedValue(false);
 
       // Act & Assert
       const response = await request(app)
@@ -1433,7 +1438,7 @@ describe("DelegatesController", () => {
     it("should handle database error gracefully", async () => {
       // Arrange
       const errorMessage = "Database constraint violation";
-      mockVerifySignature.mockResolvedValue(true);
+      mockVerifySignedPayload.mockResolvedValue(true);
       prismaMock.delegate_statements.upsert.mockRejectedValue(
         new Error(errorMessage)
       );
@@ -1452,7 +1457,7 @@ describe("DelegatesController", () => {
 
     it("should handle signature verification throwing error", async () => {
       // Arrange
-      mockVerifySignature.mockRejectedValue(
+      mockVerifySignedPayload.mockRejectedValue(
         new Error("Signature verification failed")
       );
 
@@ -1472,9 +1477,12 @@ describe("DelegatesController", () => {
       // Arrange
       const statementDataWithNotifications = {
         ...validStatementData,
-        notification_preferences: {
-          wants_proposal_created_email: "true",
-          wants_proposal_ending_soon_email: "false",
+        data: {
+          ...validStatementData.data,
+          notification_preferences: {
+            wants_proposal_created_email: "true",
+            wants_proposal_ending_soon_email: "false",
+          },
         },
       };
 
@@ -1486,7 +1494,7 @@ describe("DelegatesController", () => {
         updatedAt: "2024-01-01T00:00:00.000Z",
       };
 
-      mockVerifySignature.mockResolvedValue(true);
+      mockVerifySignedPayload.mockResolvedValue(true);
       prismaMock.delegate_statements.findUnique.mockResolvedValue(null);
       prismaMock.delegate_statements.upsert.mockResolvedValue(
         mockCreatedStatement
@@ -1505,7 +1513,7 @@ describe("DelegatesController", () => {
       });
 
       expect(prismaMock.delegate_statements.upsert).toHaveBeenCalledWith({
-        where: { address: statementDataWithNotifications.address },
+        where: { address: statementDataWithNotifications.data.address },
         update: expect.objectContaining({
           notification_preferences: expect.objectContaining({
             wants_proposal_created_email: "true",
@@ -1527,12 +1535,15 @@ describe("DelegatesController", () => {
       // Arrange
       const statementDataWithInvalidNotifications = {
         ...validStatementData,
-        notification_preferences: {
-          wants_proposal_created_email: "invalid_value",
+        data: {
+          ...validStatementData.data,
+          notification_preferences: {
+            wants_proposal_created_email: "invalid_value",
+          },
         },
       };
 
-      mockVerifySignature.mockResolvedValue(true);
+      mockVerifySignedPayload.mockResolvedValue(true);
 
       // Act & Assert
       const response = await request(app)

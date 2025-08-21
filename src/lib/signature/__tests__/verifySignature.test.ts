@@ -1,7 +1,11 @@
 import * as borsh from "borsh";
 import * as js_sha256 from "js-sha256";
 import { utils } from "near-api-js";
-import { verifySignature } from "../verifySignature";
+import {
+  verifySignature,
+  verifySignedPayload,
+  SignedPayload,
+} from "../verifySignature";
 import { retrieveNonceForAccount } from "../nonce";
 
 // Mock dependencies
@@ -399,6 +403,74 @@ describe("verifySignature", () => {
       expect(mockSha256.sha256.array).toHaveBeenCalledTimes(1);
       expect(mockUtils.PublicKey.fromString).toHaveBeenCalledTimes(1);
       expect(mockPublicKeyInstance.verify).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("verifySignedPayload", () => {
+    it("should verify signed payload correctly", async () => {
+      mockPublicKeyInstance.verify.mockReturnValue(true);
+
+      const testData = { foo: "bar", baz: 123 };
+      const signedPayload: SignedPayload<typeof testData> = {
+        signature: testSignature,
+        publicKey: testPublicKey,
+        message: testMessage,
+        data: testData,
+      };
+
+      const result = await verifySignedPayload({
+        signedPayload,
+        networkId: testNetworkId,
+        accountId: testAccountId,
+      });
+
+      expect(result).toBe(true);
+      expect(mockRetrieveNonceForAccount).toHaveBeenCalledWith(testAccountId);
+      expect(mockFetch).toHaveBeenCalled();
+    });
+
+    it("should handle signed payload with complex data", async () => {
+      mockPublicKeyInstance.verify.mockReturnValue(true);
+
+      const testData = {
+        user: { id: 1, name: "test" },
+        actions: ["create", "update"],
+        metadata: { timestamp: Date.now() },
+      };
+      const signedPayload: SignedPayload<typeof testData> = {
+        signature: testSignature,
+        publicKey: testPublicKey,
+        message: testMessage,
+        data: testData,
+      };
+
+      const result = await verifySignedPayload({
+        signedPayload,
+        networkId: testNetworkId,
+        accountId: testAccountId,
+      });
+
+      expect(result).toBe(true);
+    });
+
+    it("should return false when signature verification fails", async () => {
+      mockPublicKeyInstance.verify.mockReturnValue(false);
+
+      const testData = { test: "data" };
+      const signedPayload: SignedPayload<typeof testData> = {
+        signature: testSignature,
+        publicKey: testPublicKey,
+        message: testMessage,
+        data: testData,
+      };
+
+      const result = await verifySignedPayload({
+        signedPayload,
+        networkId: testNetworkId,
+        accountId: testAccountId,
+      });
+
+      expect(result).toBe(false);
     });
   });
 });

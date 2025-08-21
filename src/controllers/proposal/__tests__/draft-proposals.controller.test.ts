@@ -4,10 +4,10 @@ import { prismaMock } from "../../../lib/tests/prismaMock";
 import { DraftProposalStage } from "../../../generated/prisma";
 
 jest.mock("../../../lib/signature/verifySignature");
-import { verifySignature } from "../../../lib/signature/verifySignature";
+import { verifySignedPayload } from "../../../lib/signature/verifySignature";
 
-const mockVerifySignature = verifySignature as jest.MockedFunction<
-  typeof verifySignature
+const mockVerifySignedPayload = verifySignedPayload as jest.MockedFunction<
+  typeof verifySignedPayload
 >;
 
 describe("DraftProposalController", () => {
@@ -316,7 +316,7 @@ describe("DraftProposalController", () => {
         updatedAt: "2024-01-02T00:00:00.000Z",
       };
 
-      mockVerifySignature.mockResolvedValue(true);
+      mockVerifySignedPayload.mockResolvedValue(true);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -351,7 +351,7 @@ describe("DraftProposalController", () => {
         },
       };
 
-      mockVerifySignature.mockResolvedValue(true);
+      mockVerifySignedPayload.mockResolvedValue(true);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -386,7 +386,7 @@ describe("DraftProposalController", () => {
         },
       };
 
-      mockVerifySignature.mockResolvedValue(false);
+      mockVerifySignedPayload.mockResolvedValue(false);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -412,7 +412,7 @@ describe("DraftProposalController", () => {
         },
       };
 
-      mockVerifySignature.mockResolvedValue(true);
+      mockVerifySignedPayload.mockResolvedValue(true);
 
       const response = await request(app)
         .put("/api/proposal/draft/nonexistent")
@@ -435,7 +435,7 @@ describe("DraftProposalController", () => {
         },
       };
 
-      mockVerifySignature.mockResolvedValue(true);
+      mockVerifySignedPayload.mockResolvedValue(true);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -457,7 +457,7 @@ describe("DraftProposalController", () => {
 
   describe("DELETE /api/proposal/draft/:id", () => {
     it("should delete a draft proposal", async () => {
-      mockVerifySignature.mockResolvedValue(true);
+      mockVerifySignedPayload.mockResolvedValue(true);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -481,7 +481,7 @@ describe("DraftProposalController", () => {
     });
 
     it("should return 400 if signature is invalid", async () => {
-      mockVerifySignature.mockResolvedValue(false);
+      mockVerifySignedPayload.mockResolvedValue(false);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -520,7 +520,7 @@ describe("DraftProposalController", () => {
     });
 
     it("should handle database error gracefully", async () => {
-      mockVerifySignature.mockResolvedValue(true);
+      mockVerifySignedPayload.mockResolvedValue(true);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );

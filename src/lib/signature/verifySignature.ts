@@ -7,6 +7,7 @@ import { retrieveNonceForAccount } from "./nonce";
 export interface SignedPayload<T extends Record<string, any>> {
   signature: string;
   publicKey: string;
+  message: string;
   data: T;
 }
 
@@ -157,4 +158,22 @@ export const verifySignature = async ({
   });
 
   return isValid && keyBelongsToUser;
+};
+
+export const verifySignedPayload = async <T extends Record<string, any>>({
+  signedPayload,
+  networkId,
+  accountId,
+}: {
+  signedPayload: SignedPayload<T>;
+  networkId: string;
+  accountId: string;
+}): Promise<boolean> => {
+  return verifySignature({
+    message: signedPayload.message,
+    signature: signedPayload.signature,
+    publicKey: signedPayload.publicKey,
+    networkId,
+    accountId,
+  });
 };
