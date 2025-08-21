@@ -1333,22 +1333,17 @@ describe("DelegatesController", () => {
 
   describe("POST /api/delegates/statement", () => {
     const validStatementData = {
+      address: "delegate1.near",
+      message: "Test message",
       signature: "test_signature",
       publicKey: "test_public_key",
-      data: {
-        address: "delegate1.near",
-        twitter: "@delegate1",
-        discord: "delegate1#1234",
-        email: "delegate1@example.com",
-        warpcast: "delegate1",
-        statement: "I am a delegate",
-        topIssues: [{ type: "governance", value: "Improve voting" }],
-        agreeCodeConduct: true,
-        notification_preferences: {
-          wants_proposal_created_email: "true",
-          wants_proposal_ending_soon_email: "false",
-        },
-      },
+      twitter: "@delegate1",
+      discord: "delegate1#1234",
+      email: "delegate1@example.com",
+      warpcast: "delegate1",
+      statement: "I am a delegate",
+      topIssues: [{ type: "governance", value: "Improve voting" }],
+      agreeCodeConduct: true,
     };
 
     it("should create delegate statement successfully", async () => {
@@ -1356,18 +1351,6 @@ describe("DelegatesController", () => {
       const mockCreatedStatement = {
         id: 1,
         ...validStatementData,
-        message: JSON.stringify({
-          address: validStatementData.data.address,
-          twitter: validStatementData.data.twitter,
-          discord: validStatementData.data.discord,
-          email: validStatementData.data.email,
-          warpcast: validStatementData.data.warpcast,
-          statement: validStatementData.data.statement,
-          topIssues: validStatementData.data.topIssues,
-          agreeCodeConduct: validStatementData.data.agreeCodeConduct,
-          notification_preferences:
-            validStatementData.data.notification_preferences,
-        }),
         statement: "I am a delegate", // Sanitized
         createdAt: "2024-01-01T00:00:00.000Z",
         updatedAt: "2024-01-01T00:00:00.000Z",
@@ -1391,62 +1374,41 @@ describe("DelegatesController", () => {
       });
 
       expect(mockVerifySignature).toHaveBeenCalledWith({
-        expectedData: expect.objectContaining({
-          address: validStatementData.data.address,
-          twitter: validStatementData.data.twitter,
-          discord: validStatementData.data.discord,
-          email: validStatementData.data.email,
-          warpcast: validStatementData.data.warpcast,
-          statement: validStatementData.data.statement,
-          topIssues: validStatementData.data.topIssues,
-          agreeCodeConduct: validStatementData.data.agreeCodeConduct,
-          notification_preferences:
-            validStatementData.data.notification_preferences,
-        }),
+        message: validStatementData.message,
         signature: validStatementData.signature,
         publicKey: validStatementData.publicKey,
         networkId: "mainnet",
-        accountId: validStatementData.data.address,
+        accountId: validStatementData.address,
       });
 
       expect(prismaMock.delegate_statements.upsert).toHaveBeenCalledWith({
-        where: { address: validStatementData.data.address },
-        update: {
-          address: validStatementData.data.address,
-          message: expect.any(String),
+        where: { address: validStatementData.address },
+        update: expect.objectContaining({
+          address: validStatementData.address,
+          message: validStatementData.message,
           signature: validStatementData.signature,
-          statement: validStatementData.data.statement,
-          twitter: validStatementData.data.twitter,
-          discord: validStatementData.data.discord,
-          email: validStatementData.data.email,
-          warpcast: validStatementData.data.warpcast,
-          topIssues: validStatementData.data.topIssues,
-          agreeCodeConduct: validStatementData.data.agreeCodeConduct,
+          statement: validStatementData.statement,
+          twitter: validStatementData.twitter,
+          discord: validStatementData.discord,
+          email: validStatementData.email,
+          warpcast: validStatementData.warpcast,
+          topIssues: validStatementData.topIssues,
+          agreeCodeConduct: validStatementData.agreeCodeConduct,
           publicKey: validStatementData.publicKey,
-          notification_preferences: {
-            wants_proposal_created_email: "true",
-            wants_proposal_ending_soon_email: "false",
-            last_updated: expect.any(String),
-          },
-        },
-        create: {
-          address: validStatementData.data.address,
-          message: expect.any(String),
+        }),
+        create: expect.objectContaining({
+          address: validStatementData.address,
+          message: validStatementData.message,
           signature: validStatementData.signature,
-          statement: validStatementData.data.statement,
-          twitter: validStatementData.data.twitter,
-          discord: validStatementData.data.discord,
-          email: validStatementData.data.email,
-          warpcast: validStatementData.data.warpcast,
-          topIssues: validStatementData.data.topIssues,
-          agreeCodeConduct: validStatementData.data.agreeCodeConduct,
+          statement: validStatementData.statement,
+          twitter: validStatementData.twitter,
+          discord: validStatementData.discord,
+          email: validStatementData.email,
+          warpcast: validStatementData.warpcast,
+          topIssues: validStatementData.topIssues,
+          agreeCodeConduct: validStatementData.agreeCodeConduct,
           publicKey: validStatementData.publicKey,
-          notification_preferences: {
-            wants_proposal_created_email: "true",
-            wants_proposal_ending_soon_email: "false",
-            last_updated: expect.any(String),
-          },
-        },
+        }),
       });
     });
 
@@ -1462,7 +1424,7 @@ describe("DelegatesController", () => {
         .expect("Content-Type", /json/);
 
       expect(response.body).toEqual({
-        error: "Invalid signature or delegate statement data mismatch",
+        error: "Invalid signature",
       });
 
       expect(prismaMock.delegate_statements.upsert).not.toHaveBeenCalled();
@@ -1510,12 +1472,9 @@ describe("DelegatesController", () => {
       // Arrange
       const statementDataWithNotifications = {
         ...validStatementData,
-        data: {
-          ...validStatementData.data,
-          notification_preferences: {
-            wants_proposal_created_email: "true",
-            wants_proposal_ending_soon_email: "false",
-          },
+        notification_preferences: {
+          wants_proposal_created_email: "true",
+          wants_proposal_ending_soon_email: "false",
         },
       };
 
@@ -1546,7 +1505,7 @@ describe("DelegatesController", () => {
       });
 
       expect(prismaMock.delegate_statements.upsert).toHaveBeenCalledWith({
-        where: { address: statementDataWithNotifications.data.address },
+        where: { address: statementDataWithNotifications.address },
         update: expect.objectContaining({
           notification_preferences: expect.objectContaining({
             wants_proposal_created_email: "true",
@@ -1568,11 +1527,8 @@ describe("DelegatesController", () => {
       // Arrange
       const statementDataWithInvalidNotifications = {
         ...validStatementData,
-        data: {
-          ...validStatementData.data,
-          notification_preferences: {
-            wants_proposal_created_email: "invalid_value",
-          },
+        notification_preferences: {
+          wants_proposal_created_email: "invalid_value",
         },
       };
 

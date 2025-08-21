@@ -28,6 +28,7 @@ describe("DraftProposalController", () => {
   const mockSignatureData = {
     signature: "test signature",
     publicKey: "testuser.near",
+    message: "test message",
     data: {},
   };
 
@@ -143,10 +144,6 @@ describe("DraftProposalController", () => {
         ...mockSignatureData,
       };
 
-      mockVerifySignature.mockReturnValue({
-        isValid: true,
-        signedData: expect.anything(),
-      });
       prismaMock.draft_proposals.create.mockRejectedValue(
         new Error("Database error")
       );
@@ -298,6 +295,7 @@ describe("DraftProposalController", () => {
       const updateData = {
         signature: mockSignatureData.signature,
         publicKey: mockSignatureData.publicKey,
+        message: mockSignatureData.message,
         data: {
           title: "Updated Title",
           stage: DraftProposalStage.AWAITING_SUBMISSION,
@@ -318,16 +316,7 @@ describe("DraftProposalController", () => {
         updatedAt: "2024-01-02T00:00:00.000Z",
       };
 
-      mockVerifySignature.mockReturnValue({
-        isValid: true,
-        signedData: {
-          id: mockDraftProposalPrisma.id,
-          title: updateData.data.title,
-          stage: updateData.data.stage,
-          action: "update",
-          timestamp: expect.any(Number),
-        },
-      });
+      mockVerifySignature.mockResolvedValue(true);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -355,22 +344,14 @@ describe("DraftProposalController", () => {
       const updateData = {
         signature: mockSignatureData.signature,
         publicKey: mockSignatureData.publicKey,
+        message: mockSignatureData.message,
         data: {
           stage: DraftProposalStage.SUBMITTED,
           receiptId: "receipt_123abc",
         },
       };
 
-      mockVerifySignature.mockReturnValue({
-        isValid: true,
-        signedData: {
-          id: mockDraftProposalPrisma.id,
-          stage: updateData.data.stage,
-          receiptId: updateData.data.receiptId,
-          action: "update",
-          timestamp: expect.any(Number),
-        },
-      });
+      mockVerifySignature.mockResolvedValue(true);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -399,12 +380,13 @@ describe("DraftProposalController", () => {
       const updateData = {
         signature: mockSignatureData.signature,
         publicKey: mockSignatureData.publicKey,
+        message: mockSignatureData.message,
         data: {
           title: "Updated Title",
         },
       };
 
-      mockVerifySignature.mockReturnValue({ isValid: false });
+      mockVerifySignature.mockResolvedValue(false);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -416,7 +398,7 @@ describe("DraftProposalController", () => {
         .expect("Content-Type", /json/);
 
       expect(response.body).toEqual({
-        error: "Invalid signature or proposal data mismatch",
+        error: "Invalid signature",
       });
     });
 
@@ -424,15 +406,13 @@ describe("DraftProposalController", () => {
       const updateData = {
         signature: mockSignatureData.signature,
         publicKey: mockSignatureData.publicKey,
+        message: mockSignatureData.message,
         data: {
           title: "Updated Title",
         },
       };
 
-      mockVerifySignature.mockReturnValue({
-        isValid: true,
-        signedData: expect.anything(),
-      });
+      mockVerifySignature.mockResolvedValue(true);
 
       const response = await request(app)
         .put("/api/proposal/draft/nonexistent")
@@ -449,15 +429,13 @@ describe("DraftProposalController", () => {
       const updateData = {
         signature: mockSignatureData.signature,
         publicKey: mockSignatureData.publicKey,
+        message: mockSignatureData.message,
         data: {
           title: "Updated Title",
         },
       };
 
-      mockVerifySignature.mockReturnValue({
-        isValid: true,
-        signedData: expect.anything(),
-      });
+      mockVerifySignature.mockResolvedValue(true);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -479,14 +457,7 @@ describe("DraftProposalController", () => {
 
   describe("DELETE /api/proposal/draft/:id", () => {
     it("should delete a draft proposal", async () => {
-      mockVerifySignature.mockReturnValue({
-        isValid: true,
-        signedData: {
-          id: mockDraftProposalPrisma.id,
-          action: "delete",
-          timestamp: expect.any(Number),
-        },
-      });
+      mockVerifySignature.mockResolvedValue(true);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -499,6 +470,7 @@ describe("DraftProposalController", () => {
         .send({
           signature: mockSignatureData.signature,
           publicKey: mockSignatureData.publicKey,
+          message: mockSignatureData.message,
           data: { action: "delete" },
         })
         .expect(204);
@@ -509,7 +481,7 @@ describe("DraftProposalController", () => {
     });
 
     it("should return 400 if signature is invalid", async () => {
-      mockVerifySignature.mockReturnValue({ isValid: false });
+      mockVerifySignature.mockResolvedValue(false);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -519,13 +491,14 @@ describe("DraftProposalController", () => {
         .send({
           signature: mockSignatureData.signature,
           publicKey: mockSignatureData.publicKey,
+          message: mockSignatureData.message,
           data: { action: "delete" },
         })
         .expect(400)
         .expect("Content-Type", /json/);
 
       expect(response.body).toEqual({
-        error: "Invalid signature or proposal data mismatch",
+        error: "Invalid signature",
       });
     });
 
@@ -535,6 +508,7 @@ describe("DraftProposalController", () => {
         .send({
           signature: mockSignatureData.signature,
           publicKey: mockSignatureData.publicKey,
+          message: mockSignatureData.message,
           data: { action: "delete" },
         })
         .expect(404)
@@ -546,10 +520,7 @@ describe("DraftProposalController", () => {
     });
 
     it("should handle database error gracefully", async () => {
-      mockVerifySignature.mockReturnValue({
-        isValid: true,
-        signedData: expect.anything(),
-      });
+      mockVerifySignature.mockResolvedValue(true);
       prismaMock.draft_proposals.findUnique.mockResolvedValue(
         mockDraftProposalPrisma
       );
@@ -562,6 +533,7 @@ describe("DraftProposalController", () => {
         .send({
           signature: mockSignatureData.signature,
           publicKey: mockSignatureData.publicKey,
+          message: mockSignatureData.message,
           data: { action: "delete" },
         })
         .expect(500)
