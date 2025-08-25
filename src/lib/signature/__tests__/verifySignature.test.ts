@@ -84,7 +84,7 @@ describe("verifySignature", () => {
       mockPublicKeyInstance.verify.mockReturnValue(true);
 
       const result = await verifySignature({
-        message: testMessage,
+        data: { data: { message: testMessage } },
         signature: testSignature,
         publicKey: testPublicKey,
         networkId: testNetworkId,
@@ -106,7 +106,11 @@ describe("verifySignature", () => {
         },
         expect.objectContaining({
           tag: 2147484061,
-          message: testMessage,
+          message: JSON.stringify(
+            { data: { message: testMessage } },
+            undefined,
+            "\t"
+          ),
           nonce: testNonce,
           recipient: "agora-near-be",
         })
@@ -143,7 +147,7 @@ describe("verifySignature", () => {
       });
 
       const result = await verifySignature({
-        message: testMessage,
+        data: { data: { message: testMessage } },
         signature: testSignature,
         publicKey: testPublicKey,
         networkId: testNetworkId,
@@ -173,7 +177,7 @@ describe("verifySignature", () => {
       });
 
       const result = await verifySignature({
-        message: testMessage,
+        data: { data: { message: testMessage } },
         signature: testSignature,
         publicKey: testPublicKey,
         networkId: testNetworkId,
@@ -189,7 +193,7 @@ describe("verifySignature", () => {
       mockPublicKeyInstance.verify.mockReturnValue(false);
 
       const result = await verifySignature({
-        message: testMessage,
+        data: { data: { message: testMessage } },
         signature: testSignature,
         publicKey: testPublicKey,
         networkId: testNetworkId,
@@ -209,7 +213,7 @@ describe("verifySignature", () => {
       mockPublicKeyInstance.verify.mockReturnValue(true);
 
       await verifySignature({
-        message: testMessage,
+        data: { data: { message: testMessage } },
         signature: testSignature,
         publicKey: testPublicKey,
         networkId: testNetworkId,
@@ -229,7 +233,7 @@ describe("verifySignature", () => {
       const customMessage = "custom test message";
 
       await verifySignature({
-        message: customMessage,
+        data: { message: customMessage },
         signature: testSignature,
         publicKey: testPublicKey,
         networkId: testNetworkId,
@@ -239,7 +243,7 @@ describe("verifySignature", () => {
       expect(mockBorsh.serialize).toHaveBeenCalledWith(
         expect.any(Object),
         expect.objectContaining({
-          message: customMessage,
+          message: JSON.stringify({ message: customMessage }, undefined, "\t"),
         })
       );
     });
@@ -248,7 +252,7 @@ describe("verifySignature", () => {
       mockPublicKeyInstance.verify.mockReturnValue(true);
 
       await verifySignature({
-        message: testMessage,
+        data: { data: { message: testMessage } },
         signature: testSignature,
         publicKey: testPublicKey,
         networkId: testNetworkId,
@@ -258,7 +262,11 @@ describe("verifySignature", () => {
       const serializedPayload = mockBorsh.serialize.mock.calls[0][1] as any;
       expect(serializedPayload).toMatchObject({
         tag: 2147484061,
-        message: testMessage,
+        message: JSON.stringify(
+          { data: { message: testMessage } },
+          undefined,
+          "\t"
+        ),
         nonce: testNonce,
         recipient: "agora-near-be",
       });
@@ -272,7 +280,7 @@ describe("verifySignature", () => {
 
       await expect(
         verifySignature({
-          message: testMessage,
+          data: { data: { message: testMessage } },
           signature: testSignature,
           publicKey: testPublicKey,
           networkId: testNetworkId,
@@ -288,7 +296,7 @@ describe("verifySignature", () => {
 
       await expect(
         verifySignature({
-          message: testMessage,
+          data: { data: { message: testMessage } },
           signature: testSignature,
           publicKey: testPublicKey,
           networkId: testNetworkId,
@@ -304,7 +312,7 @@ describe("verifySignature", () => {
 
       await expect(
         verifySignature({
-          message: testMessage,
+          data: { data: { message: testMessage } },
           signature: testSignature,
           publicKey: testPublicKey,
           networkId: testNetworkId,
@@ -320,7 +328,7 @@ describe("verifySignature", () => {
 
       await expect(
         verifySignature({
-          message: testMessage,
+          data: { data: { message: testMessage } },
           signature: testSignature,
           publicKey: "invalid-key",
           networkId: testNetworkId,
@@ -335,7 +343,7 @@ describe("verifySignature", () => {
       mockPublicKeyInstance.verify.mockReturnValue(true);
 
       const result = await verifySignature({
-        message: "",
+        data: { data: { message: "" } },
         signature: testSignature,
         publicKey: testPublicKey,
         networkId: testNetworkId,
@@ -346,7 +354,7 @@ describe("verifySignature", () => {
       expect(mockBorsh.serialize).toHaveBeenCalledWith(
         expect.any(Object),
         expect.objectContaining({
-          message: "",
+          message: JSON.stringify({ data: { message: "" } }, undefined, "\t"),
         })
       );
     });
@@ -357,7 +365,7 @@ describe("verifySignature", () => {
       mockPublicKeyInstance.verify.mockReturnValue(true);
 
       await verifySignature({
-        message: testMessage,
+        data: { data: { message: testMessage } },
         signature: testSignature,
         publicKey: testPublicKey,
         networkId: testNetworkId,
@@ -373,7 +381,7 @@ describe("verifySignature", () => {
       mockPublicKeyInstance.verify.mockReturnValue(true);
 
       await verifySignature({
-        message: testMessage,
+        data: { data: { message: testMessage } },
         signature: testSignature,
         publicKey: testPublicKey,
         networkId: testNetworkId,
@@ -390,7 +398,7 @@ describe("verifySignature", () => {
       mockPublicKeyInstance.verify.mockReturnValue(true);
 
       await verifySignature({
-        message: testMessage,
+        data: { data: { message: testMessage } },
         signature: testSignature,
         publicKey: testPublicKey,
         networkId: testNetworkId,

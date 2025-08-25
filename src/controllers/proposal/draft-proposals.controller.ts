@@ -165,7 +165,15 @@ export class DraftProposalController {
 
       const networkId = network_id || "mainnet";
       const isVerified = await verifySignedPayload({
-        signedPayload: { signature, publicKey, message, data: updateData },
+        signedPayload: {
+          signature,
+          publicKey,
+          message,
+          data: {
+            ...updateData,
+            id,
+          },
+        },
         networkId,
         accountId: existingProposal.author,
       });
@@ -293,7 +301,7 @@ export class DraftProposalController {
           signature,
           publicKey,
           message,
-          data: { action: "delete" },
+          data: { action: "delete", id },
         },
         networkId,
         accountId: existingProposal.author,

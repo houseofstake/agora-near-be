@@ -49,7 +49,6 @@ const payloadSchema = {
   },
 };
 
-const NONCE = Buffer.from(Array.from(Array(32).keys()));
 const RECIPIENT = "agora-near-be";
 
 async function verifyFullKeyBelongsToUser({
@@ -97,19 +96,20 @@ async function fetchAllUserKeys({
   return keys;
 }
 
-const isValidSignature = ({
-  message,
+const isValidSignature = <T extends Record<string, any>>({
+  data,
   signature,
   publicKey,
   recipient,
   nonce,
 }: {
-  message: string;
+  data: T;
   signature: string;
   publicKey: string;
   recipient: string;
   nonce: Buffer;
 }) => {
+  const message = JSON.stringify(data, undefined, "\t");
   const payload = new Payload({
     message,
     nonce,
@@ -124,18 +124,18 @@ const isValidSignature = ({
   return pk.verify(toSign, actualSignature);
 };
 
-export const verifySignature = async ({
-  message,
+export const verifySignature = async <T extends Record<string, any>>({
   signature,
   publicKey,
   networkId,
   accountId,
+  data,
 }: {
-  message: string;
   signature: string;
   publicKey: string;
   networkId: string;
   accountId: string;
+  data: T;
 }) => {
   const nonce = await retrieveNonceForAccount(accountId);
 
@@ -150,7 +150,7 @@ export const verifySignature = async ({
   });
 
   const isValid = isValidSignature({
-    message,
+    data,
     signature,
     publicKey,
     recipient: RECIPIENT,
@@ -170,7 +170,7 @@ export const verifySignedPayload = async <T extends Record<string, any>>({
   accountId: string;
 }): Promise<boolean> => {
   return verifySignature({
-    message: signedPayload.message,
+    data: signedPayload.data,
     signature: signedPayload.signature,
     publicKey: signedPayload.publicKey,
     networkId,
