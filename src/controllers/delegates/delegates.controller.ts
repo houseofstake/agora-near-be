@@ -8,10 +8,16 @@ import {
   Prisma,
   registeredVoters,
 } from "../../generated/prisma";
+import type { InputJsonValue } from "../../generated/prisma/runtime/library";
 import { providers } from "near-api-js";
 import { getRpcUrl } from "../../lib/utils/rpc";
 import Big from "big.js";
 import { prisma } from "../..";
+import {
+  NotificationPreferences,
+  NotificationPreferencesInput,
+  isValidNotificationPreference,
+} from "../../lib/utils/notificationTypes";
 
 type DelegateStatementInput = {
   address: string;
@@ -28,6 +34,7 @@ type DelegateStatementInput = {
   }[];
   agreeCodeConduct: boolean;
   statement: string;
+  notification_preferences?: NotificationPreferencesInput;
 };
 
 interface DeletesQuery {
@@ -39,7 +46,10 @@ interface DeletesQuery {
   sorting_seed?: string;
 }
 
-type DelegateWithVoterInfo = delegate_statements & registeredVoters;
+type DelegateWithVoterInfo = delegate_statements &
+  registeredVoters & {
+    notificationPreferences?: NotificationPreferences | null;
+  };
 
 interface AddressParams {
   address: string;
@@ -122,7 +132,8 @@ export class DelegatesController {
               ds.warpcast,
               ds.statement,
               ds."topIssues",
-              ds.endorsed
+              ds.endorsed,
+              ds.notification_preferences as "notificationPreferences"
             FROM fastnear.registered_voters rv
             FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
             ${filterByClause}
@@ -157,6 +168,7 @@ export class DelegatesController {
         statement,
         topIssues,
         endorsed,
+        notificationPreferences,
       } = record;
 
       return {
@@ -170,6 +182,7 @@ export class DelegatesController {
         statement,
         topIssues,
         endorsed,
+        notificationPreferences,
       };
     });
 
@@ -204,7 +217,8 @@ export class DelegatesController {
             ds.signature,
             ds."publicKey",
             ds."agreeCodeConduct",
-            ds.endorsed
+            ds.endorsed,
+            ds.notification_preferences as "notificationPreferences"
           FROM fastnear.registered_voters rv
           FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
           WHERE COALESCE(rv.registered_voter_id, ds.address) = ${address}
@@ -286,6 +300,7 @@ export class DelegatesController {
           statement: data.statement,
           topIssues: data.topIssues,
           endorsed: data.endorsed,
+          notificationPreferences: data.notificationPreferences,
           votingPower: data.currentVotingPower?.toFixed(),
           forCount,
           againstCount,
@@ -572,7 +587,7 @@ export class DelegatesController {
   };
 
   public createDelegateStatement = async (
-    req: Request<{}, {}, DelegateStatementInput>,
+    req: Request<{}, {}, DelegateStatementInput, { network_id: string }>,
     res: Response
   ): Promise<void> => {
     try {
@@ -588,17 +603,46 @@ export class DelegatesController {
         statement,
         topIssues,
         agreeCodeConduct,
+        notification_preferences,
       } = req.body;
 
-      const isVerified = verifySignature({
+      const networkId = req.query.network_id || "mainnet";
+
+      const isVerified = await verifySignature({
         message,
         signature,
         publicKey,
+        networkId,
+        accountId: address,
       });
 
       if (!isVerified) {
         res.status(400).json({ error: "Invalid signature" });
         return;
+      }
+
+      // Validate notification preferences if provided
+      let notificationPreferencesData: Record<string, unknown> | undefined;
+      if (notification_preferences) {
+        const invalidPrefs = Object.entries(notification_preferences).filter(
+          ([, value]) => !isValidNotificationPreference(value)
+        );
+        if (invalidPrefs.length > 0) {
+          res.status(400).json({
+            error: `Invalid notification preference values. Must be 'true', 'false', or 'prompt'`,
+          });
+          return;
+        }
+        const currentPrefs = await prisma.delegate_statements.findUnique({
+          where: { address },
+          select: { notification_preferences: true },
+        });
+
+        notificationPreferencesData = {
+          ...((currentPrefs?.notification_preferences as object) || {}),
+          ...notification_preferences,
+          last_updated: new Date().toISOString(),
+        };
       }
 
       const data = {
@@ -613,6 +657,10 @@ export class DelegatesController {
         topIssues,
         agreeCodeConduct,
         publicKey,
+        ...(notificationPreferencesData && {
+          notification_preferences:
+            notificationPreferencesData as InputJsonValue,
+        }),
       };
 
       const createdDelegateStatement = await prisma.delegate_statements.upsert({

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "web2"."delegate_statements" ADD COLUMN     "notification_preferences" JSONB DEFAULT jsonb_build_object('wants_proposal_created_email', 'prompt', 'wants_proposal_ending_soon_email', 'prompt', 'last_updated', (now() AT TIME ZONE 'UTC'::text));

@@ -11,18 +11,19 @@ datasource db {
 }
 
 model delegate_statements {
-    address          String  @id
-    signature        String
-    statement        String
-    publicKey        String
-    message          String
-    topIssues        Json?
-    agreeCodeConduct Boolean
-    twitter          String?
-    discord          String?
-    email            String?
-    warpcast         String?
-    endorsed         Boolean @default(false)
+    address                  String  @id
+    signature                String
+    statement                String
+    publicKey                String
+    message                  String
+    topIssues                Json?
+    agreeCodeConduct         Boolean
+    twitter                  String?
+    discord                  String?
+    email                    String?
+    warpcast                 String?
+    endorsed                 Boolean @default(false)
+    notification_preferences Json?   @default(dbgenerated("jsonb_build_object('wants_proposal_created_email', 'prompt', 'wants_proposal_ending_soon_email', 'prompt', 'last_updated', (now() AT TIME ZONE 'UTC'::text))"))
 
     @@index([email], map: "idx_delegate_statements_email")
     @@schema("web2")
