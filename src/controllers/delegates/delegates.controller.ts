@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 
-import { verifySignature } from "../../lib/signature/verifySignature";
+import {
+  verifySignedPayload,
+  SignedPayload,
+} from "../../lib/signature/verifySignature";
 import { sanitizeContent } from "../../lib/utils/sanitizationUtils";
 import {
   delegate_statements,
@@ -19,11 +22,8 @@ import {
   isValidNotificationPreference,
 } from "../../lib/utils/notificationTypes";
 
-type DelegateStatementInput = {
+type DelegateStatementData = {
   address: string;
-  message: string;
-  signature: string;
-  publicKey: string;
   twitter: string;
   discord: string;
   email: string;
@@ -36,6 +36,8 @@ type DelegateStatementInput = {
   statement: string;
   notification_preferences?: NotificationPreferencesInput;
 };
+
+type DelegateStatementInput = SignedPayload<DelegateStatementData>;
 
 interface DeletesQuery {
   page_size?: string;
@@ -591,29 +593,14 @@ export class DelegatesController {
     res: Response
   ): Promise<void> => {
     try {
-      const {
-        address,
-        signature,
-        publicKey,
-        twitter,
-        discord,
-        email,
-        warpcast,
-        message,
-        statement,
-        topIssues,
-        agreeCodeConduct,
-        notification_preferences,
-      } = req.body;
+      const { signature, publicKey, data, message } = req.body;
 
       const networkId = req.query.network_id || "mainnet";
 
-      const isVerified = await verifySignature({
-        message,
-        signature,
-        publicKey,
+      const isVerified = await verifySignedPayload({
+        signedPayload: { signature, publicKey, message, data },
         networkId,
-        accountId: address,
+        accountId: data.address,
       });
 
       if (!isVerified) {
@@ -623,10 +610,10 @@ export class DelegatesController {
 
       // Validate notification preferences if provided
       let notificationPreferencesData: Record<string, unknown> | undefined;
-      if (notification_preferences) {
-        const invalidPrefs = Object.entries(notification_preferences).filter(
-          ([, value]) => !isValidNotificationPreference(value)
-        );
+      if (data.notification_preferences) {
+        const invalidPrefs = Object.entries(
+          data.notification_preferences
+        ).filter(([, value]) => !isValidNotificationPreference(value));
         if (invalidPrefs.length > 0) {
           res.status(400).json({
             error: `Invalid notification preference values. Must be 'true', 'false', or 'prompt'`,
@@ -634,28 +621,28 @@ export class DelegatesController {
           return;
         }
         const currentPrefs = await prisma.delegate_statements.findUnique({
-          where: { address },
+          where: { address: data.address },
           select: { notification_preferences: true },
         });
 
         notificationPreferencesData = {
           ...((currentPrefs?.notification_preferences as object) || {}),
-          ...notification_preferences,
+          ...data.notification_preferences,
           last_updated: new Date().toISOString(),
         };
       }
 
-      const data = {
-        address,
+      const delegateData = {
+        address: data.address,
         message,
         signature,
-        statement: sanitizeContent(statement),
-        twitter,
-        warpcast,
-        discord,
-        email,
-        topIssues,
-        agreeCodeConduct,
+        statement: sanitizeContent(data.statement),
+        twitter: data.twitter,
+        warpcast: data.warpcast,
+        discord: data.discord,
+        email: data.email,
+        topIssues: data.topIssues,
+        agreeCodeConduct: data.agreeCodeConduct,
         publicKey,
         ...(notificationPreferencesData && {
           notification_preferences:
@@ -664,9 +651,9 @@ export class DelegatesController {
       };
 
       const createdDelegateStatement = await prisma.delegate_statements.upsert({
-        where: { address },
-        update: data,
-        create: data,
+        where: { address: data.address },
+        update: delegateData,
+        create: delegateData,
       });
 
       res

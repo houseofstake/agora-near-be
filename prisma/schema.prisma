@@ -41,6 +41,32 @@ model cache {
     @@schema("web2")
 }
 
+enum DraftProposalStage {
+    DRAFT
+    AWAITING_SUBMISSION
+    SUBMITTED
+
+    @@schema("web2")
+}
+
+model draft_proposals {
+    id            String             @id @default(cuid())
+    title         String
+    description   String
+    proposalUrl   String?            @map("proposal_url")
+    author        String
+    stage         DraftProposalStage @default(DRAFT)
+    votingOptions Json?              @map("voting_options")
+    receiptId     String?            @map("receipt_id")
+    submittedAt   DateTime?          @map("submitted_at") @db.Timestamp(6)
+    createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamp(6)
+    updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamp(6)
+
+    @@index([author], map: "idx_draft_proposals_author")
+    @@index([stage], map: "idx_draft_proposals_stage")
+    @@schema("web2")
+}
+
 model fastnear_blocks {
     height       BigInt   @id
     hash         String
