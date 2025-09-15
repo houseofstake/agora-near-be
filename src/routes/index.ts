@@ -7,6 +7,7 @@ import { archivalRpcRoutes } from "./rpc/archival-rpc.routes";
 import { stakingRoutes } from "./staking/staking.routes";
 import { nearRoutes } from "./near/near.routes";
 import nonceRoutes from "./nonce/nonce.routes";
+import { transactionsRoutes } from "./transactions/transactions.routes";
 
 const router = express.Router();
 
@@ -19,5 +20,6 @@ router.use("/archival-rpc", archivalRpcRoutes);
 router.use("/staking", stakingRoutes);
 router.use("/near", nearRoutes);
 router.use("/nonce", nonceRoutes);
+router.use("/transactions", transactionsRoutes);
 
 export { router as routes };
