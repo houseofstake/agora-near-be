@@ -128,13 +128,13 @@ export class ProposalController {
       });
 
       if (!proposal) {
-        console.error(`Proposal with id ${proposalId} not found`);
+        console.warn(`Proposal with id ${proposalId} not found`);
         res.status(404).json({ error: "Proposal not found" });
         return;
       }
 
       if (!proposal.isApproved) {
-        console.error(`Proposal with id ${proposalId} is not approved`);
+        console.warn(`Proposal with id ${proposalId} is not approved`);
         res.status(400).json({ error: "Proposal is not approved" });
         return;
       }
@@ -181,11 +181,11 @@ export class ProposalController {
         const totalVenear = proposal.totalVenearAtApproval
           ? new Big(proposal.totalVenearAtApproval.toFixed())
           : new Big(0);
-        const calculatedQuorum = new Big(DEFAULT_QUORUM_PERCENTAGE).mul(
+        const percentageBasedQuorum = new Big(DEFAULT_QUORUM_PERCENTAGE).mul(
           totalVenear
         );
-        quorumAmount = calculatedQuorum.gt(quorumFloor)
-          ? calculatedQuorum.toFixed(0)
+        quorumAmount = percentageBasedQuorum.gt(quorumFloor)
+          ? percentageBasedQuorum.toFixed(0)
           : quorumFloor.toFixed(0);
       }
 
