@@ -42,6 +42,7 @@ describe("ProposalController", () => {
       votingDurationNs: "864000000000000000",
       votingStartTimeNs: "1704153600000000000",
       votingCreatedAtNs: "1704067200000000000",
+      quorumAmount: "7000000000000000000000000000000", // QUORUM_FLOOR_YOCTONEAR
     },
     {
       id: 2,
@@ -55,6 +56,7 @@ describe("ProposalController", () => {
       votingDurationNs: "864000000000000000",
       votingStartTimeNs: "1704153600000000000",
       votingCreatedAtNs: "1704067200000000000",
+      quorumAmount: "7000000000000000000000000000000", // QUORUM_FLOOR_YOCTONEAR
     },
   ];
 
@@ -71,6 +73,7 @@ describe("ProposalController", () => {
 
       prismaMock.proposals.findMany.mockResolvedValue(mockProposals);
       prismaMock.proposals.count.mockResolvedValue(mockCount);
+      prismaMock.quorum_overrides.findMany.mockResolvedValue([]);
 
       // Act & Assert
       const response = await request(app)
@@ -100,6 +103,7 @@ describe("ProposalController", () => {
 
       prismaMock.proposals.findMany.mockResolvedValue(mockProposals);
       prismaMock.proposals.count.mockResolvedValue(mockCount);
+      prismaMock.quorum_overrides.findMany.mockResolvedValue([]);
 
       // Act & Assert
       const response = await request(app)
@@ -276,6 +280,206 @@ describe("ProposalController", () => {
 
       expect(response.body).toEqual({
         error: "Failed to fetch pending proposals",
+      });
+    });
+  });
+
+  describe("GET /api/proposal/:proposal_id/quorum", () => {
+    it("should return quorum amount for an approved proposal without override", async () => {
+      const mockProposal = {
+        id: 1,
+        proposalId: "proposal-123",
+        isApproved: true,
+        isRejected: false,
+        totalVenearAtApproval: new Decimal("20000000000000000000000000000000"), // 20M veNEAR
+        createdAt: new Date("2024-01-01"),
+        votingStartAt: new Date("2024-01-02"),
+        votingDurationNs: new Decimal("864000000000000000"),
+      };
+
+      prismaMock.proposals.findFirst.mockResolvedValue(mockProposal);
+      prismaMock.quorum_overrides.findMany.mockResolvedValue([]);
+
+      // Act & Assert
+      const response = await request(app)
+        .get("/api/proposal/proposal-123/quorum")
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      // 35% of 20M = 7M, which is equal to the floor, so should return 7M
+      expect(response.body).toEqual({
+        quorumAmount: "7000000000000000000000000000000",
+      });
+
+      expect(prismaMock.proposals.findFirst).toHaveBeenCalledWith({
+        where: { proposalId: "proposal-123" },
+      });
+
+      expect(prismaMock.quorum_overrides.findMany).toHaveBeenCalledWith({
+        where: {
+          startingFromId: {
+            lte: "proposal-123",
+          },
+        },
+        orderBy: {
+          startingFromId: "desc",
+        },
+        take: 1,
+      });
+    });
+
+    it("should return quorum amount for an approved proposal with percentage override", async () => {
+      const mockProposal = {
+        id: 1,
+        proposalId: "proposal-123",
+        isApproved: true,
+        isRejected: false,
+        totalVenearAtApproval: new Decimal("30000000000000000000000000000000"), // 30M veNEAR
+        createdAt: new Date("2024-01-01"),
+        votingStartAt: new Date("2024-01-02"),
+        votingDurationNs: new Decimal("864000000000000000"),
+      };
+
+      const mockQuorumOverride = {
+        id: 1,
+        startingFromId: "proposal-100",
+        overrideType: "percentage",
+        overrideValue: "0.5", // 50%
+        createdAt: new Date("2024-01-01"),
+      };
+
+      prismaMock.proposals.findFirst.mockResolvedValue(mockProposal);
+      prismaMock.quorum_overrides.findMany.mockResolvedValue([
+        mockQuorumOverride,
+      ]);
+
+      // Act & Assert
+      const response = await request(app)
+        .get("/api/proposal/proposal-123/quorum")
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      // 50% of 30M = 15M
+      expect(response.body).toEqual({
+        quorumAmount: "15000000000000000000000000000000",
+      });
+    });
+
+    it("should return quorum amount for an approved proposal with fixed override", async () => {
+      const mockProposal = {
+        id: 1,
+        proposalId: "proposal-123",
+        isApproved: true,
+        isRejected: false,
+        totalVenearAtApproval: new Decimal("30000000000000000000000000000000"), // 30M veNEAR
+        createdAt: new Date("2024-01-01"),
+        votingStartAt: new Date("2024-01-02"),
+        votingDurationNs: new Decimal("864000000000000000"),
+      };
+
+      const mockQuorumOverride = {
+        id: 1,
+        startingFromId: "proposal-100",
+        overrideType: "fixed",
+        overrideValue: "10000000000000000000000000000000", // 10M veNEAR
+        createdAt: new Date("2024-01-01"),
+      };
+
+      prismaMock.proposals.findFirst.mockResolvedValue(mockProposal);
+      prismaMock.quorum_overrides.findMany.mockResolvedValue([
+        mockQuorumOverride,
+      ]);
+
+      // Act & Assert
+      const response = await request(app)
+        .get("/api/proposal/proposal-123/quorum")
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        quorumAmount: "10000000000000000000000000000000",
+      });
+    });
+
+    it("should return 404 when proposal is not found", async () => {
+      prismaMock.proposals.findFirst.mockResolvedValue(null);
+
+      // Act & Assert
+      const response = await request(app)
+        .get("/api/proposal/nonexistent/quorum")
+        .expect(404)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        error: "Proposal not found",
+      });
+    });
+
+    it("should return 400 when proposal is not approved", async () => {
+      const mockProposal = {
+        id: 1,
+        proposalId: "proposal-123",
+        isApproved: false,
+        isRejected: false,
+        totalVenearAtApproval: null,
+        createdAt: new Date("2024-01-01"),
+        votingStartAt: null,
+        votingDurationNs: null,
+      };
+
+      prismaMock.proposals.findFirst.mockResolvedValue(mockProposal);
+
+      // Act & Assert
+      const response = await request(app)
+        .get("/api/proposal/proposal-123/quorum")
+        .expect(400)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        error: "Proposal is not approved",
+      });
+    });
+
+    it("should handle database error gracefully", async () => {
+      prismaMock.proposals.findFirst.mockRejectedValue(
+        new Error("Database error")
+      );
+
+      // Act & Assert
+      const response = await request(app)
+        .get("/api/proposal/proposal-123/quorum")
+        .expect(500)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        error: "Failed to fetch proposal quorum",
+      });
+    });
+
+    it("should return quorum amount when proposal has high total voting power", async () => {
+      const mockProposal = {
+        id: 1,
+        proposalId: "proposal-123",
+        isApproved: true,
+        isRejected: false,
+        totalVenearAtApproval: new Decimal("100000000000000000000000000000000"), // 100M veNEAR
+        createdAt: new Date("2024-01-01"),
+        votingStartAt: new Date("2024-01-02"),
+        votingDurationNs: new Decimal("864000000000000000"),
+      };
+
+      prismaMock.proposals.findFirst.mockResolvedValue(mockProposal);
+      prismaMock.quorum_overrides.findMany.mockResolvedValue([]);
+
+      // Act & Assert
+      const response = await request(app)
+        .get("/api/proposal/proposal-123/quorum")
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      // 35% of 100M = 35M, which is greater than the floor (7M), so should return 35M
+      expect(response.body).toEqual({
+        quorumAmount: "35000000000000000000000000000000",
       });
     });
   });
