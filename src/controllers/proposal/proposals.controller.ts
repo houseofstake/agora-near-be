@@ -6,7 +6,7 @@ import { convertMsToNanoSeconds } from "../../lib/utils/time";
 import { getDerivedProposalStatus } from "../../lib/utils/proposal";
 import { proposals } from "../../generated/prisma";
 
-const QUORUM_FLOOR_YOCTONEAR = "7000000000000000000000000000000000000"; // 7M veNEAR
+const QUORUM_FLOOR_YOCTONEAR = "7000000000000000000000000000000"; // 7M veNEAR
 const DEFAULT_QUORUM_PERCENTAGE = "0.35";
 
 interface ActiveProposalQueryParams {
@@ -155,38 +155,37 @@ export class ProposalController {
         : [];
 
       let quorumAmount: string;
+      const quorumFloor = new Big(QUORUM_FLOOR_YOCTONEAR);
+      const totalVenear = proposal.totalVenearAtApproval
+        ? new Big(proposal.totalVenearAtApproval.toFixed())
+        : new Big(0);
+      const percentageBasedQuorum = new Big(DEFAULT_QUORUM_PERCENTAGE).mul(
+        totalVenear
+      );
+
+      // Default calculation: max(QUORUM_FLOOR_YOCTONEAR, DEFAULT_QUORUM_PERCENTAGE * totalVenearAtApproval)
+      quorumAmount = percentageBasedQuorum.gt(quorumFloor)
+        ? percentageBasedQuorum.toFixed(0)
+        : quorumFloor.toFixed(0);
 
       if (overrides.length > 0) {
         const override = overrides[0];
-        const totalVenear = proposal.totalVenearAtApproval
-          ? new Big(proposal.totalVenearAtApproval.toFixed())
-          : new Big(0);
 
-        if (override.overrideType === "fixed") {
-          quorumAmount = override.overrideValue;
-        } else if (override.overrideType === "percentage") {
-          const overrideValue = new Big(override.overrideValue);
-          quorumAmount = overrideValue.mul(totalVenear).toFixed(0);
-        } else {
-          console.error(
-            "Invalid override entry in database",
-            JSON.stringify(override, null, 2)
-          );
-          res.status(500).json({ error: "Failed to fetch proposal quorum" });
-          return;
+        switch (override.overrideType) {
+          case "fixed":
+            // Override to a fixed value
+            quorumAmount = override.overrideValue;
+            break;
+          case "percentage":
+            // Override to a percentage of the total voting power
+            const overrideValue = new Big(override.overrideValue);
+            quorumAmount = overrideValue.mul(totalVenear).toFixed(0);
+            break;
+          case "none":
+          // No override, use the default calculation
+          default:
+            break;
         }
-      } else {
-        // Default calculation: max(QUORUM_FLOOR_YOCTONEAR, DEFAULT_QUORUM_PERCENTAGE * totalVenearAtApproval)
-        const quorumFloor = new Big(QUORUM_FLOOR_YOCTONEAR);
-        const totalVenear = proposal.totalVenearAtApproval
-          ? new Big(proposal.totalVenearAtApproval.toFixed())
-          : new Big(0);
-        const percentageBasedQuorum = new Big(DEFAULT_QUORUM_PERCENTAGE).mul(
-          totalVenear
-        );
-        quorumAmount = percentageBasedQuorum.gt(quorumFloor)
-          ? percentageBasedQuorum.toFixed(0)
-          : quorumFloor.toFixed(0);
       }
 
       res.status(200).json({ quorumAmount });

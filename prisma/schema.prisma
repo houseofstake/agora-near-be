@@ -69,7 +69,7 @@ model draft_proposals {
 
 model quorum_overrides {
     id             String   @id @default(cuid())
-    overrideValue  String   @map("override_value")
+    overrideValue  String?  @map("override_value")
     overrideType   String   @map("override_type")
     startingFromId Decimal  @map("starting_from_id") @db.Decimal
     createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
