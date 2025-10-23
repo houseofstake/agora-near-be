@@ -1,13 +1,12 @@
 import { Request, Response } from "express";
 import { prisma } from "../..";
-import Big from "big.js";
 
 import { convertMsToNanoSeconds } from "../../lib/utils/time";
-import { getDerivedProposalStatus } from "../../lib/utils/proposal";
-import { proposals } from "../../generated/prisma";
-
-const QUORUM_FLOOR_YOCTONEAR = "7000000000000000000000000000000"; // 7M veNEAR
-const DEFAULT_QUORUM_PERCENTAGE = "0.35";
+import {
+  getDerivedProposalStatus,
+  calculateQuorumAmount,
+} from "../../lib/utils/proposal";
+import { proposals, quorum_overrides } from "../../generated/prisma";
 
 interface ActiveProposalQueryParams {
   page_size?: string;
@@ -20,7 +19,10 @@ interface PendingProposalQueryParams {
   page?: string;
 }
 
-function mapRecordToResponse(record: proposals) {
+function mapRecordToResponse(
+  record: proposals,
+  quorumOverride?: quorum_overrides | null
+) {
   return {
     id: record.id,
     approvedAt: record.approvedAt,
@@ -42,6 +44,10 @@ function mapRecordToResponse(record: proposals) {
     abstainVotingPower: record.abstainVotingPower?.toFixed(),
     votingDurationNs: record.votingDurationNs?.toFixed(),
     totalVotingPower: record.totalVenearAtApproval?.toFixed(),
+    quorumAmount: calculateQuorumAmount(
+      record.totalVenearAtApproval?.toFixed(),
+      quorumOverride
+    ),
     status: getDerivedProposalStatus(record),
     votingStartTimeNs: record.votingStartAt
       ? convertMsToNanoSeconds(record.votingStartAt.getTime())
@@ -62,6 +68,7 @@ export class ProposalController {
       const pageSize = parseInt(page_size ?? "10") || 10;
       const pageNumber = parseInt(page ?? "1") || 1;
 
+      // Fetch proposals with potential quorum overrides
       const records = await prisma.proposals.findMany({
         where: { isApproved: true, isRejected: false },
         orderBy: { createdAt: "desc" },
@@ -73,8 +80,31 @@ export class ProposalController {
         where: { isApproved: true, isRejected: false },
       });
 
+      // Fetch quorum overrides for each proposal
+      const proposalsWithQuorum = await Promise.all(
+        records.map(async (record) => {
+          if (!record.proposalId) {
+            return mapRecordToResponse(record, null);
+          }
+
+          const overrides = await prisma.quorum_overrides.findMany({
+            where: {
+              startingFromId: {
+                lte: record.proposalId,
+              },
+            },
+            orderBy: {
+              startingFromId: "desc",
+            },
+            take: 1,
+          });
+
+          return mapRecordToResponse(record, overrides[0] || null);
+        })
+      );
+
       res.status(200).json({
-        proposals: records.map((record) => mapRecordToResponse(record)),
+        proposals: proposalsWithQuorum,
         count,
       });
     } catch (error) {
@@ -154,39 +184,10 @@ export class ProposalController {
           })
         : [];
 
-      let quorumAmount: string;
-      const quorumFloor = new Big(QUORUM_FLOOR_YOCTONEAR);
-      const totalVenear = proposal.totalVenearAtApproval
-        ? new Big(proposal.totalVenearAtApproval.toFixed())
-        : new Big(0);
-      const percentageBasedQuorum = new Big(DEFAULT_QUORUM_PERCENTAGE).mul(
-        totalVenear
+      const quorumAmount = calculateQuorumAmount(
+        proposal.totalVenearAtApproval?.toFixed(),
+        overrides[0] || null
       );
-
-      // Default calculation: max(QUORUM_FLOOR_YOCTONEAR, DEFAULT_QUORUM_PERCENTAGE * totalVenearAtApproval)
-      quorumAmount = percentageBasedQuorum.gt(quorumFloor)
-        ? percentageBasedQuorum.toFixed(0)
-        : quorumFloor.toFixed(0);
-
-      if (overrides.length > 0) {
-        const override = overrides[0];
-
-        switch (override.overrideType) {
-          case "fixed":
-            // Override to a fixed value
-            quorumAmount = override.overrideValue;
-            break;
-          case "percentage":
-            // Override to a percentage of the total voting power
-            const overrideValue = new Big(override.overrideValue);
-            quorumAmount = overrideValue.mul(totalVenear).toFixed(0);
-            break;
-          case "none":
-          // No override, use the default calculation
-          default:
-            break;
-        }
-      }
 
       res.status(200).json({ quorumAmount });
     } catch (error) {
