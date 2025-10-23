@@ -79,7 +79,8 @@ export class DelegatesController {
     req: Request<{}, {}, {}, DeletesQuery>,
     res: Response
   ): Promise<void> => {
-    const { page_size, page, order_by, filter_by, sorting_seed, issue_type } = req.query;
+    const { page_size, page, order_by, filter_by, sorting_seed, issue_type } =
+      req.query;
     const pageSize = parseInt(page_size ?? "10");
     const pageNumber = parseInt(page ?? "1");
     const seed = sorting_seed ? parseFloat(sorting_seed) : Math.random();
@@ -597,6 +598,11 @@ export class DelegatesController {
 
       const networkId = req.query.network_id || "mainnet";
 
+      const commonLogData = {
+        requestBody: req.body,
+        query: req.query,
+      };
+
       const isVerified = await verifySignedPayload({
         signedPayload: { signature, publicKey, message, data },
         networkId,
@@ -604,6 +610,7 @@ export class DelegatesController {
       });
 
       if (!isVerified) {
+        console.warn("Invalid signature", commonLogData);
         res.status(400).json({ error: "Invalid signature" });
         return;
       }
@@ -615,6 +622,10 @@ export class DelegatesController {
           data.notification_preferences
         ).filter(([, value]) => !isValidNotificationPreference(value));
         if (invalidPrefs.length > 0) {
+          console.warn("Invalid notification preferences", {
+            invalidPrefs,
+            ...commonLogData,
+          });
           res.status(400).json({
             error: `Invalid notification preference values. Must be 'true', 'false', or 'prompt'`,
           });
@@ -660,7 +671,11 @@ export class DelegatesController {
         .status(200)
         .json({ delegateStatement: createdDelegateStatement, success: true });
     } catch (error) {
-      console.error("Error creating delegate statement:", error);
+      console.error("Unexpected error creating delegate statement:", {
+        error,
+        request: req.body,
+        query: req.query,
+      });
       res.status(500).json({ error: "Failed to create delegate statement" });
     }
   };
