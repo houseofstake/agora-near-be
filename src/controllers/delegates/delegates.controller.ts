@@ -619,6 +619,7 @@ export class DelegatesController {
           console.warn("Invalid notification preferences for account", {
             address: data.address,
             networkId,
+            publicKey,
             invalidPrefs,
           });
           res.status(400).json({
@@ -668,8 +669,9 @@ export class DelegatesController {
     } catch (error) {
       console.error("Unexpected error creating delegate statement:", {
         error,
-        request: req.body,
-        query: req.query,
+        address: req.body.data.address,
+        networkId: req.query.network_id,
+        publicKey: req.body.publicKey,
       });
       res.status(500).json({ error: "Failed to create delegate statement" });
     }
