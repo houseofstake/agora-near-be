@@ -598,11 +598,6 @@ export class DelegatesController {
 
       const networkId = req.query.network_id || "mainnet";
 
-      const commonLogData = {
-        requestBody: req.body,
-        query: req.query,
-      };
-
       const isVerified = await verifySignedPayload({
         signedPayload: { signature, publicKey, message, data },
         networkId,
@@ -610,7 +605,6 @@ export class DelegatesController {
       });
 
       if (!isVerified) {
-        console.warn("Invalid signature", commonLogData);
         res.status(400).json({ error: "Invalid signature" });
         return;
       }
@@ -622,9 +616,10 @@ export class DelegatesController {
           data.notification_preferences
         ).filter(([, value]) => !isValidNotificationPreference(value));
         if (invalidPrefs.length > 0) {
-          console.warn("Invalid notification preferences", {
+          console.warn("Invalid notification preferences for account", {
+            address: data.address,
+            networkId,
             invalidPrefs,
-            ...commonLogData,
           });
           res.status(400).json({
             error: `Invalid notification preference values. Must be 'true', 'false', or 'prompt'`,

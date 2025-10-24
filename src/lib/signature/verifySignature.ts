@@ -157,6 +157,24 @@ export const verifySignature = async <T extends Record<string, any>>({
     nonce,
   });
 
+  const commonLogData = {
+    publicKey,
+    address: accountId,
+    networkId,
+  };
+
+  if (!isValid) {
+    console.warn("Invalid signature", {
+      ...commonLogData,
+    });
+  }
+
+  if (!keyBelongsToUser) {
+    console.warn("Key does not belong to user", {
+      ...commonLogData,
+    });
+  }
+
   return isValid && keyBelongsToUser;
 };
 
