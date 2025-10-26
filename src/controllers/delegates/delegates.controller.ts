@@ -79,7 +79,8 @@ export class DelegatesController {
     req: Request<{}, {}, {}, DeletesQuery>,
     res: Response
   ): Promise<void> => {
-    const { page_size, page, order_by, filter_by, sorting_seed, issue_type } = req.query;
+    const { page_size, page, order_by, filter_by, sorting_seed, issue_type } =
+      req.query;
     const pageSize = parseInt(page_size ?? "10");
     const pageNumber = parseInt(page ?? "1");
     const seed = sorting_seed ? parseFloat(sorting_seed) : Math.random();
@@ -117,12 +118,13 @@ export class DelegatesController {
       filterByClause = Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
     }
 
-    const { records, countResult } = await prisma.$transaction(async (tx) => {
-      await tx.$executeRaw(Prisma.sql`SELECT setseed(${seed});`);
+    const { records, countResult } = await prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw(Prisma.sql`SELECT setseed(${seed});`);
 
-      const [records, countResult] = await Promise.all([
-        tx.$queryRaw<DelegateWithVoterInfo[]>(
-          Prisma.sql`
+        const [records, countResult] = await Promise.all([
+          tx.$queryRaw<DelegateWithVoterInfo[]>(
+            Prisma.sql`
             SELECT
               rv.registered_voter_id as "registeredVoterId",
               rv.current_voting_power as "currentVotingPower",
@@ -143,19 +145,21 @@ export class DelegatesController {
             LIMIT ${pageSize}
             OFFSET ${(pageNumber - 1) * pageSize}
           `
-        ),
-        tx.$queryRaw<{ count: bigint }[]>(
-          Prisma.sql`
+          ),
+          tx.$queryRaw<{ count: bigint }[]>(
+            Prisma.sql`
             SELECT COUNT(*) as count
             FROM fastnear.registered_voters rv
             FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
             ${filterByClause}
           `
-        ),
-      ]);
+          ),
+        ]);
 
-      return { records, countResult };
-    });
+        return { records, countResult };
+      },
+      { timeout: 10000 } // TODO(jcarnide): Revert this once we figure out the root cause of query slowness
+    );
 
     const delegates = records.map((record) => {
       const {
