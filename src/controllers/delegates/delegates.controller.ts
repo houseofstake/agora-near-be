@@ -619,6 +619,12 @@ export class DelegatesController {
           data.notification_preferences
         ).filter(([, value]) => !isValidNotificationPreference(value));
         if (invalidPrefs.length > 0) {
+          console.warn("Invalid notification preferences for account", {
+            address: data.address,
+            networkId,
+            publicKey,
+            invalidPrefs,
+          });
           res.status(400).json({
             error: `Invalid notification preference values. Must be 'true', 'false', or 'prompt'`,
           });
@@ -664,7 +670,12 @@ export class DelegatesController {
         .status(200)
         .json({ delegateStatement: createdDelegateStatement, success: true });
     } catch (error) {
-      console.error("Error creating delegate statement:", error);
+      console.error("Unexpected error creating delegate statement:", {
+        error,
+        address: req.body.data.address,
+        networkId: req.query.network_id,
+        publicKey: req.body.publicKey,
+      });
       res.status(500).json({ error: "Failed to create delegate statement" });
     }
   };
