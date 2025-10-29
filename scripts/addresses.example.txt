@@ -1,0 +1,8 @@
+# Example addresses file
+# Add one NEAR address per line
+# Lines starting with # are treated as comments
+
+alice.near
+bob.near
+charlie.near
+
