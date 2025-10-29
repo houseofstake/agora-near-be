@@ -118,52 +118,47 @@ export class DelegatesController {
       filterByClause = Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
     }
 
-    const { records, countResult } = await prisma.$transaction(
-      async (tx) => {
-        await tx.$executeRaw(Prisma.sql`SELECT setseed(${seed});`);
+    const { records } = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw(Prisma.sql`SELECT setseed(${seed});`);
 
-        const [records, countResult] = await Promise.all([
-          tx.$queryRaw<DelegateWithVoterInfo[]>(
-            Prisma.sql`
-            SELECT
-              rv.registered_voter_id as "registeredVoterId",
-              rv.current_voting_power as "currentVotingPower",
-              rv.proposal_participation_rate as "proposalParticipationRate",
-              COALESCE(rv.registered_voter_id, ds.address) as address,
-              ds.twitter,
-              ds.discord,
-              ds.email,
-              ds.warpcast,
-              ds.statement,
-              ds."topIssues",
-              ds.endorsed,
-              ds.notification_preferences as "notificationPreferences"
-            FROM fastnear.registered_voters rv
-            FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
-            ${filterByClause}
-            ${orderByClause}
-            LIMIT ${pageSize}
-            OFFSET ${(pageNumber - 1) * pageSize}
-          `
-          ),
-          tx.$queryRaw<{ count: bigint }[]>(
-            Prisma.sql`
-            SELECT COUNT(*) as count
-            FROM fastnear.registered_voters rv
-            FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
-            ${filterByClause}
-          `
-          ),
-        ]);
+      const records = await tx.$queryRaw<DelegateWithVoterInfo[]>(
+        Prisma.sql`
+          SELECT
+            rv.registered_voter_id as "registeredVoterId",
+            rv.current_voting_power as "currentVotingPower",
+            rv.proposal_participation_rate as "proposalParticipationRate",
+            COALESCE(rv.registered_voter_id, ds.address) as address,
+            ds.twitter,
+            ds.discord,
+            ds.email,
+            ds.warpcast,
+            ds.statement,
+            ds."topIssues",
+            ds.endorsed,
+            ds.notification_preferences as "notificationPreferences"
+          FROM fastnear.registered_voters rv
+          FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+          ${filterByClause}
+          ${orderByClause}
+          LIMIT ${pageSize}
+          OFFSET ${(pageNumber - 1) * pageSize}
+        `
+      );
 
-        return { records, countResult };
-      },
-      { timeout: 10000 } // TODO(jcarnide): Revert this once we figure out the root cause of query slowness
+      return { records };
+    });
+
+    const countResult = await prisma.$queryRaw<{ count: bigint }[]>(
+      Prisma.sql`
+        SELECT COUNT(*) as count
+        FROM fastnear.registered_voters rv
+        FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+        ${filterByClause}
+      `
     );
 
     const delegates = records.map((record) => {
       const {
-        registeredVoterId,
         currentVotingPower,
         proposalParticipationRate,
         address,
