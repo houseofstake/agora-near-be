@@ -37,6 +37,11 @@ cp .env.example .env
 DATABASE_URL="postgresql://user:password@your-gcp-postgres-instance:5432/dbname?schema=public&sslmode=require"
 ```
 
+## Environment Variables
+
+- `DATABASE_URL`: PostgreSQL connection string
+- `NEAR_INFLATION_ADJUSTMENT_FACTOR` (optional): Adjustment factor for staking APY calculation to account for NEAR protocol inflation changes. Default: 0.5 (50% of calculated APY). Set to 1.0 to use raw calculated APY.
+
 ## Database Setup
 
 1. Generate Prisma client:
