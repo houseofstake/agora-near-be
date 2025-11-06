@@ -67,6 +67,18 @@ model draft_proposals {
     @@schema("web2")
 }
 
+model quorum_overrides {
+    id             String   @id @default(cuid())
+    overrideValue  String?  @map("override_value")
+    overrideType   String   @map("override_type")
+    startingFromId Decimal  @map("starting_from_id") @db.Decimal
+    createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+    updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+    @@index([startingFromId], map: "idx_quorum_overrides_starting_from_id")
+    @@schema("web2")
+}
+
 model fastnear_blocks {
     height       BigInt   @id
     hash         String

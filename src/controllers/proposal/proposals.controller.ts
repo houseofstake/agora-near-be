@@ -2,8 +2,11 @@ import { Request, Response } from "express";
 import { prisma } from "../..";
 
 import { convertMsToNanoSeconds } from "../../lib/utils/time";
-import { getDerivedProposalStatus } from "../../lib/utils/proposal";
-import { proposals } from "../../generated/prisma";
+import {
+  getDerivedProposalStatus,
+  calculateQuorumAmount,
+} from "../../lib/utils/proposal";
+import { proposals, quorum_overrides } from "../../generated/prisma";
 
 interface ActiveProposalQueryParams {
   page_size?: string;
@@ -16,7 +19,10 @@ interface PendingProposalQueryParams {
   page?: string;
 }
 
-function mapRecordToResponse(record: proposals) {
+function mapRecordToResponse(
+  record: proposals,
+  quorumOverride?: quorum_overrides | null
+) {
   return {
     id: record.id,
     approvedAt: record.approvedAt,
@@ -38,6 +44,10 @@ function mapRecordToResponse(record: proposals) {
     abstainVotingPower: record.abstainVotingPower?.toFixed(),
     votingDurationNs: record.votingDurationNs?.toFixed(),
     totalVotingPower: record.totalVenearAtApproval?.toFixed(),
+    quorumAmount: calculateQuorumAmount(
+      record.totalVenearAtApproval?.toFixed(),
+      quorumOverride
+    ),
     status: getDerivedProposalStatus(record),
     votingStartTimeNs: record.votingStartAt
       ? convertMsToNanoSeconds(record.votingStartAt.getTime())
@@ -58,6 +68,7 @@ export class ProposalController {
       const pageSize = parseInt(page_size ?? "10") || 10;
       const pageNumber = parseInt(page ?? "1") || 1;
 
+      // Fetch proposals with potential quorum overrides
       const records = await prisma.proposals.findMany({
         where: { isApproved: true, isRejected: false },
         orderBy: { createdAt: "desc" },
@@ -69,8 +80,31 @@ export class ProposalController {
         where: { isApproved: true, isRejected: false },
       });
 
+      // Fetch quorum overrides for each proposal
+      const proposalsWithQuorum = await Promise.all(
+        records.map(async (record) => {
+          if (!record.proposalId) {
+            return mapRecordToResponse(record, null);
+          }
+
+          const overrides = await prisma.quorum_overrides.findMany({
+            where: {
+              startingFromId: {
+                lte: record.proposalId,
+              },
+            },
+            orderBy: {
+              startingFromId: "desc",
+            },
+            take: 1,
+          });
+
+          return mapRecordToResponse(record, overrides[0] || null);
+        })
+      );
+
       res.status(200).json({
-        proposals: records.map((record) => mapRecordToResponse(record)),
+        proposals: proposalsWithQuorum,
         count,
       });
     } catch (error) {
@@ -106,6 +140,59 @@ export class ProposalController {
     } catch (error) {
       console.error("Error fetching pending proposals:", error);
       res.status(500).json({ error: "Failed to fetch pending proposals" });
+    }
+  };
+
+  public getProposalQuorum = async (
+    req: Request<{ proposal_id: string }>,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const proposalId = req.params.proposal_id;
+
+      // Query the proposal
+      const proposal = await prisma.proposals.findFirst({
+        where: {
+          proposalId: proposalId,
+        },
+      });
+
+      if (!proposal) {
+        console.warn(`Proposal with id ${proposalId} not found`);
+        res.status(404).json({ error: "Proposal not found" });
+        return;
+      }
+
+      if (!proposal.isApproved) {
+        console.warn(`Proposal with id ${proposalId} is not approved`);
+        res.status(400).json({ error: "Proposal is not approved" });
+        return;
+      }
+
+      // Query for quorum overrides
+      const overrides = proposal.proposalId
+        ? await prisma.quorum_overrides.findMany({
+            where: {
+              startingFromId: {
+                lte: proposal.proposalId,
+              },
+            },
+            orderBy: {
+              startingFromId: "desc",
+            },
+            take: 1,
+          })
+        : [];
+
+      const quorumAmount = calculateQuorumAmount(
+        proposal.totalVenearAtApproval?.toFixed(),
+        overrides[0] || null
+      );
+
+      res.status(200).json({ quorumAmount });
+    } catch (error) {
+      console.error("Error fetching proposal quorum:", error);
+      res.status(500).json({ error: "Failed to fetch proposal quorum" });
     }
   };
 }

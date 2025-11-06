@@ -26,4 +26,6 @@ router.get(
   proposalVotingHistoryController.getProposalVotingChartsData
 );
 
+router.get("/:proposal_id/quorum", proposalController.getProposalQuorum);
+
 export { router as proposalRoutes };
