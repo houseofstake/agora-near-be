@@ -83,7 +83,6 @@ describe("DelegatesController", () => {
             participationRate: "0.75",
             twitter: "@delegate1",
             discord: "delegate1#1234",
-            email: "delegate1@example.com",
             warpcast: "delegate1",
             statement: "I am delegate 1",
             topIssues: [{ type: "governance", value: "Improve voting" }],
@@ -100,7 +99,6 @@ describe("DelegatesController", () => {
             participationRate: "0.6",
             twitter: "@delegate2",
             discord: "delegate2#5678",
-            email: "delegate2@example.com",
             warpcast: "delegate2",
             statement: "I am delegate 2",
             topIssues: [{ type: "technical", value: "Protocol upgrades" }],
@@ -114,6 +112,59 @@ describe("DelegatesController", () => {
       expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
     });
 
+    it("should not return email addresses", async () => {
+      // Arrange
+      const mockDelegates = [
+        {
+          registeredVoterId: "delegate1.near",
+          currentVotingPower: new Decimal("1000000000000000000000000"),
+          proposalParticipationRate: new Decimal("0.75"),
+          address: "delegate1.near",
+          twitter: "@delegate1",
+          discord: "delegate1#1234",
+          email: "delegate1@example.com",
+          warpcast: "delegate1",
+          statement: "I am delegate 1",
+          topIssues: [{ type: "governance", value: "Improve voting" }],
+          endorsed: false,
+          notificationPreferences: {
+            wants_proposal_created_email: "true",
+            wants_proposal_ending_soon_email: "prompt",
+            last_updated: "2024-01-01T00:00:00.000Z",
+          },
+        },
+        {
+          registeredVoterId: "delegate2.near",
+          currentVotingPower: new Decimal("500000000000000000000000"),
+          proposalParticipationRate: new Decimal("0.60"),
+          address: "delegate2.near",
+          twitter: "@delegate2",
+          discord: "delegate2#5678",
+          email: "delegate2@example.com",
+          warpcast: "delegate2",
+          statement: "I am delegate 2",
+          topIssues: [{ type: "technical", value: "Protocol upgrades" }],
+          endorsed: false,
+          notificationPreferences: null,
+        },
+      ];
+      const mockCount = 100;
+
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce(mockDelegates)
+        .mockResolvedValueOnce([{ count: BigInt(mockCount) }]);
+
+      // Act & Assert
+      const response = await request(app)
+        .get("/api/delegates")
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
+      expect(response.body.delegates[0]).not.toHaveProperty("email");
+      expect(response.body.delegates[1]).not.toHaveProperty("email");
+    });
+
     it("should return delegates with custom pagination", async () => {
       // Arrange
       const mockDelegates = [
@@ -124,7 +175,6 @@ describe("DelegatesController", () => {
           address: "delegate3.near",
           twitter: "@delegate3",
           discord: null,
-          email: null,
           warpcast: null,
           statement: "I am delegate 3",
           topIssues: [],
@@ -152,7 +202,6 @@ describe("DelegatesController", () => {
             participationRate: "0.8",
             twitter: "@delegate3",
             discord: null,
-            email: null,
             warpcast: null,
             statement: "I am delegate 3",
             topIssues: [],
@@ -283,7 +332,6 @@ describe("DelegatesController", () => {
             participationRate: "0.9",
             twitter: "@endorsed1",
             discord: "endorsed1#1111",
-            email: "endorsed1@example.com",
             warpcast: "endorsed1",
             statement: "I am an endorsed delegate",
             topIssues: [
@@ -297,7 +345,6 @@ describe("DelegatesController", () => {
             participationRate: "0.85",
             twitter: "@endorsed2",
             discord: "endorsed2#2222",
-            email: "endorsed2@example.com",
             warpcast: "endorsed2",
             statement: "Another endorsed delegate",
             topIssues: [{ type: "technical", value: "Technical excellence" }],
@@ -367,7 +414,6 @@ describe("DelegatesController", () => {
             participationRate: "0.8",
             twitter: "@tech1",
             discord: "tech1#1111",
-            email: "tech1@example.com",
             warpcast: "tech1",
             statement: "I focus on technical issues",
             topIssues: [{ type: "technical", value: "Protocol upgrades" }],
@@ -432,7 +478,6 @@ describe("DelegatesController", () => {
             participationRate: "0.85",
             twitter: "@multi1",
             discord: "multi1#1111",
-            email: "multi1@example.com",
             warpcast: "multi1",
             statement: "I work on governance and technical issues",
             topIssues: [
@@ -497,7 +542,6 @@ describe("DelegatesController", () => {
             participationRate: "0.9",
             twitter: "@endorsed-tech",
             discord: "endorsed-tech#1111",
-            email: "endorsed-tech@example.com",
             warpcast: "endorsed-tech",
             statement: "Endorsed technical expert",
             topIssues: [
@@ -610,7 +654,6 @@ describe("DelegatesController", () => {
         participationRate: undefined,
         twitter: null,
         discord: null,
-        email: null,
         warpcast: null,
         statement: null,
         topIssues: null,
@@ -688,7 +731,6 @@ describe("DelegatesController", () => {
           address: "delegate1.near",
           twitter: "@delegate1",
           discord: "delegate1#1234",
-          email: "delegate1@example.com",
           warpcast: "delegate1",
           statement: "I am delegate 1",
           topIssues: [{ type: "governance", value: "Improve voting" }],
@@ -706,6 +748,57 @@ describe("DelegatesController", () => {
           participationRate: "0.75",
         },
       });
+    });
+
+    it("should not return email address", async () => {
+      // Arrange
+      const mockVoterData = [
+        {
+          registeredVoterId: "delegate1.near",
+          currentVotingPower: new Decimal("1000000000000000000000000"),
+          proposalParticipationRate: new Decimal("0.75"),
+          address: "delegate1.near",
+          twitter: "@delegate1",
+          discord: "delegate1#1234",
+          email: "delegate1@example.com",
+          warpcast: "delegate1",
+          statement: "I am delegate 1",
+          topIssues: [{ type: "governance", value: "Improve voting" }],
+          message: "Test message",
+          signature: "test_signature",
+          publicKey: "test_public_key",
+          agreeCodeConduct: true,
+          endorsed: false,
+          notificationPreferences: {
+            wants_proposal_created_email: "true",
+            wants_proposal_ending_soon_email: "false",
+            last_updated: "2024-01-01T00:00:00.000Z",
+          },
+        },
+      ];
+
+      const mockForCount = 5;
+      const mockAgainstCount = 3;
+      const mockAbstainCount = 2;
+      const mockDelegatedFromCount = 10;
+
+      prismaMock.$queryRaw.mockResolvedValue(mockVoterData);
+      prismaMock.proposalVotingHistory.count
+        .mockResolvedValueOnce(mockForCount)
+        .mockResolvedValueOnce(mockAgainstCount)
+        .mockResolvedValueOnce(mockAbstainCount);
+      prismaMock.delegationEvents.count.mockResolvedValue(
+        mockDelegatedFromCount
+      );
+
+      // Act & Assert
+      const response = await request(app)
+        .get("/api/delegates/delegate1.near")
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      expect(prismaMock.$queryRaw).toHaveBeenCalled();
+      expect(response.body.delegate).not.toHaveProperty("email");
     });
 
     it("should return delegate with just address for valid NEAR account not in registered voters", async () => {
