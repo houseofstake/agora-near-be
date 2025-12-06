@@ -48,7 +48,7 @@ interface DeletesQuery {
   sorting_seed?: string;
 }
 
-type DelegateWithVoterInfo = delegate_statements &
+type DelegateWithVoterInfo = Omit<delegate_statements, "email"> &
   registeredVoters & {
     notificationPreferences?: NotificationPreferences | null;
   };
@@ -130,7 +130,6 @@ export class DelegatesController {
             COALESCE(rv.registered_voter_id, ds.address) as address,
             ds.twitter,
             ds.discord,
-            ds.email,
             ds.warpcast,
             ds.statement,
             ds."topIssues",
@@ -164,7 +163,6 @@ export class DelegatesController {
         address,
         twitter,
         discord,
-        email,
         warpcast,
         statement,
         topIssues,
@@ -178,7 +176,6 @@ export class DelegatesController {
         participationRate: proposalParticipationRate?.toFixed(),
         twitter,
         discord,
-        email,
         warpcast,
         statement,
         topIssues,
@@ -210,7 +207,6 @@ export class DelegatesController {
             COALESCE(rv.registered_voter_id, ds.address) as address,
             ds.twitter,
             ds.discord,
-            ds.email,
             ds.warpcast,
             ds.statement,
             ds."topIssues",
@@ -296,7 +292,6 @@ export class DelegatesController {
           address: data.address ?? data.registeredVoterId,
           twitter: data.twitter,
           discord: data.discord,
-          email: data.email,
           warpcast: data.warpcast,
           statement: data.statement,
           topIssues: data.topIssues,
