@@ -1,11 +1,13 @@
 import { Request, Response } from "express";
 import { prisma } from "../..";
+import { utils } from "near-api-js";
 
 import { convertMsToNanoSeconds } from "../../lib/utils/time";
 import {
   getDerivedProposalStatus,
   calculateQuorumAmount,
 } from "../../lib/utils/proposal";
+import { decodeMetadata } from "../../lib/utils/proposalMetadata";
 import { proposals, quorum_overrides } from "../../generated/prisma";
 
 interface ActiveProposalQueryParams {
@@ -23,8 +25,13 @@ function mapRecordToResponse(
   record: proposals,
   quorumOverride?: quorum_overrides | null
 ) {
+  const { metadata } = decodeMetadata(record.proposalDescription || "");
   return {
     id: record.id,
+    proposalType: metadata?.proposalType,
+    approvalThreshold: metadata?.approvalThreshold
+      ? utils.format.parseNearAmount(metadata.approvalThreshold.toString())
+      : undefined,
     approvedAt: record.approvedAt,
     approverId: record.approverId,
     createdAt: record.createdAt,
@@ -46,7 +53,8 @@ function mapRecordToResponse(
     totalVotingPower: record.totalVenearAtApproval?.toFixed(),
     quorumAmount: calculateQuorumAmount(
       record.totalVenearAtApproval?.toFixed(),
-      quorumOverride
+      quorumOverride,
+      metadata?.quorumThreshold
     ),
     status: getDerivedProposalStatus(record),
     votingStartTimeNs: record.votingStartAt
@@ -184,9 +192,12 @@ export class ProposalController {
           })
         : [];
 
+      const { metadata } = decodeMetadata(proposal.proposalDescription || "");
+
       const quorumAmount = calculateQuorumAmount(
         proposal.totalVenearAtApproval?.toFixed(),
-        overrides[0] || null
+        overrides[0] || null,
+        metadata?.quorumThreshold
       );
 
       res.status(200).json({ quorumAmount });
