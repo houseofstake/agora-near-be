@@ -53,8 +53,7 @@ function mapRecordToResponse(
     totalVotingPower: record.totalVenearAtApproval?.toFixed(),
     quorumAmount: calculateQuorumAmount(
       record.totalVenearAtApproval?.toFixed(),
-      quorumOverride,
-      metadata?.quorumThreshold
+      quorumOverride
     ),
     status: getDerivedProposalStatus(record),
     votingStartTimeNs: record.votingStartAt
@@ -196,8 +195,7 @@ export class ProposalController {
 
       const quorumAmount = calculateQuorumAmount(
         proposal.totalVenearAtApproval?.toFixed(),
-        overrides[0] || null,
-        metadata?.quorumThreshold
+        overrides[0] || null
       );
 
       res.status(200).json({ quorumAmount });

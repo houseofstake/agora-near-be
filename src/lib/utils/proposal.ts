@@ -36,13 +36,8 @@ import { utils } from "near-api-js";
 
 export function calculateQuorumAmount(
   totalVenearAtApproval: string | null | undefined,
-  quorumOverride?: quorum_overrides | null,
-  metadataQuorum?: number | null
+  quorumOverride?: quorum_overrides | null
 ): string {
-  if (metadataQuorum) {
-    const parsed = utils.format.parseNearAmount(metadataQuorum.toString());
-    if (parsed) return parsed;
-  }
 
   const quorumFloor = new Big(QUORUM_FLOOR_YOCTONEAR);
   const totalVenear = totalVenearAtApproval
