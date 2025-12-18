@@ -9,10 +9,11 @@ export interface ProposalMetadata {
   approvalThreshold?: number;
 }
 
-// Prefix: 4 null bytes
-export const METADATA_PREFIX = "\x00\x00\x00\x00";
-// Version: 0x0001 (stored as 2 bytes: \x00\x01)
-export const METADATA_VERSION = "\x00\x01";
+// Postgres TEXT columns do not support NULL bytes (\x00).
+// We use Record Separator (\x1E) as a safe alternative.
+export const METADATA_PREFIX = "\u001E\u001E\u001E\u001E";
+// Version 1: \u0001\u0001 (Avoids \x00)
+export const METADATA_VERSION = "\u0001\u0001";
 
 export const decodeMetadata = (
   fullDescription: string
