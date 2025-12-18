@@ -39,7 +39,7 @@ export function calculateQuorumAmount(
   // Determine Quorum Floor based on environment
   // Prod: 7M veNEAR (Strict)
   // Dev/Staging: process.env.QUORUM_FLOOR or 10 veNEAR (Flexible)
-  const isProd = process.env.AGORA_ENV === "prod" || process.env.NODE_ENV === "production";
+  const isProd = process.env.AGORA_ENV === "prod";
   
   let floorValue = "7000000000000000000000000000000"; // Default Prod: 7M veNEAR
 
