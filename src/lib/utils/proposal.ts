@@ -32,7 +32,7 @@ export function getDerivedProposalStatus(proposal: proposals) {
   return "Unknown";
 }
 
-import { utils } from "near-api-js";
+
 
 export function calculateQuorumAmount(
   totalVenearAtApproval: string | null | undefined,
