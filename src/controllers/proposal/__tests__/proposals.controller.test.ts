@@ -42,7 +42,7 @@ describe("ProposalController", () => {
       votingDurationNs: "864000000000000000",
       votingStartTimeNs: "1704153600000000000",
       votingCreatedAtNs: "1704067200000000000",
-      quorumAmount: "7000000000000000000000000000000", // QUORUM_FLOOR_YOCTONEAR
+      quorumAmount: "10000000000000000000000000", // QUORUM_FLOOR_YOCTONEAR (Dev/Test default)
     },
     {
       id: 2,
@@ -56,7 +56,7 @@ describe("ProposalController", () => {
       votingDurationNs: "864000000000000000",
       votingStartTimeNs: "1704153600000000000",
       votingCreatedAtNs: "1704067200000000000",
-      quorumAmount: "7000000000000000000000000000000", // QUORUM_FLOOR_YOCTONEAR
+      quorumAmount: "10000000000000000000000000", // QUORUM_FLOOR_YOCTONEAR (Dev/Test default)
     },
   ];
 
