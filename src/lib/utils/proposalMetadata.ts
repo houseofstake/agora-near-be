@@ -4,26 +4,53 @@ export enum ProposalType {
 }
 
 export interface ProposalMetadata {
-  proposalType: ProposalType;
+  proposalType?: ProposalType;
   quorumThreshold?: number;
   approvalThreshold?: number;
 }
 
-const METADATA_REGEX = /```json:metadata\s*([\s\S]*?)\s*```/;
+// Prefix: 4 null bytes
+export const METADATA_PREFIX = "\x00\x00\x00\x00";
+// Version: 0x0001 (stored as 2 bytes: \x00\x01)
+export const METADATA_VERSION = "\x00\x01";
 
 export const decodeMetadata = (
-  description: string
+  fullDescription: string
 ): { metadata: ProposalMetadata | null; description: string } => {
-  const match = description.match(METADATA_REGEX);
+  if (!fullDescription.startsWith(METADATA_PREFIX)) {
+    return { metadata: null, description: fullDescription };
+  }
 
-  if (match && match[1]) {
-    try {
-      const metadata = JSON.parse(match[1]);
-      const cleanDescription = description.replace(METADATA_REGEX, "").trim();
-      return { metadata, description: cleanDescription };
-    } catch (e) {
-      console.error("Failed to parse metadata JSON", e);
+  const version = fullDescription.slice(4, 6);
+  if (version !== METADATA_VERSION) {
+    return { metadata: null, description: fullDescription };
+  }
+
+  const remaining = fullDescription.slice(6);
+  const lastPipeIndex = remaining.lastIndexOf("|");
+
+  if (lastPipeIndex === -1) {
+    return { metadata: null, description: remaining };
+  }
+
+  const cleanDescription = remaining.substring(0, lastPipeIndex);
+  const metadataString = remaining.substring(lastPipeIndex + 1);
+
+  const metadata: ProposalMetadata = { proposalType: ProposalType.SimpleMajority };
+
+  const pairs = metadataString.split(",");
+
+  for (const pair of pairs) {
+    const [key, value] = pair.split("=");
+    if (!key || !value) continue;
+
+    if (key === "proposal_type") {
+      if (value === "SimpleMajority")
+        metadata.proposalType = ProposalType.SimpleMajority;
+      else if (value === "SuperMajority")
+        metadata.proposalType = ProposalType.SuperMajority;
     }
   }
-  return { metadata: null, description };
+  
+  return { metadata, description: cleanDescription };
 };
