@@ -2,7 +2,6 @@ import { proposals, quorum_overrides } from "../../generated/prisma";
 import { convertNanoSecondsToMs } from "./time";
 import Big from "big.js";
 
-const QUORUM_FLOOR_YOCTONEAR = "7000000000000000000000000000000"; // 7M veNEAR
 const DEFAULT_QUORUM_PERCENTAGE = "0.35";
 
 export function getDerivedProposalStatus(proposal: proposals) {
@@ -32,14 +31,23 @@ export function getDerivedProposalStatus(proposal: proposals) {
   return "Unknown";
 }
 
-
-
 export function calculateQuorumAmount(
   totalVenearAtApproval: string | null | undefined,
   quorumOverride?: quorum_overrides | null
 ): string {
 
-  const quorumFloor = new Big(QUORUM_FLOOR_YOCTONEAR);
+  // Determine Quorum Floor based on environment
+  // Prod: 7M veNEAR (Strict)
+  // Dev/Staging: process.env.QUORUM_FLOOR or 10 veNEAR (Flexible)
+  const isProd = process.env.AGORA_ENV === "prod" || process.env.NODE_ENV === "production";
+  
+  let floorValue = "7000000000000000000000000000000"; // Default Prod: 7M veNEAR
+
+  if (!isProd) {
+     floorValue = process.env.QUORUM_FLOOR || "10000000000000000000000000"; // 10 veNEAR
+  }
+
+  const quorumFloor = new Big(floorValue);
   const totalVenear = totalVenearAtApproval
     ? new Big(totalVenearAtApproval)
     : new Big(0);
