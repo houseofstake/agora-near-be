@@ -2,7 +2,7 @@ import { proposals, quorum_overrides } from "../../generated/prisma";
 import { convertNanoSecondsToMs } from "./time";
 import Big from "big.js";
 
-const DEFAULT_QUORUM_PERCENTAGE = "0.35";
+const DEFAULT_QUORUM_PERCENTAGE = process.env.QUORUM_PERCENTAGE || "0.35";
 
 export function getDerivedProposalStatus(proposal: proposals) {
   const startTimeMs = proposal.votingStartAt?.getTime();
