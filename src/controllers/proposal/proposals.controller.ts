@@ -6,6 +6,10 @@ import {
   getDerivedProposalStatus,
   calculateQuorumAmount,
 } from "../../lib/utils/proposal";
+import {
+  decodeProposalDescription,
+  DecodedProposalDescription,
+} from "../../lib/utils/descriptionDecoder";
 import { proposals, quorum_overrides } from "../../generated/prisma";
 
 interface ActiveProposalQueryParams {
@@ -19,10 +23,37 @@ interface PendingProposalQueryParams {
   page?: string;
 }
 
+/**
+ * Calculate the effective quorum amount for a proposal.
+ *
+ * Priority order:
+ * 1. Metadata quorum (from v1 encoded description)
+ * 2. Database quorum override
+ * 3. Default calculation (max of floor or percentage)
+ */
+function calculateEffectiveQuorum(
+  totalVenearAtApproval: string | null | undefined,
+  decodedDescription: DecodedProposalDescription,
+  quorumOverride?: quorum_overrides | null
+): string {
+  // If v1 metadata contains quorum, use it (highest priority)
+  if (decodedDescription.metadata?.quorum) {
+    return decodedDescription.metadata.quorum;
+  }
+
+  // Otherwise, use the standard calculation with optional override
+  return calculateQuorumAmount(totalVenearAtApproval, quorumOverride);
+}
+
 function mapRecordToResponse(
   record: proposals,
   quorumOverride?: quorum_overrides | null
 ) {
+  // Decode the description to extract version and metadata
+  const decodedDescription = decodeProposalDescription(
+    record.proposalDescription
+  );
+
   return {
     id: record.id,
     approvedAt: record.approvedAt,
@@ -32,7 +63,8 @@ function mapRecordToResponse(
     hasVote: record.hasVotes,
     isApproved: record.isApproved,
     isRejected: record.isRejected,
-    proposalDescription: record.proposalDescription,
+    // Return the decoded (metadata-stripped) description
+    proposalDescription: decodedDescription.description,
     proposalId: record.proposalId,
     proposalTitle: record.proposalTitle,
     proposalUrl: record.proposalUrl,
@@ -44,8 +76,9 @@ function mapRecordToResponse(
     abstainVotingPower: record.abstainVotingPower?.toFixed(),
     votingDurationNs: record.votingDurationNs?.toFixed(),
     totalVotingPower: record.totalVenearAtApproval?.toFixed(),
-    quorumAmount: calculateQuorumAmount(
+    quorumAmount: calculateEffectiveQuorum(
       record.totalVenearAtApproval?.toFixed(),
+      decodedDescription,
       quorumOverride
     ),
     status: getDerivedProposalStatus(record),
@@ -55,6 +88,9 @@ function mapRecordToResponse(
     votingCreatedAtNs: record.createdAt
       ? convertMsToNanoSeconds(record.createdAt.getTime())
       : null,
+    // New metadata fields from v1 encoding
+    descriptionVersion: decodedDescription.version,
+    proposalMetadata: decodedDescription.metadata,
   };
 }
 
@@ -169,6 +205,11 @@ export class ProposalController {
         return;
       }
 
+      // Decode description to check for metadata quorum
+      const decodedDescription = decodeProposalDescription(
+        proposal.proposalDescription
+      );
+
       // Query for quorum overrides
       const overrides = proposal.proposalId
         ? await prisma.quorum_overrides.findMany({
@@ -184,12 +225,23 @@ export class ProposalController {
           })
         : [];
 
-      const quorumAmount = calculateQuorumAmount(
+      const quorumAmount = calculateEffectiveQuorum(
         proposal.totalVenearAtApproval?.toFixed(),
+        decodedDescription,
         overrides[0] || null
       );
 
-      res.status(200).json({ quorumAmount });
+      res.status(200).json({
+        quorumAmount,
+        // Include source information for transparency
+        quorumSource: decodedDescription.metadata?.quorum
+          ? "proposal_metadata"
+          : overrides[0]
+            ? "database_override"
+            : "default_calculation",
+        descriptionVersion: decodedDescription.version,
+        proposalMetadata: decodedDescription.metadata,
+      });
     } catch (error) {
       console.error("Error fetching proposal quorum:", error);
       res.status(500).json({ error: "Failed to fetch proposal quorum" });
