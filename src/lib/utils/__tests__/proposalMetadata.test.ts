@@ -1,5 +1,4 @@
-import { decodeMetadata } from "../proposalMetadata";
-import { ProposalType } from "@prisma/client";
+import { decodeMetadata, ProposalType } from "../proposalMetadata";
 
 // Mock constants since they are inside the file and not exported effectively for testing if private
 // But assuming decodeMetadata uses them internally.
@@ -14,8 +13,11 @@ describe("decodeMetadata (Backend)", () => {
     const { metadata, description: cleanDesc } = decodeMetadata(encoded);
 
     expect(cleanDesc).toBe(description);
-    expect(metadata.proposalType).toBe(ProposalType.SuperMajority);
-    expect(metadata.approvalThreshold).toBe(0.6667);
+    expect(metadata).not.toBeNull();
+    if (metadata) {
+      expect(metadata.proposalType).toBe(ProposalType.SuperMajority);
+      expect(metadata.approvalThreshold).toBe(0.6667);
+    }
   });
 
   it("should decode numeric threshold (SimpleMajority)", () => {
@@ -25,9 +27,10 @@ describe("decodeMetadata (Backend)", () => {
     const { metadata, description: cleanDesc } = decodeMetadata(encoded);
 
     expect(cleanDesc).toBe(description);
-    expect(metadata.proposalType).toBe(ProposalType.SimpleMajority);
-    expect(metadata.approvalThreshold).toBe(0.5);
+    expect(metadata).not.toBeNull();
+    if (metadata) {
+      expect(metadata.proposalType).toBe(ProposalType.SimpleMajority);
+      expect(metadata.approvalThreshold).toBe(0.5);
+    }
   });
-
-
 });
