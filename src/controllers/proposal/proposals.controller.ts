@@ -58,7 +58,7 @@ function mapRecordToResponse(
     totalVotingPower: record.totalVenearAtApproval?.toFixed(),
     quorumAmount: calculateQuorumAmount(
       record.totalVenearAtApproval?.toFixed(),
-      quorumOverride
+      metadata ? null : quorumOverride
     ),
     status: getDerivedProposalStatus(record),
     votingStartTimeNs: record.votingStartAt
@@ -198,8 +198,8 @@ export class ProposalController {
 
       const { metadata } = decodeMetadata(proposal.proposalDescription || "");
       
-      // If metadata exists (V1), we still allow legacy DB overrides for Quorum
-      const effectiveOverride = overrides[0] || null;
+      // If metadata exists (V1), we ignore legacy DB overrides
+      const effectiveOverride = metadata ? null : (overrides[0] || null);
 
       const quorumAmount = calculateQuorumAmount(
         proposal.totalVenearAtApproval?.toFixed(),
