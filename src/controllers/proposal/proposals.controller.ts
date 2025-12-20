@@ -26,6 +26,11 @@ function mapRecordToResponse(
   quorumOverride?: quorum_overrides | null
 ) {
   const { metadata } = decodeMetadata(record.proposalDescription || "");
+  
+  // If metadata is present (V1 Proposal), we ignore legacy DB overrides to enforce System Default.
+  
+  const effectiveOverride = metadata ? null : quorumOverride;
+
   return {
     id: record.id,
     proposalType: metadata?.proposalType,
