@@ -23,20 +23,24 @@ interface PendingProposalQueryParams {
 
 function mapRecordToResponse(
   record: proposals,
-  quorumOverride?: quorum_overrides | null
+  quorumOverride: quorum_overrides | null,
 ) {
   const { metadata } = decodeMetadata(record.proposalDescription || "");
-  
-  // If metadata is present (V1 Proposal), we ignore legacy DB overrides to enforce System Default.
-  
-  const effectiveOverride = metadata ? null : quorumOverride;
+
+  // This is retroactively set to 0.5 for v0-metadata proposals,
+  // so the logic ends up the same.
+  const approvalThreshold = metadata.approvalThreshold.toString();
+
+  const quorumAmount = calculateQuorumAmount(
+    record.totalVenearAtApproval?.toFixed(),
+    quorumOverride,
+    metadata,
+  );
 
   return {
     id: record.id,
-    proposalType: metadata?.proposalType,
-    approvalThreshold: metadata?.approvalThreshold
-      ? utils.format.parseNearAmount(metadata.approvalThreshold.toString())
-      : undefined,
+    proposalType: metadata.proposalType,
+    approvalThreshold: approvalThreshold,
     approvedAt: record.approvedAt,
     approverId: record.approverId,
     createdAt: record.createdAt,
@@ -56,10 +60,7 @@ function mapRecordToResponse(
     abstainVotingPower: record.abstainVotingPower?.toFixed(),
     votingDurationNs: record.votingDurationNs?.toFixed(),
     totalVotingPower: record.totalVenearAtApproval?.toFixed(),
-    quorumAmount: calculateQuorumAmount(
-      record.totalVenearAtApproval?.toFixed(),
-      metadata ? null : quorumOverride
-    ),
+    quorumAmount,
     status: getDerivedProposalStatus(record),
     votingStartTimeNs: record.votingStartAt
       ? convertMsToNanoSeconds(record.votingStartAt.getTime())
@@ -73,7 +74,7 @@ function mapRecordToResponse(
 export class ProposalController {
   public getApprovedProposals = async (
     req: Request<{}, {}, {}, ActiveProposalQueryParams>,
-    res: Response
+    res: Response,
   ): Promise<void> => {
     try {
       const { page_size, page } = req.query;
@@ -112,7 +113,7 @@ export class ProposalController {
           });
 
           return mapRecordToResponse(record, overrides[0] || null);
-        })
+        }),
       );
 
       res.status(200).json({
@@ -127,7 +128,7 @@ export class ProposalController {
 
   public getPendingProposals = async (
     req: Request<{}, {}, {}, PendingProposalQueryParams>,
-    res: Response
+    res: Response,
   ): Promise<void> => {
     try {
       const { created_by, page_size, page } = req.query;
@@ -146,7 +147,7 @@ export class ProposalController {
       });
 
       res.status(200).json({
-        proposals: records.map((record) => mapRecordToResponse(record)),
+        proposals: records.map((record) => mapRecordToResponse(record, null)),
         count,
       });
     } catch (error) {
@@ -157,7 +158,7 @@ export class ProposalController {
 
   public getProposalQuorum = async (
     req: Request<{ proposal_id: string }>,
-    res: Response
+    res: Response,
   ): Promise<void> => {
     try {
       const proposalId = req.params.proposal_id;
@@ -181,6 +182,8 @@ export class ProposalController {
         return;
       }
 
+      const { metadata } = decodeMetadata(proposal.proposalDescription || "");
+
       // Query for quorum overrides
       const overrides = proposal.proposalId
         ? await prisma.quorum_overrides.findMany({
@@ -196,14 +199,12 @@ export class ProposalController {
           })
         : [];
 
-      const { metadata } = decodeMetadata(proposal.proposalDescription || "");
-      
-      // If metadata exists (V1), we ignore legacy DB overrides
-      const effectiveOverride = metadata ? null : (overrides[0] || null);
+      const override = overrides[0] || null;
 
       const quorumAmount = calculateQuorumAmount(
         proposal.totalVenearAtApproval?.toFixed(),
-        effectiveOverride
+        override,
+        metadata,
       );
 
       res.status(200).json({ quorumAmount });
