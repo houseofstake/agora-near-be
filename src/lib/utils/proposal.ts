@@ -3,7 +3,7 @@ import { ProposalMetadata } from "./proposalMetadata";
 import { convertNanoSecondsToMs } from "./time";
 import Big from "big.js";
 
-export const DEFAULT_QUORUM_PERCENTAGE_BPS = 3500;
+export const DEFAULT_QUORUM_PERCENTAGE_BPS = '3500';
 
 export function getDerivedProposalStatus(proposal: proposals) {
   const startTimeMs = proposal.votingStartAt?.getTime();
@@ -43,7 +43,6 @@ export function calculateQuorumAmount(
   const isProd = process.env.AGORA_ENV === "prod";
 
   let floorValue = "7000000000000000000000000000000"; // Default Prod: 7M veNEAR
-
   if (!isProd) {
     floorValue = process.env.QUORUM_FLOOR || "10000000000000000000000000"; // 10 veNEAR
   }
@@ -84,3 +83,21 @@ export function calculateQuorumAmount(
 
   return quorumAmount.toFixed(0);
 }
+
+// Quorum Strategy
+
+// This is the expected behaviour in prod:
+
+// 2025
+// For metadata.version = 0, quorum is set to max(35% x total veNEAR, constant floor value) + honoring a "fixed" perpetuity-override
+
+// 2026
+// For metadata.version = 1, if onchain quorum <= 10000, quorum is set to max(value x total veNEAR, constant floor value) + honoring perpetuity-override
+//.              Optionally, if onchain quorum  > 10000, quorum is set to value + honoring perpetuity-override
+
+// >= 2026-01
+// For metadata.version = 2, if onchain quorum <= 10000, quorum is set to max(value x total veNEAR, constant floor value)
+//.              Optionally, if onchain quorum  > 10000, quorum is set to value
+
+// ~ 2026-03
+// For metadata.version = 3, get quorum info from onchain types or something else TBD.

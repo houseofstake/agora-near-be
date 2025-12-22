@@ -8,7 +8,7 @@ export enum ProposalType {
 
 export interface ProposalMetadata {
   proposalType: ProposalType;
-  quorum: number;
+  quorum: string;
   approvalThreshold: number;
   version: number;
 }
@@ -18,7 +18,6 @@ export interface ProposalMetadata {
 export const METADATA_PREFIX = "\u001E\u001E\u001E\u001E";
 // Version 1: \u0001\u0001 (Avoids \x00)
 export const METADATA_VERSION = "\u0001\u0001";
-export const THRESHOLD_PRECISION = 10000;
 
 export const APPROVAL_THRESHOLD_BASIS_POINTS = {
   SUPER_MAJORITY: 6667, // ~2/3
@@ -32,7 +31,7 @@ export function decodeMetadata(fullDescription: string): {
   let version = 0;
   let proposalType = ProposalType.SimpleMajority;
   let approvalThreshold = APPROVAL_THRESHOLD_BASIS_POINTS.SIMPLE_MAJORITY;
-  let quorum = new Big(DEFAULT_QUORUM_PERCENTAGE_BPS).toNumber();
+  let quorum = DEFAULT_QUORUM_PERCENTAGE_BPS;
 
   const v0Metadata = {
     proposalType,
@@ -87,10 +86,10 @@ export function decodeMetadata(fullDescription: string): {
       }
 
       if (key == "quorum") {
-        const rawQuorum = parseInt(value, 10);
-        if (rawQuorum > 0) {
+        const rawQuorum = Big(value);
+        if (rawQuorum.gte(0)) {
           // eg. "35" is already in basis points
-          quorum = rawQuorum;
+          quorum = rawQuorum.toString();
         }
       }
     }
