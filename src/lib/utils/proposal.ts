@@ -65,7 +65,10 @@ export function calculateQuorumAmount(
     switch (quorumOverride.overrideType) {
       case "fixed":
         // Override to a fixed value
-        quorumAmount = new Big(quorumOverride.overrideValue) || quorumAmount;
+        quorumAmount =
+          quorumOverride.overrideValue !== null
+            ? new Big(quorumOverride.overrideValue)
+            : quorumAmount;
         break;
       case "percentage":
         // Override to a percentage of the total voting power
