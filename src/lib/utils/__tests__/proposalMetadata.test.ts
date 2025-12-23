@@ -16,7 +16,7 @@ describe("decodeMetadata (Backend)", () => {
     expect(metadata).not.toBeNull();
     if (metadata) {
       expect(metadata.proposalType).toBe(ProposalType.SuperMajority);
-      expect(metadata.approvalThreshold).toBe(0.6667);
+      expect(metadata.approvalThreshold).toBe(6667);
     }
   });
 
@@ -30,7 +30,7 @@ describe("decodeMetadata (Backend)", () => {
     expect(metadata).not.toBeNull();
     if (metadata) {
       expect(metadata.proposalType).toBe(ProposalType.SimpleMajority);
-      expect(metadata.approvalThreshold).toBe(0.5);
+      expect(metadata.approvalThreshold).toBe(5000);
     }
   });
 });
