@@ -1325,6 +1325,12 @@ describe("DelegatesController", () => {
               methodName: "delegate_all",
               eventType: "delegate_all_ft_mint",
             },
+            {
+              methodName: "withdraw_from_staking_pool",
+            },
+            {
+              methodName: "unstake",
+            },
           ],
         },
         skip: 0,
