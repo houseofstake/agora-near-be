@@ -1329,7 +1329,13 @@ describe("DelegatesController", () => {
               methodName: "withdraw_from_staking_pool",
             },
             {
+              methodName: "withdraw_all_from_staking_pool",
+            },
+            {
               methodName: "unstake",
+            },
+            {
+              methodName: "unstake_all",
             },
           ],
         },
@@ -1427,6 +1433,65 @@ describe("DelegatesController", () => {
       expect(response.body).toEqual({
         error: "Failed to fetch delegate HOS activity",
       });
+    });
+    it("should handle unstake_all and withdraw_all transaction types correctly", async () => {
+      // Arrange
+      const mockUserActivities = [
+        {
+          receiptId: "receipt4",
+          blockHeight: BigInt(12348),
+          eventDate: new Date("2024-01-04"),
+          nearAmount: new Decimal("3000000000000000000000000"),
+          lockedNearBalance: new Decimal("3000000000000000000000000"),
+          methodName: "withdraw_all_from_staking_pool",
+          eventType: "withdraw_from_staking_pool",
+        },
+        {
+          receiptId: "receipt5",
+          blockHeight: BigInt(12349),
+          eventDate: new Date("2024-01-05"),
+          nearAmount: new Decimal("4000000000000000000000000"),
+          lockedNearBalance: new Decimal("4000000000000000000000000"),
+          methodName: "unstake_all",
+          eventType: "unstake",
+        },
+      ];
+      const mockCount = 2;
+
+      prismaMock.userActivities.findMany.mockResolvedValue(mockUserActivities);
+      prismaMock.userActivities.count.mockResolvedValue(mockCount);
+
+      mockGetRpcUrl.mockReturnValue("https://rpc.testnet.near.org");
+      const mockProvider = {
+        query: jest.fn().mockResolvedValue({
+          result: Buffer.from(
+            JSON.stringify({ local_deposit: "1000000000000000000000000" })
+          ),
+        }),
+      };
+      mockProviders.JsonRpcProvider.mockImplementation(
+        () => mockProvider as any
+      );
+
+      // Act & Assert
+      const response = await request(app)
+        .get("/api/delegates/delegate1.near/hos-activity")
+        .query({ network_id: "testnet", contract_id: "vote.testnet" })
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      expect(response.body.hosActivity).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            receiptId: "receipt4",
+            transactionType: "withdraw",
+          }),
+          expect.objectContaining({
+            receiptId: "receipt5",
+            transactionType: "unstake",
+          }),
+        ])
+      );
     });
   });
 
