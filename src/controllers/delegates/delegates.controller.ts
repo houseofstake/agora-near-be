@@ -495,7 +495,13 @@ export class DelegatesController {
             methodName: "withdraw_from_staking_pool",
           },
           {
+            methodName: "withdraw_all_from_staking_pool",
+          },
+          {
             methodName: "unstake",
+          },
+          {
+            methodName: "unstake_all",
           },
         ],
       };
@@ -547,10 +553,13 @@ export class DelegatesController {
         ) {
           return "inbound_delegation";
         }
-        if (methodName === "withdraw_from_staking_pool") {
+        if (
+          methodName === "withdraw_from_staking_pool" ||
+          methodName === "withdraw_all_from_staking_pool"
+        ) {
           return "withdraw";
         }
-        if (methodName === "unstake") {
+        if (methodName === "unstake" || methodName === "unstake_all") {
           return "unstake";
         }
         return "unknown";
