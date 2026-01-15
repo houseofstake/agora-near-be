@@ -1484,7 +1484,7 @@ describe("DelegatesController", () => {
         expect.arrayContaining([
           expect.objectContaining({
             receiptId: "receipt4",
-            transactionType: "withdraw",
+            transactionType: "staking_pool_withdraw",
           }),
           expect.objectContaining({
             receiptId: "receipt5",

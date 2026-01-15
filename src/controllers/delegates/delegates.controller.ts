@@ -557,7 +557,7 @@ export class DelegatesController {
           methodName === "withdraw_from_staking_pool" ||
           methodName === "withdraw_all_from_staking_pool"
         ) {
-          return "withdraw";
+          return "staking_pool_withdraw";
         }
         if (methodName === "unstake" || methodName === "unstake_all") {
           return "unstake";
