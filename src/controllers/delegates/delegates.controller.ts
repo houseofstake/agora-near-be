@@ -491,6 +491,18 @@ export class DelegatesController {
             methodName: "delegate_all",
             eventType: "delegate_all_ft_mint",
           },
+          {
+            methodName: "withdraw_from_staking_pool",
+          },
+          {
+            methodName: "withdraw_all_from_staking_pool",
+          },
+          {
+            methodName: "unstake",
+          },
+          {
+            methodName: "unstake_all",
+          },
         ],
       };
 
@@ -540,6 +552,15 @@ export class DelegatesController {
           eventType === "delegate_all_ft_mint"
         ) {
           return "inbound_delegation";
+        }
+        if (
+          methodName === "withdraw_from_staking_pool" ||
+          methodName === "withdraw_all_from_staking_pool"
+        ) {
+          return "staking_pool_withdraw";
+        }
+        if (methodName === "unstake" || methodName === "unstake_all") {
+          return "unstake";
         }
         return "unknown";
       };
