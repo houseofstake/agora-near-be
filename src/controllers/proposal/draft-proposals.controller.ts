@@ -183,18 +183,20 @@ export class DraftProposalController {
         return;
       }
 
-      const updatedData: any = {
-        title: updateData.title,
-        description: updateData.description,
-        proposalUrl: updateData.proposalUrl,
-        stage: updateData.stage,
-        votingOptions: updateData.votingOptions,
-        receiptId: updateData.receiptId,
-      };
+      const allowedFields = [
+        "title",
+        "description",
+        "proposalUrl",
+        "stage",
+        "votingOptions",
+        "receiptId",
+      ];
+      const updatedData: any = {};
 
-      Object.keys(updatedData).forEach((key) => {
-        if (updatedData[key] === undefined) {
-          delete updatedData[key];
+      allowedFields.forEach((key) => {
+        const value = (updateData as any)[key];
+        if (value !== undefined) {
+          updatedData[key] = value;
         }
       });
 
@@ -211,8 +213,12 @@ export class DraftProposalController {
       });
 
       res.status(200).json(updatedProposal);
-    } catch (error) {
-      console.error("Error updating draft proposal:", error);
+    } catch (error: any) {
+      console.error(
+        "Error updating draft proposal:",
+        error.message,
+        error.stack
+      );
       res.status(500).json({ error: "Failed to update draft proposal" });
     }
   };
@@ -317,8 +323,12 @@ export class DraftProposalController {
       });
 
       res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting draft proposal:", error);
+    } catch (error: any) {
+      console.error(
+        "Error deleting draft proposal:",
+        error.message,
+        error.stack
+      );
       res.status(500).json({ error: "Failed to delete draft proposal" });
     }
   };
