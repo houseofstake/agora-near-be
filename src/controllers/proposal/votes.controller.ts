@@ -33,9 +33,10 @@ export class ProposalVotingHistoryController {
         where: { proposalId },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
-        orderBy: {
-          votingPower: "desc",
-        },
+        orderBy: [
+          { votingPower: "desc" },
+          { voterId: "asc" },
+        ],
       });
 
       const count = await prisma.proposalVotingHistory.count({
@@ -116,7 +117,7 @@ export class ProposalVotingHistoryController {
         FROM fastnear.proposal_non_voters pnv
         LEFT JOIN fastnear.registered_voters rv ON pnv.registered_voter_id = rv.registered_voter_id
         WHERE pnv.proposal_id = ${proposalId}
-        ORDER BY rv.current_voting_power DESC NULLS LAST
+        ORDER BY rv.current_voting_power DESC NULLS LAST, pnv.registered_voter_id ASC
         LIMIT ${pageSize} OFFSET ${(pageNumber - 1) * pageSize}
       `;
 
