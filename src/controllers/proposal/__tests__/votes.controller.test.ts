@@ -63,9 +63,10 @@ describe("ProposalVotingHistoryController", () => {
         where: { proposalId: 1 },
         skip: 0,
         take: 10,
-        orderBy: {
-          votingPower: "desc",
-        },
+        orderBy: [
+          { votingPower: "desc" },
+          { voterId: "asc" },
+        ],
       });
 
       expect(prismaMock.proposalVotingHistory.count).toHaveBeenCalledWith({
@@ -113,9 +114,10 @@ describe("ProposalVotingHistoryController", () => {
         where: { proposalId: 2 },
         skip: 10,
         take: 5,
-        orderBy: {
-          votingPower: "desc",
-        },
+        orderBy: [
+          { votingPower: "desc" },
+          { voterId: "asc" },
+        ],
       });
 
       expect(prismaMock.proposalVotingHistory.count).toHaveBeenCalledWith({
@@ -197,9 +199,10 @@ describe("ProposalVotingHistoryController", () => {
         where: { proposalId: 1 },
         skip: 0,
         take: 10,
-        orderBy: {
-          votingPower: "desc",
-        },
+        orderBy: [
+          { votingPower: "desc" },
+          { voterId: "asc" },
+        ],
       });
     });
 
