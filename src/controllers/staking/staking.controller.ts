@@ -6,13 +6,6 @@ import { prisma } from "../..";
 
 const META_POOL_CONTRACTS = ["meta-v2.pool.testnet", "meta-pool.near"];
 
-// NEAR Protocol inflation reduction adjustment
-// With the inflation reduction, the actual staking APY is approximately half of the price-based calculation
-// This can be overridden by setting the NEAR_INFLATION_ADJUSTMENT_FACTOR environment variable
-const NEAR_INFLATION_ADJUSTMENT_FACTOR = process.env.NEAR_INFLATION_ADJUSTMENT_FACTOR 
-  ? parseFloat(process.env.NEAR_INFLATION_ADJUSTMENT_FACTOR) 
-  : 0.5;
-
 export class StakingController {
   public getAPY = async (
     req: Request<{}, {}, {}, { networkId: string; contractId: string }>,
@@ -70,9 +63,6 @@ export class StakingController {
       let apy = isMetaPoolContract
         ? rate
         : Math.pow(1 + rate, 365 / numDaysAgo) - 1;
-
-      // Apply NEAR inflation adjustment to reflect the reduced inflation rate
-      apy = apy * NEAR_INFLATION_ADJUSTMENT_FACTOR;
 
       res.status(200).json({ apy });
     } catch (error) {
