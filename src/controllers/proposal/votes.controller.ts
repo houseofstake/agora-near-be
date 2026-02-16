@@ -44,12 +44,13 @@ export class ProposalVotingHistoryController {
       });
 
       const voteRecords = records.map((record) => {
-        const { votingPower, voterId, voteOption } = record;
+        const { votingPower, voterId, voteOption, memo } = record;
 
         return {
           accountId: voterId,
           votingPower: votingPower?.toFixed() ?? "0",
           voteOption: voteOption?.toString(),
+          memo: memo ?? null,
         };
       });
 
@@ -78,13 +79,14 @@ export class ProposalVotingHistoryController {
       });
 
       const voteRecords = records.map((record) => {
-        const { votingPower, voterId, voteOption } = record;
+        const { votingPower, voterId, voteOption, memo } = record;
 
         return {
           accountId: voterId,
           votingPower: votingPower?.toFixed() ?? "0",
           voteOption: voteOption?.toString(),
           votedAt: record.votedAt,
+          memo: memo ?? null,
         };
       });
 

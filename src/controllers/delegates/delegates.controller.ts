@@ -341,6 +341,7 @@ export class DelegatesController {
         votedAt: record.votedAt,
         proposalId: record.proposalId?.toString(),
         proposalName: record.proposalName,
+        memo: record.memo ?? null,
       }));
 
       res.status(200).json({ votes, count });

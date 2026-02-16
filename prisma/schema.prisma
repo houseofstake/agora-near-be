@@ -166,6 +166,7 @@ view proposalVotingHistory {
     delegatedExtraVenearBalance Decimal?  @map("delegated_extra_venear_balance") @db.Decimal
     blockHeight                 BigInt?   @map("block_height")
     blockHash                   String?   @map("block_hash")
+    memo                        String?   @map("memo")
 
     @@map("proposal_voting_history")
     @@schema("fastnear")

@@ -897,6 +897,7 @@ describe("DelegatesController", () => {
           votedAt: new Date("2024-01-01"),
           proposalId: BigInt(1),
           proposalName: "Test Proposal 1",
+          memo: "I support this proposal",
         },
         {
           voteOption: 0,
@@ -905,6 +906,7 @@ describe("DelegatesController", () => {
           votedAt: new Date("2024-01-02"),
           proposalId: BigInt(2),
           proposalName: "Test Proposal 2",
+          memo: null,
         },
       ];
       const mockCount = 25;
@@ -929,6 +931,7 @@ describe("DelegatesController", () => {
             votedAt: "2024-01-01T00:00:00.000Z",
             proposalId: "1",
             proposalName: "Test Proposal 1",
+            memo: "I support this proposal",
           },
           {
             voteOption: "0",
@@ -937,6 +940,7 @@ describe("DelegatesController", () => {
             votedAt: "2024-01-02T00:00:00.000Z",
             proposalId: "2",
             proposalName: "Test Proposal 2",
+            memo: null,
           },
         ],
         count: mockCount,
@@ -962,6 +966,7 @@ describe("DelegatesController", () => {
           votedAt: new Date("2024-01-03"),
           proposalId: BigInt(3),
           proposalName: "Test Proposal 3",
+          memo: null,
         },
       ];
       const mockCount = 12;
@@ -987,6 +992,7 @@ describe("DelegatesController", () => {
             votedAt: "2024-01-03T00:00:00.000Z",
             proposalId: "3",
             proposalName: "Test Proposal 3",
+            memo: null,
           },
         ],
         count: mockCount,
@@ -1012,6 +1018,7 @@ describe("DelegatesController", () => {
           votedAt: new Date("2024-01-01"),
           proposalId: BigInt(1),
           proposalName: "Test Proposal 1",
+          memo: null,
         },
       ];
       const mockCount = 1;

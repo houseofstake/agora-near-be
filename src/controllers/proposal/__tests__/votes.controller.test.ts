@@ -21,6 +21,7 @@ describe("ProposalVotingHistoryController", () => {
           votingPower: new Decimal("1000000000000000000000000"),
           voteOption: 1,
           votedAt: new Date("2024-01-01"),
+          memo: "I support this proposal",
         },
         {
           proposalId: 1,
@@ -28,6 +29,7 @@ describe("ProposalVotingHistoryController", () => {
           votingPower: new Decimal("500000000000000000000000"),
           voteOption: 0,
           votedAt: new Date("2024-01-02"),
+          memo: null,
         },
       ];
       const mockCount = 50;
@@ -49,11 +51,13 @@ describe("ProposalVotingHistoryController", () => {
             accountId: "user1.near",
             votingPower: "1000000000000000000000000",
             voteOption: "1",
+            memo: "I support this proposal",
           },
           {
             accountId: "user2.near",
             votingPower: "500000000000000000000000",
             voteOption: "0",
+            memo: null,
           },
         ],
         count: mockCount,
@@ -83,6 +87,7 @@ describe("ProposalVotingHistoryController", () => {
           votingPower: new Decimal("750000000000000000000000"),
           voteOption: 1,
           votedAt: new Date("2024-01-03"),
+          memo: null,
         },
       ];
       const mockCount = 25;
@@ -105,6 +110,7 @@ describe("ProposalVotingHistoryController", () => {
             accountId: "user3.near",
             votingPower: "750000000000000000000000",
             voteOption: "1",
+            memo: null,
           },
         ],
         count: mockCount,
@@ -134,6 +140,7 @@ describe("ProposalVotingHistoryController", () => {
           votingPower: null,
           voteOption: 1,
           votedAt: new Date("2024-01-01"),
+          memo: null,
         },
       ];
       const mockCount = 1;
@@ -155,6 +162,7 @@ describe("ProposalVotingHistoryController", () => {
             accountId: "user4.near",
             votingPower: "0",
             voteOption: "1",
+            memo: null,
           },
         ],
         count: mockCount,
@@ -215,6 +223,7 @@ describe("ProposalVotingHistoryController", () => {
           votingPower: new Decimal("1000000000000000000000000"),
           voteOption: 1,
           votedAt: new Date("2024-01-01"),
+          memo: null,
         },
       ];
 
@@ -247,6 +256,7 @@ describe("ProposalVotingHistoryController", () => {
           votingPower: new Decimal("1000000000000000000000000"),
           voteOption: 1,
           votedAt: new Date("2024-01-01T10:00:00.000Z"),
+          memo: "Great proposal",
         },
         {
           proposalId: 1,
@@ -254,6 +264,7 @@ describe("ProposalVotingHistoryController", () => {
           votingPower: new Decimal("500000000000000000000000"),
           voteOption: 0,
           votedAt: new Date("2024-01-02T12:00:00.000Z"),
+          memo: null,
         },
       ];
 
@@ -274,12 +285,14 @@ describe("ProposalVotingHistoryController", () => {
             votingPower: "1000000000000000000000000",
             voteOption: "1",
             votedAt: "2024-01-01T10:00:00.000Z",
+            memo: "Great proposal",
           },
           {
             accountId: "user2.near",
             votingPower: "500000000000000000000000",
             voteOption: "0",
             votedAt: "2024-01-02T12:00:00.000Z",
+            memo: null,
           },
         ],
       });
@@ -301,6 +314,7 @@ describe("ProposalVotingHistoryController", () => {
           votingPower: null,
           voteOption: 1,
           votedAt: new Date("2024-01-01T10:00:00.000Z"),
+          memo: null,
         },
       ];
 
@@ -321,6 +335,7 @@ describe("ProposalVotingHistoryController", () => {
             votingPower: "0",
             voteOption: "1",
             votedAt: "2024-01-01T10:00:00.000Z",
+            memo: null,
           },
         ],
       });
