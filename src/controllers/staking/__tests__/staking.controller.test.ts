@@ -49,8 +49,7 @@ describe("StakingController", () => {
       const contractId = "meta-v2.pool.testnet";
       const currentPrice = 1.1;
       const pastPrice = 1.05;
-      const baseAPY = currentPrice / pastPrice - 1; // 0.047619... (MetaPool rate is already annualized)
-      const expectedAPY = baseAPY * 0.5; // Apply NEAR inflation adjustment factor
+      const expectedAPY = currentPrice / pastPrice - 1; // MetaPool rate is already annualized
 
       mockFetchPriceAtBlock
         .mockResolvedValueOnce(currentPrice)
@@ -110,8 +109,7 @@ describe("StakingController", () => {
       const contractId = "meta-pool.near";
       const currentPrice = 1.08;
       const pastPrice = 1.02;
-      const baseAPY = currentPrice / pastPrice - 1;
-      const expectedAPY = baseAPY * 0.5; // Apply NEAR inflation adjustment factor
+      const expectedAPY = currentPrice / pastPrice - 1;
 
       mockFetchPriceAtBlock
         .mockResolvedValueOnce(currentPrice)
@@ -150,8 +148,7 @@ describe("StakingController", () => {
       const currentPrice = 1.05;
       const pastPrice = 1.02;
       const rate = currentPrice / pastPrice - 1;
-      const baseAPY = Math.pow(1 + rate, 365 / 25) - 1; // Annualized
-      const expectedAPY = baseAPY * 0.5; // Apply NEAR inflation adjustment factor
+      const expectedAPY = Math.pow(1 + rate, 365 / 25) - 1; // Annualized
 
       mockFetchPriceAtBlock
         .mockResolvedValueOnce(currentPrice)
