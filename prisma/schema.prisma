@@ -258,6 +258,15 @@ view userActivities {
     @@schema("fastnear")
 }
 
+model voting_power_cache {
+    accountId   String   @id @map("account_id")
+    votingPower Decimal  @map("voting_power") @db.Decimal
+    updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+    @@map("voting_power_cache")
+    @@schema("web2")
+}
+
 view registeredVoters {
     id                          String    @id
     receiptId                   String?   @map("receipt_id")

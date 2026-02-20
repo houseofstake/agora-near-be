@@ -219,7 +219,7 @@ describe("DelegatesController", () => {
             expect.stringContaining("OFFSET"),
           ]),
           values: expect.arrayContaining([5, 5]),
-        })
+        }),
       );
     });
 
@@ -244,11 +244,11 @@ describe("DelegatesController", () => {
         expect.objectContaining({
           strings: expect.arrayContaining([
             expect.stringContaining(
-              "ORDER BY rv.current_voting_power DESC NULLS LAST"
+              "ORDER BY COALESCE(vpc.voting_power, rv.current_voting_power) DESC NULLS LAST",
             ),
           ]),
           values: [10, 0],
-        })
+        }),
       );
     });
 
@@ -273,11 +273,11 @@ describe("DelegatesController", () => {
         expect.objectContaining({
           strings: expect.arrayContaining([
             expect.stringContaining(
-              "ORDER BY rv.current_voting_power ASC NULLS FIRST"
+              "ORDER BY COALESCE(vpc.voting_power, rv.current_voting_power) ASC NULLS FIRST",
             ),
           ]),
           values: [10, 0],
-        })
+        }),
       );
     });
 
@@ -361,7 +361,7 @@ describe("DelegatesController", () => {
             expect.stringContaining("WHERE ds.endorsed = true"),
           ]),
           values: expect.arrayContaining([10, 0]),
-        })
+        }),
       );
 
       // Verify the count query was called for endorsed delegates with Prisma.sql format
@@ -372,7 +372,7 @@ describe("DelegatesController", () => {
             expect.stringContaining("WHERE ds.endorsed = true"),
           ]),
           values: [],
-        })
+        }),
       );
     });
 
@@ -433,7 +433,7 @@ describe("DelegatesController", () => {
             expect.stringContaining("issue->>'type' = ANY("),
           ]),
           values: expect.arrayContaining([["technical"], 10, 0]),
-        })
+        }),
       );
     });
 
@@ -500,7 +500,7 @@ describe("DelegatesController", () => {
             expect.stringContaining("issue->>'type' = ANY("),
           ]),
           values: expect.arrayContaining([["governance", "technical"], 10, 0]),
-        })
+        }),
       );
     });
 
@@ -565,7 +565,7 @@ describe("DelegatesController", () => {
             expect.stringContaining("issue->>'type' = ANY("),
           ]),
           values: expect.arrayContaining([["technical"], 10, 0]),
-        })
+        }),
       );
     });
 
@@ -593,7 +593,7 @@ describe("DelegatesController", () => {
             10,
             0,
           ]),
-        })
+        }),
       );
     });
 
@@ -717,7 +717,7 @@ describe("DelegatesController", () => {
         .mockResolvedValueOnce(mockAgainstCount)
         .mockResolvedValueOnce(mockAbstainCount);
       prismaMock.delegationEvents.count.mockResolvedValue(
-        mockDelegatedFromCount
+        mockDelegatedFromCount,
       );
 
       // Act & Assert
@@ -788,7 +788,7 @@ describe("DelegatesController", () => {
         .mockResolvedValueOnce(mockAgainstCount)
         .mockResolvedValueOnce(mockAbstainCount);
       prismaMock.delegationEvents.count.mockResolvedValue(
-        mockDelegatedFromCount
+        mockDelegatedFromCount,
       );
 
       // Act & Assert
@@ -811,7 +811,7 @@ describe("DelegatesController", () => {
       };
 
       mockProviders.JsonRpcProvider.mockImplementation(
-        () => mockProvider as any
+        () => mockProvider as any,
       );
 
       // Act & Assert
@@ -845,7 +845,7 @@ describe("DelegatesController", () => {
         query: jest.fn().mockRejectedValue(new Error("Account not found")),
       };
       mockProviders.JsonRpcProvider.mockImplementation(
-        () => mockProvider as any
+        () => mockProvider as any,
       );
 
       // Act & Assert
@@ -910,7 +910,7 @@ describe("DelegatesController", () => {
       const mockCount = 25;
 
       prismaMock.proposalVotingHistory.findMany.mockResolvedValue(
-        mockVotingHistory
+        mockVotingHistory,
       );
       prismaMock.proposalVotingHistory.count.mockResolvedValue(mockCount);
 
@@ -967,7 +967,7 @@ describe("DelegatesController", () => {
       const mockCount = 12;
 
       prismaMock.proposalVotingHistory.findMany.mockResolvedValue(
-        mockVotingHistory
+        mockVotingHistory,
       );
       prismaMock.proposalVotingHistory.count.mockResolvedValue(mockCount);
 
@@ -1017,7 +1017,7 @@ describe("DelegatesController", () => {
       const mockCount = 1;
 
       prismaMock.proposalVotingHistory.findMany.mockResolvedValue(
-        mockVotingHistory
+        mockVotingHistory,
       );
       prismaMock.proposalVotingHistory.count.mockResolvedValue(mockCount);
 
@@ -1034,7 +1034,7 @@ describe("DelegatesController", () => {
       // Arrange
       const errorMessage = "Database connection failed";
       prismaMock.proposalVotingHistory.findMany.mockRejectedValue(
-        new Error(errorMessage)
+        new Error(errorMessage),
       );
 
       // Act & Assert
@@ -1073,7 +1073,7 @@ describe("DelegatesController", () => {
       const mockCount = 15;
 
       prismaMock.delegationEvents.findMany.mockResolvedValue(
-        mockDelegationEvents
+        mockDelegationEvents,
       );
       prismaMock.delegationEvents.count.mockResolvedValue(mockCount);
 
@@ -1117,7 +1117,7 @@ describe("DelegatesController", () => {
       const mockCount = 8;
 
       prismaMock.delegationEvents.findMany.mockResolvedValue(
-        mockDelegationEvents
+        mockDelegationEvents,
       );
       prismaMock.delegationEvents.count.mockResolvedValue(mockCount);
 
@@ -1151,7 +1151,7 @@ describe("DelegatesController", () => {
       // Arrange
       const errorMessage = "Database timeout";
       prismaMock.delegationEvents.findMany.mockRejectedValue(
-        new Error(errorMessage)
+        new Error(errorMessage),
       );
 
       // Act & Assert
@@ -1183,7 +1183,7 @@ describe("DelegatesController", () => {
       const mockCount = 5;
 
       prismaMock.delegationEvents.findMany.mockResolvedValue(
-        mockDelegationEvents
+        mockDelegationEvents,
       );
       prismaMock.delegationEvents.count.mockResolvedValue(mockCount);
 
@@ -1217,7 +1217,7 @@ describe("DelegatesController", () => {
       // Arrange
       const errorMessage = "Database connection lost";
       prismaMock.delegationEvents.findMany.mockRejectedValue(
-        new Error(errorMessage)
+        new Error(errorMessage),
       );
 
       // Act & Assert
@@ -1264,12 +1264,12 @@ describe("DelegatesController", () => {
       const mockProvider = {
         query: jest.fn().mockResolvedValue({
           result: Buffer.from(
-            JSON.stringify({ local_deposit: "1000000000000000000000000" })
+            JSON.stringify({ local_deposit: "1000000000000000000000000" }),
           ),
         }),
       };
       mockProviders.JsonRpcProvider.mockImplementation(
-        () => mockProvider as any
+        () => mockProvider as any,
       );
 
       // Act & Assert
@@ -1369,12 +1369,12 @@ describe("DelegatesController", () => {
       const mockProvider = {
         query: jest.fn().mockResolvedValue({
           result: Buffer.from(
-            JSON.stringify({ local_deposit: "1000000000000000000000000" })
+            JSON.stringify({ local_deposit: "1000000000000000000000000" }),
           ),
         }),
       };
       mockProviders.JsonRpcProvider.mockImplementation(
-        () => mockProvider as any
+        () => mockProvider as any,
       );
 
       // Act & Assert
@@ -1398,7 +1398,7 @@ describe("DelegatesController", () => {
       // Arrange
       const errorMessage = "Database error";
       prismaMock.userActivities.findMany.mockRejectedValue(
-        new Error(errorMessage)
+        new Error(errorMessage),
       );
 
       // Act & Assert
@@ -1420,7 +1420,7 @@ describe("DelegatesController", () => {
         query: jest.fn().mockRejectedValue(new Error("RPC error")),
       };
       mockProviders.JsonRpcProvider.mockImplementation(
-        () => mockProvider as any
+        () => mockProvider as any,
       );
 
       // Act & Assert
@@ -1465,12 +1465,12 @@ describe("DelegatesController", () => {
       const mockProvider = {
         query: jest.fn().mockResolvedValue({
           result: Buffer.from(
-            JSON.stringify({ local_deposit: "1000000000000000000000000" })
+            JSON.stringify({ local_deposit: "1000000000000000000000000" }),
           ),
         }),
       };
       mockProviders.JsonRpcProvider.mockImplementation(
-        () => mockProvider as any
+        () => mockProvider as any,
       );
 
       // Act & Assert
@@ -1490,7 +1490,7 @@ describe("DelegatesController", () => {
             receiptId: "receipt5",
             transactionType: "unstake",
           }),
-        ])
+        ]),
       );
     });
   });
@@ -1524,7 +1524,7 @@ describe("DelegatesController", () => {
 
       mockVerifySignedPayload.mockResolvedValue(true);
       prismaMock.delegate_statements.upsert.mockResolvedValue(
-        mockCreatedStatement
+        mockCreatedStatement,
       );
 
       // Act & Assert
@@ -1604,7 +1604,7 @@ describe("DelegatesController", () => {
       const errorMessage = "Database constraint violation";
       mockVerifySignedPayload.mockResolvedValue(true);
       prismaMock.delegate_statements.upsert.mockRejectedValue(
-        new Error(errorMessage)
+        new Error(errorMessage),
       );
 
       // Act & Assert
@@ -1622,7 +1622,7 @@ describe("DelegatesController", () => {
     it("should handle signature verification throwing error", async () => {
       // Arrange
       mockVerifySignedPayload.mockRejectedValue(
-        new Error("Signature verification failed")
+        new Error("Signature verification failed"),
       );
 
       // Act & Assert
@@ -1661,7 +1661,7 @@ describe("DelegatesController", () => {
       mockVerifySignedPayload.mockResolvedValue(true);
       prismaMock.delegate_statements.findUnique.mockResolvedValue(null);
       prismaMock.delegate_statements.upsert.mockResolvedValue(
-        mockCreatedStatement
+        mockCreatedStatement,
       );
 
       // Act & Assert
