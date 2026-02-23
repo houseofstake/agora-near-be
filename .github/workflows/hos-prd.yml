@@ -58,5 +58,7 @@ jobs:
             --region ${{env.REGION}} \
             --set-secrets=DATABASE_URL=DATABASE_URL:latest,FASTNEAR_API_KEY=FASTNEAR_API_KEY:latest \
             --service-account=near-api@${{env.PROJECT_ID}}.iam.gserviceaccount.com \
+            --vpc-connector=projects/${{env.PROJECT_ID}}/locations/${{env.REGION}}/connectors/vpc-connector \
+            --vpc-egress=private-ranges-only \
             --max-retries=1 \
             --task-timeout=300s
