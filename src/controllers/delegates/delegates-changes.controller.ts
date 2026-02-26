@@ -35,8 +35,25 @@ export class DelegateChangesController {
   ): Promise<void> => {
     try {
       const { offset, page, lookback_days } = req.query;
-      const limit = parseInt(offset ?? "10") || 10;
-      const pageNumber = parseInt(page ?? "1") || 1;
+      const parsedOffset = offset ? parseInt(offset, 10) : 10;
+      const parsedPage = page ? parseInt(page, 10) : 1;
+
+      if (isNaN(parsedOffset) || parsedOffset <= 0) {
+        res
+          .status(400)
+          .json({ error: "offset must be a positive number greater than 0" });
+        return;
+      }
+
+      if (isNaN(parsedPage) || parsedPage <= 0) {
+        res
+          .status(400)
+          .json({ error: "page must be a positive number greater than 0" });
+        return;
+      }
+
+      const limit = parsedOffset;
+      const pageNumber = parsedPage;
 
       // Only apply lookback filter if explicitly provided
       const lookbackClause = lookback_days

@@ -103,6 +103,32 @@ describe("DelegateChangesController", () => {
       expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
     });
 
+    it("should reject invalid page parameter", async () => {
+      const response = await request(app)
+        .get("/api/delegate_statement_changes")
+        .query({ page: "-1" })
+        .expect(400)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        error: "page must be a positive number greater than 0",
+      });
+      expect(prismaMock.$queryRaw).not.toHaveBeenCalled();
+    });
+
+    it("should reject invalid offset parameter", async () => {
+      const response = await request(app)
+        .get("/api/delegate_statement_changes")
+        .query({ offset: "0" })
+        .expect(400)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        error: "offset must be a positive number greater than 0",
+      });
+      expect(prismaMock.$queryRaw).not.toHaveBeenCalled();
+    });
+
     it("should apply lookback filter when lookback_days is provided", async () => {
       prismaMock.$queryRaw
         .mockResolvedValueOnce([])
