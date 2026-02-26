@@ -185,7 +185,7 @@ export class ProposalVotingHistoryController {
               AND eo.status = 'SuccessValue'
             WHERE ra.method_name = 'vote'
               AND ra.action_kind = 'FunctionCall'
-              AND ra.receiver_id = ANY(ARRAY['v.r-1748895584.testnet', 'vote.r-1748895584.testnet'])
+              AND ra.receiver_id = (SELECT hos_contract_address FROM fastnear.proposals WHERE proposal_id = ${proposalId} LIMIT 1)
               AND CASE
                 WHEN (safe_json_parse(convert_from(decode(ra.args_base64, 'base64'), 'UTF8')) ->> 'error') IS NULL
                 THEN (safe_json_parse(convert_from(decode(ra.args_base64, 'base64'), 'UTF8')) ->> 'proposal_id')::numeric
