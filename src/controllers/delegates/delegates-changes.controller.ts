@@ -57,20 +57,18 @@ export class DelegateChangesController {
 
       // Only apply lookback filter if explicitly provided
       const lookbackClause = lookback_days
-        ? Prisma.sql`AND rv.registered_at >= NOW() - INTERVAL '1 day' * ${parseInt(lookback_days) || 30}`
+        ? Prisma.sql`AND ds.updated_at >= NOW() - INTERVAL '1 day' * ${parseInt(lookback_days) || 30}`
         : Prisma.empty;
 
       const records = await prisma.$queryRaw<DelegateChangeRecord[]>(
         Prisma.sql`
           SELECT
             ds.address AS account,
-            rv.registered_at AS created
+            ds.updated_at AS created
           FROM web2.delegate_statements ds
-          LEFT JOIN fastnear.registered_voters rv
-            ON ds.address = rv.registered_voter_id
           WHERE TRUE
           ${lookbackClause}
-          ORDER BY rv.registered_at DESC NULLS LAST
+          ORDER BY ds.updated_at DESC NULLS LAST
           LIMIT ${limit}
           OFFSET ${(pageNumber - 1) * limit}
         `
@@ -80,8 +78,6 @@ export class DelegateChangesController {
         Prisma.sql`
           SELECT COUNT(*) AS count
           FROM web2.delegate_statements ds
-          LEFT JOIN fastnear.registered_voters rv
-            ON ds.address = rv.registered_voter_id
           WHERE TRUE
           ${lookbackClause}
         `
@@ -121,25 +117,57 @@ export class DelegateChangesController {
 
       const records = await prisma.$queryRaw<VPChartRecord[]>(
         Prisma.sql`
+          WITH personal_locks AS (
+            SELECT
+              ra.block_height,
+              ra.block_timestamp AS timestamp,
+              COALESCE(
+                (
+                  fastnear.safe_json_parse(
+                    REPLACE(eo.logs[1], 'EVENT_JSON:', '')
+                  ) -> 'data' -> 0 ->> 'locked_near_balance'
+                ),
+                '0'
+              )::numeric AS vp_delta
+            FROM fastnear.receipt_actions ra
+            JOIN fastnear.execution_outcomes eo
+              ON ra.receipt_id = eo.receipt_id
+              AND eo.status = 'SuccessValue'
+            WHERE ra.method_name = 'on_lockup_update'
+              AND ra.signer_account_id = ${account_id}
+              AND ra.action_kind = 'FunctionCall'
+          ),
+          delegations_received AS (
+            SELECT
+              block_height,
+              event_timestamp AS timestamp,
+              CASE
+                WHEN delegate_method = 'delegate_all' THEN near_amount
+                WHEN delegate_method = 'undelegate' THEN -near_amount
+                ELSE 0
+              END AS vp_delta
+            FROM fastnear.delegation_events
+            WHERE delegatee_id = ${account_id}
+              AND near_amount IS NOT NULL
+          ),
+          combined_events AS (
+            SELECT * FROM personal_locks
+            UNION ALL
+            SELECT * FROM delegations_received
+          ),
+          cumulative_vp AS (
+            SELECT
+              block_height,
+              timestamp,
+              SUM(vp_delta) OVER (ORDER BY timestamp ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS voting_power
+            FROM combined_events
+          )
           SELECT
-            ra.block_height,
-            ra.block_timestamp AS timestamp,
-            COALESCE(
-              (
-                safe_json_parse(
-                  REPLACE(eo.logs[1], 'EVENT_JSON:', '')
-                ) -> 'data' -> 0 ->> 'locked_near_balance'
-              ),
-              '0'
-            ) AS voting_power
-          FROM fastnear.receipt_actions ra
-          JOIN fastnear.execution_outcomes eo
-            ON ra.receipt_id = eo.receipt_id
-            AND eo.status = 'SuccessValue'
-          WHERE ra.method_name = 'on_lockup_update'
-            AND ra.signer_account_id = ${account_id}
-            AND ra.action_kind = 'FunctionCall'
-          ORDER BY ra.block_timestamp ASC
+            block_height,
+            timestamp,
+            voting_power::text AS voting_power
+          FROM cumulative_vp
+          ORDER BY timestamp ASC
         `
       );
 
