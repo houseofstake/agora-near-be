@@ -7,8 +7,6 @@ const getVenearContractId = (): string => {
       return "venear.dao";
     case "staging":
       return "venear.stagingdao.near";
-    case "august-prod":
-      return "v.voteagora.near";
     case "dev":
     case "local":
     default:
