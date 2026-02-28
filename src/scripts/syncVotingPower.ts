@@ -44,13 +44,18 @@ async function syncVotingPower(): Promise<void> {
   console.log("Starting voting power sync...");
   const startTime = Date.now();
 
-  // Fetch all registered voter IDs
-  const voters = await prisma.$queryRaw<{ registered_voter_id: string }[]>`
-    SELECT registered_voter_id FROM fastnear.registered_voters
-    WHERE registered_voter_id IS NOT NULL
+  // Fetch all registered voter IDs and delegate statement addresses
+  const voters = await prisma.$queryRaw<{ account_id: string }[]>`
+    SELECT DISTINCT account_id FROM (
+      SELECT registered_voter_id as account_id FROM fastnear.registered_voters
+      WHERE registered_voter_id IS NOT NULL
+      UNION
+      SELECT address as account_id FROM web2.delegate_statements
+      WHERE address IS NOT NULL
+    ) as all_voters
   `;
 
-  console.log(`Found ${voters.length} registered voters`);
+  console.log(`Found ${voters.length} unique voters/delegates`);
 
   if (voters.length === 0) {
     console.log("No voters to sync. Exiting.");
@@ -76,12 +81,12 @@ async function syncVotingPower(): Promise<void> {
       batch.map(async (voter) => {
         const balance = await fetchVotingPower(
           provider,
-          voter.registered_voter_id,
+          voter.account_id,
         );
         if (balance === null) return null;
 
         return {
-          accountId: voter.registered_voter_id,
+          accountId: voter.account_id,
           votingPower: balance,
         };
       }),
