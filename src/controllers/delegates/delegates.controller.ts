@@ -137,7 +137,7 @@ export class DelegatesController {
             ds.notification_preferences as "notificationPreferences"
           FROM fastnear.registered_voters rv
           FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
-          LEFT JOIN web2.voting_power_cache vpc ON rv.registered_voter_id = vpc.account_id
+          LEFT JOIN web2.voting_power_cache vpc ON COALESCE(rv.registered_voter_id, ds.address) = vpc.account_id
           ${filterByClause}
           ${orderByClause}
           LIMIT ${pageSize}
@@ -153,7 +153,7 @@ export class DelegatesController {
         SELECT COUNT(*) as count
         FROM fastnear.registered_voters rv
         FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
-        LEFT JOIN web2.voting_power_cache vpc ON rv.registered_voter_id = vpc.account_id
+        LEFT JOIN web2.voting_power_cache vpc ON COALESCE(rv.registered_voter_id, ds.address) = vpc.account_id
         ${filterByClause}
       `,
     );
@@ -220,7 +220,7 @@ export class DelegatesController {
             ds.notification_preferences as "notificationPreferences"
           FROM fastnear.registered_voters rv
           FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
-          LEFT JOIN web2.voting_power_cache vpc ON rv.registered_voter_id = vpc.account_id
+          LEFT JOIN web2.voting_power_cache vpc ON COALESCE(rv.registered_voter_id, ds.address) = vpc.account_id
           WHERE COALESCE(rv.registered_voter_id, ds.address) = ${address}
         `,
       );
