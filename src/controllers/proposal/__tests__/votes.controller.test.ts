@@ -531,4 +531,128 @@ describe("ProposalVotingHistoryController", () => {
       });
     });
   });
+
+  describe("GET /api/vote_changes/:proposal_id", () => {
+    it("should return vote changes grouped by voter", async () => {
+      const mockRecords = [
+        {
+          voter_id: "user1.near",
+          vote_option: 0,
+          voting_power: "500000000000000000000000",
+          voted_at: new Date("2024-01-01T10:00:00.000Z"),
+          block_height: BigInt(100000),
+        },
+        {
+          voter_id: "user1.near",
+          vote_option: 1,
+          voting_power: "500000000000000000000000",
+          voted_at: new Date("2024-01-02T12:00:00.000Z"),
+          block_height: BigInt(100500),
+        },
+      ];
+
+      prismaMock.$queryRaw.mockResolvedValue(mockRecords);
+
+      const response = await request(app)
+        .get("/api/vote_changes/1")
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        vote_changes: [
+          {
+            account_id: "user1.near",
+            changes: [
+              {
+                vote_option: 0,
+                voting_power: "500000000000000000000000",
+                voted_at: "2024-01-01T10:00:00.000Z",
+                block_height: 100000,
+              },
+              {
+                vote_option: 1,
+                voting_power: "500000000000000000000000",
+                voted_at: "2024-01-02T12:00:00.000Z",
+                block_height: 100500,
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    it("should return empty vote_changes when no votes were changed", async () => {
+      prismaMock.$queryRaw.mockResolvedValue([]);
+
+      const response = await request(app)
+        .get("/api/vote_changes/1")
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        vote_changes: [],
+      });
+    });
+
+    it("should group multiple voters with changes separately", async () => {
+      const mockRecords = [
+        {
+          voter_id: "user1.near",
+          vote_option: 0,
+          voting_power: "100",
+          voted_at: new Date("2024-01-01T10:00:00.000Z"),
+          block_height: BigInt(100),
+        },
+        {
+          voter_id: "user1.near",
+          vote_option: 1,
+          voting_power: "100",
+          voted_at: new Date("2024-01-02T10:00:00.000Z"),
+          block_height: BigInt(200),
+        },
+        {
+          voter_id: "user2.near",
+          vote_option: 1,
+          voting_power: "200",
+          voted_at: new Date("2024-01-01T11:00:00.000Z"),
+          block_height: BigInt(150),
+        },
+        {
+          voter_id: "user2.near",
+          vote_option: 2,
+          voting_power: "200",
+          voted_at: new Date("2024-01-03T11:00:00.000Z"),
+          block_height: BigInt(300),
+        },
+      ];
+
+      prismaMock.$queryRaw.mockResolvedValue(mockRecords);
+
+      const response = await request(app)
+        .get("/api/vote_changes/5")
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      expect(response.body.vote_changes).toHaveLength(2);
+      expect(response.body.vote_changes[0].account_id).toBe("user1.near");
+      expect(response.body.vote_changes[0].changes).toHaveLength(2);
+      expect(response.body.vote_changes[1].account_id).toBe("user2.near");
+      expect(response.body.vote_changes[1].changes).toHaveLength(2);
+    });
+
+    it("should handle database error gracefully", async () => {
+      prismaMock.$queryRaw.mockRejectedValue(
+        new Error("Database connection failed")
+      );
+
+      const response = await request(app)
+        .get("/api/vote_changes/1")
+        .expect(500)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual({
+        error: "Failed to fetch vote changes",
+      });
+    });
+  });
 });

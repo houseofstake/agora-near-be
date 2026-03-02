@@ -9,9 +9,11 @@ import { nearRoutes } from "./near/near.routes";
 import nonceRoutes from "./nonce/nonce.routes";
 import { transactionsRoutes } from "./transactions/transactions.routes";
 import { DelegateChangesController } from "../controllers/delegates/delegates-changes.controller";
+import { ProposalVotingHistoryController } from "../controllers/proposal/votes.controller";
 
 const router = express.Router();
 const delegateChangesController = new DelegateChangesController();
+const votesController = new ProposalVotingHistoryController();
 
 // Define routes
 router.use("/delegates", delegatesRoutes);
@@ -26,5 +28,7 @@ router.use("/transactions", transactionsRoutes);
 
 router.get("/delegate_statement_changes", delegateChangesController.getDelegateStatementChanges);
 router.get("/get_voting_power_chart/:account_id", delegateChangesController.getVotingPowerChart);
+// Top-level vote changes endpoint
+router.get("/vote_changes/:proposal_id", votesController.getVoteChanges);
 
 export { router as routes };

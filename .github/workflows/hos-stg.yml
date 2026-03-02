@@ -40,8 +40,25 @@ jobs:
       - name: Push Docker image to Artifact Registry
         run: docker push ${{env.DOCKER_IMAGE}}
 
-      - name: Deploy to Cloud Run
+      - name: Deploy API to Cloud Run
         run: |
           gcloud run deploy near-api \
             --image ${{env.DOCKER_IMAGE}} \
             --region ${{env.REGION}}
+
+      - name: Build and push voting power sync job image
+        run: |
+          docker build -f Dockerfile.job -t ${{env.DOCKER_IMAGE}}-job .
+          docker push ${{env.DOCKER_IMAGE}}-job
+
+      - name: Deploy voting power sync Cloud Run Job
+        run: |
+          gcloud run jobs deploy sync-voting-power \
+            --image ${{env.DOCKER_IMAGE}}-job \
+            --region ${{env.REGION}} \
+            --set-secrets=DATABASE_URL=DATABASE_URL:latest,FASTNEAR_API_KEY=FASTNEAR_API_KEY:latest \
+            --service-account=near-api@${{env.PROJECT_ID}}.iam.gserviceaccount.com \
+            --vpc-connector=projects/${{env.PROJECT_ID}}/locations/${{env.REGION}}/connectors/vpc-connector \
+            --vpc-egress=private-ranges-only \
+            --max-retries=1 \
+            --task-timeout=300s
