@@ -124,7 +124,7 @@ export class DelegateChangesController {
               locked_near_balance - COALESCE(LAG(locked_near_balance) OVER (PARTITION BY account_id ORDER BY event_timestamp ASC), 0) AS vp_delta
             FROM fastnear.user_activities
             WHERE account_id = ${account_id}
-              AND event_type IN ('Lock', 'Unlock')
+              AND locked_near_balance IS NOT NULL
           ),
           delegation_changes AS (
             SELECT
