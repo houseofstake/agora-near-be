@@ -137,23 +137,41 @@ export class DelegateChangesController {
               AND ra.signer_account_id = ${account_id}
               AND ra.action_kind = 'FunctionCall'
           ),
-          delegations_received AS (
+          delegation_changes AS (
             SELECT
+              delegator_id,
+              delegatee_id,
+              near_amount,
               block_height,
               event_timestamp AS timestamp,
-              CASE
-                WHEN delegate_method = 'delegate_all' THEN near_amount
-                WHEN delegate_method = 'undelegate' THEN -near_amount
-                ELSE 0
-              END AS vp_delta
+              LAG(delegatee_id) OVER (PARTITION BY delegator_id ORDER BY event_timestamp ASC) as prev_delegatee,
+              LAG(near_amount) OVER (PARTITION BY delegator_id ORDER BY event_timestamp ASC) as prev_amount
             FROM fastnear.delegation_events
+            WHERE near_amount IS NOT NULL
+          ),
+          inbound_delegations AS (
+            SELECT
+              block_height,
+              timestamp,
+              near_amount AS vp_delta
+            FROM delegation_changes
             WHERE delegatee_id = ${account_id}
-              AND near_amount IS NOT NULL
+          ),
+          lost_delegations AS (
+            SELECT
+              block_height,
+              timestamp,
+              -prev_amount AS vp_delta
+            FROM delegation_changes
+            WHERE prev_delegatee = ${account_id}
+              AND (delegatee_id != ${account_id} OR delegatee_id IS NULL)
           ),
           combined_events AS (
             SELECT * FROM personal_locks
             UNION ALL
-            SELECT * FROM delegations_received
+            SELECT * FROM inbound_delegations
+            UNION ALL
+            SELECT * FROM lost_delegations
           ),
           cumulative_vp AS (
             SELECT

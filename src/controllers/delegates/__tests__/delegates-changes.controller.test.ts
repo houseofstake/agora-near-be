@@ -237,6 +237,42 @@ describe("DelegateChangesController", () => {
       expect(response.body).toEqual([]);
     });
 
+    it("should process inbound and lost delegations correctly from CTE logic", async () => {
+      // Mocking the result of the new cumulative VP CTE query which processes inbound and lost delegations
+      const mockRecords = [
+        {
+          block_height: BigInt(110000),
+          voting_power: "5000",
+          timestamp: new Date("2024-02-01T10:00:00.000Z"),
+        },
+        {
+          block_height: BigInt(110500),
+          voting_power: "2000", // Lost 3000 VP
+          timestamp: new Date("2024-02-05T14:00:00.000Z"),
+        },
+      ];
+
+      prismaMock.$queryRaw.mockResolvedValue(mockRecords);
+
+      const response = await request(app)
+        .get("/api/get_voting_power_chart/user2.near")
+        .expect(200)
+        .expect("Content-Type", /json/);
+
+      expect(response.body).toEqual([
+        {
+          block_number: 110000,
+          vp: "5000",
+          timestamp: "2024-02-01T10:00:00.000Z",
+        },
+        {
+          block_number: 110500,
+          vp: "2000",
+          timestamp: "2024-02-05T14:00:00.000Z",
+        },
+      ]);
+    });
+
     it("should handle database error gracefully", async () => {
       prismaMock.$queryRaw.mockRejectedValue(new Error("Query failed"));
 
