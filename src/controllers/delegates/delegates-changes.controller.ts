@@ -119,23 +119,12 @@ export class DelegateChangesController {
         Prisma.sql`
           WITH personal_locks AS (
             SELECT
-              ra.block_height,
-              ra.block_timestamp AS timestamp,
-              COALESCE(
-                (
-                  fastnear.safe_json_parse(
-                    REPLACE(eo.logs[1], 'EVENT_JSON:', '')
-                  ) -> 'data' -> 0 ->> 'locked_near_balance'
-                ),
-                '0'
-              )::numeric AS vp_delta
-            FROM fastnear.receipt_actions ra
-            JOIN fastnear.execution_outcomes eo
-              ON ra.receipt_id = eo.receipt_id
-              AND eo.status = 'SuccessValue'
-            WHERE ra.method_name = 'on_lockup_update'
-              AND ra.signer_account_id = ${account_id}
-              AND ra.action_kind = 'FunctionCall'
+              block_height,
+              event_timestamp AS timestamp,
+              locked_near_balance - COALESCE(LAG(locked_near_balance) OVER (PARTITION BY account_id ORDER BY event_timestamp ASC), 0) AS vp_delta
+            FROM fastnear.user_activities
+            WHERE account_id = ${account_id}
+              AND event_type IN ('Lock', 'Unlock')
           ),
           delegation_changes AS (
             SELECT
