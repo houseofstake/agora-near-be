@@ -153,7 +153,7 @@ export class DelegateChangesController {
               -prev_amount AS vp_delta
             FROM delegation_changes
             WHERE prev_delegatee = ${account_id}
-              AND (delegatee_id != ${account_id} OR delegatee_id IS NULL)
+              AND prev_amount IS NOT NULL
           ),
           combined_events AS (
             SELECT * FROM personal_locks
