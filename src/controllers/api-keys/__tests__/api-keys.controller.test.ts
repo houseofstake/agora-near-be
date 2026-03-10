@@ -17,7 +17,6 @@ describe("ApiKeysController", () => {
 
   describe("POST /api-keys/list", () => {
     it("should return a list of API keys for the verified user", async () => {
-      // Arrange
       const mockAccountId = "test.near";
       mockVerifySignedPayload.mockResolvedValue(true);
 
@@ -35,7 +34,6 @@ describe("ApiKeysController", () => {
 
       prismaMock.api_keys.findMany.mockResolvedValue(mockApiKeys as any);
 
-      // Act
       const response = await request(app)
         .post("/api/api-keys/list")
         .send({
@@ -46,7 +44,6 @@ describe("ApiKeysController", () => {
         })
         .expect(200);
 
-      // Assert
       expect(response.body).toEqual([
         {
           id: "key_1",
@@ -66,7 +63,6 @@ describe("ApiKeysController", () => {
     });
 
     it("should return 401 if signature validation fails", async () => {
-      // Arrange
       mockVerifySignedPayload.mockResolvedValue(false);
 
       // Act
@@ -80,7 +76,6 @@ describe("ApiKeysController", () => {
         })
         .expect(401);
 
-      // Assert
       expect(response.body).toEqual({ error: "Invalid signature" });
       expect(prismaMock.api_keys.findMany).not.toHaveBeenCalled();
     });
@@ -88,7 +83,6 @@ describe("ApiKeysController", () => {
 
   describe("POST /api-keys", () => {
     it("should generate a new API key securely and return the plain text once", async () => {
-      // Arrange
       const mockAccountId = "test.near";
       const mockEmail = "developer@example.com";
       mockVerifySignedPayload.mockResolvedValue(true);
@@ -108,7 +102,6 @@ describe("ApiKeysController", () => {
 
       prismaMock.api_keys.create.mockResolvedValue(mockCreatedKey as any);
 
-      // Act
       const response = await request(app)
         .post("/api/api-keys")
         .send({
@@ -119,7 +112,6 @@ describe("ApiKeysController", () => {
         })
         .expect(201);
 
-      // Assert
       expect(response.body).toHaveProperty("id", "key_123");
       expect(response.body).toHaveProperty("plainTextKey");
       expect(response.body.plainTextKey).toMatch(/^hos_live_[a-f0-9]{64}$/);
@@ -127,12 +119,13 @@ describe("ApiKeysController", () => {
       expect(response.body.scopes).toEqual(["full"]);
 
       const createCallArgs = prismaMock.api_keys.create.mock.calls[0][0];
-      expect(createCallArgs.data.keyHash).not.toEqual(response.body.plainTextKey);
+      expect(createCallArgs.data.keyHash).not.toEqual(
+        response.body.plainTextKey,
+      );
       expect(createCallArgs.data.keyHash.length).toBeGreaterThan(0);
     });
 
     it("should require an email to generate a key", async () => {
-      // Arrange
       mockVerifySignedPayload.mockResolvedValue(true);
 
       // Act
@@ -146,7 +139,6 @@ describe("ApiKeysController", () => {
         })
         .expect(400);
 
-      // Assert
       expect(response.body).toEqual({ error: "Email is required." });
       expect(prismaMock.api_keys.create).not.toHaveBeenCalled();
     });
@@ -154,15 +146,16 @@ describe("ApiKeysController", () => {
 
   describe("POST /api-keys/:id/revoke", () => {
     it("should delete an API key if it belongs to the user", async () => {
-      // Arrange
       const mockAccountId = "test.near";
       const mockKeyId = "key_to_delete";
       mockVerifySignedPayload.mockResolvedValue(true);
 
-      prismaMock.api_keys.findFirst.mockResolvedValue({ id: mockKeyId, accountId: mockAccountId } as any);
+      prismaMock.api_keys.findFirst.mockResolvedValue({
+        id: mockKeyId,
+        accountId: mockAccountId,
+      } as any);
       prismaMock.api_keys.delete.mockResolvedValue({} as any);
 
-      // Act
       const response = await request(app)
         .post(`/api/api-keys/${mockKeyId}/revoke`)
         .send({
@@ -173,22 +166,21 @@ describe("ApiKeysController", () => {
         })
         .expect(200);
 
-      // Assert
-      expect(response.body).toEqual({ message: "API key revoked successfully" });
+      expect(response.body).toEqual({
+        message: "API key revoked successfully",
+      });
       expect(prismaMock.api_keys.delete).toHaveBeenCalledWith({
         where: { id: mockKeyId },
       });
     });
 
     it("should return 404 if the API key does not exist or belongs to someone else", async () => {
-      // Arrange
       const mockAccountId = "test.near";
       const mockKeyId = "foreign_key";
       mockVerifySignedPayload.mockResolvedValue(true);
 
       prismaMock.api_keys.findFirst.mockResolvedValue(null);
 
-      // Act
       const response = await request(app)
         .post(`/api/api-keys/${mockKeyId}/revoke`)
         .send({
@@ -199,8 +191,9 @@ describe("ApiKeysController", () => {
         })
         .expect(404);
 
-      // Assert
-      expect(response.body).toEqual({ error: "API key not found or unauthorized" });
+      expect(response.body).toEqual({
+        error: "API key not found or unauthorized",
+      });
       expect(prismaMock.api_keys.delete).not.toHaveBeenCalled();
     });
   });

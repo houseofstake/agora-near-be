@@ -1,12 +1,12 @@
-import { Request, Response } from 'express';
-import crypto from 'crypto';
-import { verifySignedPayload } from '../../lib/signature/verifySignature';
-import { prisma } from '../../index';
+import { Request, Response } from "express";
+import crypto from "crypto";
+import { verifySignedPayload } from "../../lib/signature/verifySignature";
+import { prisma } from "../../index";
 const hashApiKey = (key: string) => {
-  return crypto.createHash('sha256').update(key).digest('hex');
+  return crypto.createHash("sha256").update(key).digest("hex");
 };
 
-const KEY_PREFIX = 'hos_live_';
+const KEY_PREFIX = "hos_live_";
 
 export const getApiKeys = async (req: Request, res: Response) => {
   try {
@@ -20,7 +20,7 @@ export const getApiKeys = async (req: Request, res: Response) => {
     });
 
     if (!isVerified) {
-      return res.status(401).json({ error: 'Invalid signature' });
+      return res.status(401).json({ error: "Invalid signature" });
     }
 
     const keys = await prisma.api_keys.findMany({
@@ -37,14 +37,14 @@ export const getApiKeys = async (req: Request, res: Response) => {
         createdAt: true,
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
 
     return res.status(200).json(keys);
   } catch (error) {
-    console.error('Error fetching API keys:', error);
-    return res.status(500).json({ error: 'Failed to fetch API keys' });
+    console.error("Error fetching API keys:", error);
+    return res.status(500).json({ error: "Failed to fetch API keys" });
   }
 };
 
@@ -60,18 +60,18 @@ export const generateApiKey = async (req: Request, res: Response) => {
     });
 
     if (!isVerified) {
-      return res.status(401).json({ error: 'Invalid signature' });
+      return res.status(401).json({ error: "Invalid signature" });
     }
 
-    const { email, scopes = ['full'] } = data;
+    const { email, scopes = ["full"] } = data;
 
     if (!email) {
-      return res.status(400).json({ error: 'Email is required.' });
+      return res.status(400).json({ error: "Email is required." });
     }
 
-    const randomString = crypto.randomBytes(32).toString('hex');
+    const randomString = crypto.randomBytes(32).toString("hex");
     const plainTextKey = `${KEY_PREFIX}${randomString}`;
-    
+
     const keyHash = hashApiKey(plainTextKey);
     const keyHint = `${KEY_PREFIX}${randomString.substring(0, 4)}...`;
 
@@ -94,8 +94,8 @@ export const generateApiKey = async (req: Request, res: Response) => {
       createdAt: newKey.createdAt,
     });
   } catch (error) {
-    console.error('Error generating API key:', error);
-    return res.status(500).json({ error: 'Failed to generate API key' });
+    console.error("Error generating API key:", error);
+    return res.status(500).json({ error: "Failed to generate API key" });
   }
 };
 
@@ -111,7 +111,7 @@ export const revokeApiKey = async (req: Request, res: Response) => {
     });
 
     if (!isVerified) {
-      return res.status(401).json({ error: 'Invalid signature' });
+      return res.status(401).json({ error: "Invalid signature" });
     }
 
     const { id } = req.params;
@@ -124,7 +124,9 @@ export const revokeApiKey = async (req: Request, res: Response) => {
     });
 
     if (!existingKey) {
-      return res.status(404).json({ error: 'API key not found or unauthorized' });
+      return res
+        .status(404)
+        .json({ error: "API key not found or unauthorized" });
     }
 
     await prisma.api_keys.delete({
@@ -133,9 +135,9 @@ export const revokeApiKey = async (req: Request, res: Response) => {
       },
     });
 
-    return res.status(200).json({ message: 'API key revoked successfully' });
+    return res.status(200).json({ message: "API key revoked successfully" });
   } catch (error) {
-    console.error('Error revoking API key:', error);
-    return res.status(500).json({ error: 'Failed to revoke API key' });
+    console.error("Error revoking API key:", error);
+    return res.status(500).json({ error: "Failed to revoke API key" });
   }
 };
