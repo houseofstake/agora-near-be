@@ -8,6 +8,7 @@ import { stakingRoutes } from "./staking/staking.routes";
 import { nearRoutes } from "./near/near.routes";
 import nonceRoutes from "./nonce/nonce.routes";
 import { transactionsRoutes } from "./transactions/transactions.routes";
+import apiKeysRoutes from "./api-keys/api-keys.routes";
 import { DelegateChangesController } from "../controllers/delegates/delegates-changes.controller";
 import { ProposalVotingHistoryController } from "../controllers/proposal/votes.controller";
 
@@ -25,6 +26,7 @@ router.use("/staking", stakingRoutes);
 router.use("/near", nearRoutes);
 router.use("/nonce", nonceRoutes);
 router.use("/transactions", transactionsRoutes);
+router.use("/api-keys", apiKeysRoutes);
 
 router.get("/delegate_statement_changes", delegateChangesController.getDelegateStatementChanges);
 router.get("/get_voting_power_chart/:account_id", delegateChangesController.getVotingPowerChart);
