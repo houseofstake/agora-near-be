@@ -20,6 +20,7 @@ model delegate_statements {
   agreeCodeConduct         Boolean
   twitter                  String?
   discord                  String?
+  discourse                String?
   email                    String?
   warpcast                 String?
   endorsed                 Boolean  @default(false)

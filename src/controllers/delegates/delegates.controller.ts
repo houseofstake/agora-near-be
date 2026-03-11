@@ -26,6 +26,8 @@ type DelegateStatementData = {
   address: string;
   twitter: string;
   discord: string;
+  discourse?: string;
+  discourseAuthToken?: string;
   email: string;
   warpcast: string;
   topIssues: {
@@ -36,6 +38,32 @@ type DelegateStatementData = {
   statement: string;
   notification_preferences?: NotificationPreferencesInput;
 };
+
+const DISCOURSE_BASE_URL = "https://gov.near.org";
+
+/**
+ * Verify a Discourse auth token by calling the Discourse API
+ * and return the username it belongs to.
+ */
+async function verifyDiscourseAuthToken(
+  authToken: string
+): Promise<string | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await fetch(
+      `${DISCOURSE_BASE_URL}/session/current.json`,
+      { headers: { "User-Api-Key": authToken }, signal: controller.signal }
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.current_user?.username ?? null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 type DelegateStatementInput = SignedPayload<DelegateStatementData>;
 
@@ -130,6 +158,7 @@ export class DelegatesController {
             COALESCE(rv.registered_voter_id, ds.address) as address,
             ds.twitter,
             ds.discord,
+            ds.discourse,
             ds.warpcast,
             ds.statement,
             ds."topIssues",
@@ -165,6 +194,7 @@ export class DelegatesController {
         address,
         twitter,
         discord,
+        discourse,
         warpcast,
         statement,
         topIssues,
@@ -178,6 +208,7 @@ export class DelegatesController {
         participationRate: proposalParticipationRate?.toFixed(),
         twitter,
         discord,
+        discourse,
         warpcast,
         statement,
         topIssues,
@@ -209,6 +240,7 @@ export class DelegatesController {
             COALESCE(rv.registered_voter_id, ds.address) as address,
             ds.twitter,
             ds.discord,
+            ds.discourse,
             ds.warpcast,
             ds.statement,
             ds."topIssues",
@@ -295,6 +327,7 @@ export class DelegatesController {
           address: data.address ?? data.registeredVoterId,
           twitter: data.twitter,
           discord: data.discord,
+          discourse: data.discourse,
           warpcast: data.warpcast,
           statement: data.statement,
           topIssues: data.topIssues,
@@ -656,6 +689,32 @@ export class DelegatesController {
         };
       }
 
+      // Verify Discourse auth token if a new discourse username is being set
+      let verifiedDiscourse: string | null | undefined;
+      if (data.discourse && data.discourseAuthToken) {
+        // New linkage: verify the token
+        const verifiedUsername = await verifyDiscourseAuthToken(
+          data.discourseAuthToken
+        );
+        if (!verifiedUsername) {
+          res.status(400).json({
+            error: "Invalid Discourse auth token. Could not verify account.",
+          });
+          return;
+        }
+        if (
+          verifiedUsername.toLowerCase() !== data.discourse.toLowerCase()
+        ) {
+          res.status(400).json({
+            error: `Discourse auth token belongs to @${verifiedUsername}, not @${data.discourse}.`,
+          });
+          return;
+        }
+        verifiedDiscourse = verifiedUsername;
+      } else if (data.discourse && !data.discourseAuthToken) {
+        verifiedDiscourse = data.discourse;
+      }
+
       const delegateData = {
         address: data.address,
         message,
@@ -664,6 +723,7 @@ export class DelegatesController {
         twitter: data.twitter,
         warpcast: data.warpcast,
         discord: data.discord,
+        discourse: verifiedDiscourse,
         email: data.email,
         topIssues: data.topIssues,
         agreeCodeConduct: data.agreeCodeConduct,
