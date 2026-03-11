@@ -269,6 +269,15 @@ model voting_power_cache {
     @@schema("web2")
 }
 
+model venear_total_supply_history {
+    recordedAt  DateTime @id @map("recorded_at") @db.Timestamptz(6)
+    blockHeight BigInt   @map("block_height")
+    totalSupply String   @map("total_supply")
+
+    @@map("venear_total_supply_history")
+    @@schema("web2")
+}
+
 view registeredVoters {
   id                          String    @id
   receiptId                   String?   @map("receipt_id")

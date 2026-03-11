@@ -9,6 +9,10 @@ interface ProposalParams {
 interface PaginationQuery {
   page_size?: string;
   page?: string;
+  search?: string;
+  vote_option?: string;
+  sort_by?: string;
+  sort_order?: string;
 }
 
 interface NonVoterRecord {
@@ -29,36 +33,51 @@ interface VoteChangeRecord {
 export class ProposalVotingHistoryController {
   public getProposalVotingHistory = async (
     req: Request<ProposalParams, {}, {}, PaginationQuery>,
-    res: Response
+    res: Response,
   ): Promise<void> => {
     try {
       const { proposal_id } = req.params;
-      const { page_size, page } = req.query;
+      const { page_size, page, search, vote_option, sort_by, sort_order } =
+        req.query;
       const pageSize = parseInt(page_size ?? "10") || 10;
       const pageNumber = parseInt(page ?? "1") || 1;
       const proposalId = parseInt(proposal_id);
 
+      const where: Prisma.proposalVotingHistoryWhereInput = {
+        proposalId,
+      };
+      const searchTrimmed = search?.trim();
+      if (searchTrimmed) {
+        where.voterId = { contains: searchTrimmed, mode: "insensitive" };
+      }
+      if (vote_option === "0" || vote_option === "1") {
+        where.voteOption = parseInt(vote_option);
+      }
+
+      const sortField = sort_by === "voted_at" ? "votedAt" : "votingPower";
+      const sortDir = sort_order === "asc" ? "asc" : "desc";
+      const orderBy: Prisma.proposalVotingHistoryOrderByWithRelationInput[] =
+        sortField === "votingPower"
+          ? [{ votingPower: sortDir }, { voterId: "asc" }]
+          : [{ votedAt: sortDir }, { voterId: "asc" }];
+
       const records = await prisma.proposalVotingHistory.findMany({
-        where: { proposalId },
+        where,
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
-        orderBy: [
-          { votingPower: "desc" },
-          { voterId: "asc" },
-        ],
+        orderBy,
       });
 
-      const count = await prisma.proposalVotingHistory.count({
-        where: { proposalId },
-      });
+      const count = await prisma.proposalVotingHistory.count({ where });
 
       const voteRecords = records.map((record) => {
-        const { votingPower, voterId, voteOption } = record;
+        const { votingPower, voterId, voteOption, votedAt } = record;
 
         return {
           accountId: voterId,
           votingPower: votingPower?.toFixed() ?? "0",
           voteOption: voteOption?.toString(),
+          votedAt: votedAt,
         };
       });
 
@@ -73,7 +92,7 @@ export class ProposalVotingHistoryController {
 
   public getProposalVotingChartsData = async (
     req: Request<ProposalParams, {}, {}, {}>,
-    res: Response
+    res: Response,
   ): Promise<void> => {
     try {
       const { proposal_id } = req.params;
@@ -108,7 +127,7 @@ export class ProposalVotingHistoryController {
 
   public getProposalNonVoters = async (
     req: Request<ProposalParams, {}, {}, PaginationQuery>,
-    res: Response
+    res: Response,
   ): Promise<void> => {
     try {
       const { proposal_id } = req.params;
@@ -154,7 +173,7 @@ export class ProposalVotingHistoryController {
    */
   public getVoteChanges = async (
     req: Request<ProposalParams>,
-    res: Response
+    res: Response,
   ): Promise<void> => {
     try {
       const { proposal_id } = req.params;
@@ -207,13 +226,18 @@ export class ProposalVotingHistoryController {
           FROM all_votes av
           INNER JOIN voters_with_changes vc ON av.voter_id = vc.voter_id
           ORDER BY av.voter_id, av.voted_at ASC
-        `
+        `,
       );
 
       // Group records by voter
       const voterMap = new Map<
         string,
-        { vote_option: number; voting_power: string; voted_at: Date; block_height: number }[]
+        {
+          vote_option: number;
+          voting_power: string;
+          voted_at: Date;
+          block_height: number;
+        }[]
       >();
 
       for (const record of records) {
@@ -231,7 +255,7 @@ export class ProposalVotingHistoryController {
         ([accountId, changes]) => ({
           account_id: accountId,
           changes,
-        })
+        }),
       );
 
       res.status(200).json({ vote_changes: voteChanges });
@@ -241,4 +265,3 @@ export class ProposalVotingHistoryController {
     }
   };
 }
-
