@@ -17,6 +17,31 @@ const BATCH_SIZE = 10;
 
 const prisma = new PrismaClient();
 
+async function fetchFtTotalSupply(
+  provider: providers.JsonRpcProvider,
+  blockId?: number,
+): Promise<string | null> {
+  try {
+    const queryArgs: any = {
+      request_type: "call_function",
+      account_id: VENEAR_CONTRACT_ID,
+      method_name: "ft_total_supply",
+      args_base64: Buffer.from(JSON.stringify({})).toString("base64"),
+    };
+    if (blockId !== undefined) {
+      queryArgs.block_id = blockId;
+    } else {
+      queryArgs.finality = "final";
+    }
+    const result = await provider.query<any>(queryArgs);
+    const supply = JSON.parse(Buffer.from(result.result).toString());
+    return typeof supply === "string" ? supply : String(supply);
+  } catch (error) {
+    console.error("Failed to fetch ft_total_supply:", error);
+    return null;
+  }
+}
+
 async function fetchVotingPower(
   provider: providers.JsonRpcProvider,
   accountId: string,
@@ -109,6 +134,19 @@ async function syncVotingPower(): Promise<void> {
         failCount++;
       }
     }
+  }
+
+  const blockRes = await provider.query({ request_type: "block", finality: "final" });
+  const blockHeight = (blockRes as any).header.height;
+  const totalSupply = await fetchFtTotalSupply(provider);
+  if (totalSupply !== null) {
+    const now = new Date();
+    await prisma.$executeRaw`
+      INSERT INTO web2.venear_total_supply_history (recorded_at, block_height, total_supply)
+      VALUES (${now}, ${blockHeight}::bigint, ${totalSupply})
+      ON CONFLICT (recorded_at) DO UPDATE SET block_height = ${blockHeight}::bigint, total_supply = ${totalSupply}
+    `;
+    console.log(`Recorded venear total supply: ${totalSupply} at block ${blockHeight}`);
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
