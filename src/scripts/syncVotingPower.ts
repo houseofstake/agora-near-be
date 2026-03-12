@@ -140,10 +140,10 @@ async function syncVotingPower(): Promise<void> {
   const blockHeight = (blockRes as any).header.height;
   const totalSupply = await fetchFtTotalSupply(provider);
   if (totalSupply !== null) {
-    const now = new Date();
+    const recordedAt = new Date().toISOString().slice(0, 10);
     await prisma.$executeRaw`
       INSERT INTO web2.venear_total_supply_history (recorded_at, block_height, total_supply)
-      VALUES (${now}, ${blockHeight}::bigint, ${totalSupply})
+      VALUES (${recordedAt}::date, ${blockHeight}::bigint, ${totalSupply})
       ON CONFLICT (recorded_at) DO UPDATE SET block_height = ${blockHeight}::bigint, total_supply = ${totalSupply}
     `;
     console.log(`Recorded venear total supply: ${totalSupply} at block ${blockHeight}`);
