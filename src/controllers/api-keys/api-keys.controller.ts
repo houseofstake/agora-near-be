@@ -141,3 +141,57 @@ export const revokeApiKey = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Failed to revoke API key" });
   }
 };
+
+export const updateApiKeyScopes = async (req: Request, res: Response) => {
+  try {
+    const { signature, publicKey, data, message } = req.body;
+    const networkId = req.query.network_id?.toString() || "mainnet";
+
+    const isVerified = await verifySignedPayload({
+      signedPayload: { signature, publicKey, message, data },
+      networkId,
+      accountId: data.accountId,
+    });
+
+    if (!isVerified) {
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+
+    const { id } = req.params;
+    const { scopes } = data;
+
+    if (!Array.isArray(scopes)) {
+      return res.status(400).json({ error: "Scopes must be an array." });
+    }
+
+    const existingKey = await prisma.api_keys.findFirst({
+      where: {
+        id,
+        accountId: data.accountId,
+      },
+    });
+
+    if (!existingKey) {
+      return res
+        .status(404)
+        .json({ error: "API key not found or unauthorized" });
+    }
+
+    const updatedKey = await prisma.api_keys.update({
+      where: {
+        id,
+      },
+      data: {
+        scopes,
+      },
+    });
+
+    return res.status(200).json({
+      message: "API key scopes updated successfully",
+      scopes: updatedKey.scopes,
+    });
+  } catch (error) {
+    console.error("Error updating API key scopes:", error);
+    return res.status(500).json({ error: "Failed to update API key scopes" });
+  }
+};
