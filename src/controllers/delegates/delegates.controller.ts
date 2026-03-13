@@ -262,20 +262,20 @@ export class DelegatesController {
       const data = voterData[0];
 
       const forCountPromise = prisma.proposalVotingHistory.count({
-        where: { voterId: address, voteOption: 0 },
+        where: { voterId: address as string, voteOption: 0 },
       });
 
       const againstCountPromise = prisma.proposalVotingHistory.count({
-        where: { voterId: address, voteOption: 1 },
+        where: { voterId: address as string, voteOption: 1 },
       });
 
       const abstainCountPromise = prisma.proposalVotingHistory.count({
-        where: { voterId: address, voteOption: 2 },
+        where: { voterId: address as string, voteOption: 2 },
       });
 
       const delegatedFromCountPromise = prisma.delegationEvents.count({
         where: {
-          delegateeId: address,
+          delegateeId: address as string,
           isLatestDelegatorEvent: true,
           delegateMethod: "delegate_all",
           delegateEvent: "ft_mint",

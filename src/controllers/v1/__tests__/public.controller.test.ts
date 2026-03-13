@@ -17,10 +17,10 @@ jest.mock("../../../index", () => ({
 
 
 
-jest.mock("../../proposal/proposals.controller");
-jest.mock("../../delegates/delegates.controller");
-jest.mock("../../staking/staking.controller");
-jest.mock("../../venear/venear.controller");
+jest.mock("../../proposal/proposals.controller", () => ({ ProposalController: jest.fn().mockImplementation(() => ({ getApprovedProposals: jest.fn() })) }));
+jest.mock("../../delegates/delegates.controller", () => ({ DelegatesController: jest.fn().mockImplementation(() => ({ getAllDelegates: jest.fn() })) }));
+jest.mock("../../staking/staking.controller", () => ({ StakingController: jest.fn().mockImplementation(() => ({ getAPY: jest.fn() })) }));
+jest.mock("../../venear/venear.controller", () => ({ VenearController: jest.fn().mockImplementation(() => ({ getTotalSupplyHistory: jest.fn() })) }));
 
 describe("V1 Public Controller", () => {
   let req: Partial<ApiKeyRequest>;

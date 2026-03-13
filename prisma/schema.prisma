@@ -167,7 +167,7 @@ model fastnear_receipt_actions {
 }
 
 view proposalVotingHistory {
-  id                          String    @id
+  id                          String    @unique
   receiptId                   String?   @map("receipt_id")
   votedDate                   DateTime? @map("voted_date") @db.Date
   votedAt                     DateTime? @map("voted_at") @db.Timestamp(6)
@@ -190,7 +190,7 @@ view proposalVotingHistory {
 }
 
 view proposals {
-  id                    String    @id
+  id                    String    @unique
   receiptId             String?   @map("receipt_id")
   proposalId            Decimal?  @map("proposal_id") @db.Decimal
   proposalTitle         String?   @map("proposal_title")
@@ -223,7 +223,7 @@ view proposals {
 }
 
 view approvedProposals {
-  id                   String    @id
+  id                   String    @unique
   receiptId            String?   @map("receipt_id")
   proposalApprovedDate DateTime? @map("proposal_approved_date") @db.Date
   proposalApprovedAt   DateTime? @map("proposal_approved_at") @db.Timestamp(6)
@@ -238,7 +238,7 @@ view approvedProposals {
 }
 
 view delegationEvents {
-  id                     String    @id
+  id                     String    @unique
   receiptId              String?   @map("receipt_id")
   eventDate              DateTime? @map("event_date") @db.Date
   eventTimestamp         DateTime? @map("event_timestamp") @db.Timestamp(6)
@@ -258,7 +258,7 @@ view delegationEvents {
 }
 
 view userActivities {
-  id                 String    @id
+  id                 String    @unique
   receiptId          String?   @map("receipt_id")
   hosContractAddress String?   @map("hos_contract_address")
   accountId          String?   @map("account_id")
@@ -295,7 +295,7 @@ model venear_total_supply_history {
 }
 
 view registeredVoters {
-  id                          String    @id
+  id                          String    @unique
   receiptId                   String?   @map("receipt_id")
   registeredDate              DateTime? @map("registered_date") @db.Date
   registeredAt                DateTime? @map("registered_at") @db.Timestamp(6)
@@ -316,7 +316,7 @@ view registeredVoters {
 }
 
 view proposalNonVoters {
-  id                String   @id
+  id                String   @unique
   proposalId        Decimal? @map("proposal_id") @db.Decimal
   registeredVoterId String?  @map("registered_voter_id")
 

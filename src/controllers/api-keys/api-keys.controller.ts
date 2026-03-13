@@ -118,7 +118,7 @@ export const revokeApiKey = async (req: Request, res: Response) => {
 
     const existingKey = await prisma.api_keys.findFirst({
       where: {
-        id,
+        id: id as string,
         accountId: data.accountId,
       },
     });
@@ -131,7 +131,7 @@ export const revokeApiKey = async (req: Request, res: Response) => {
 
     await prisma.api_keys.delete({
       where: {
-        id,
+        id: id as string,
       },
     });
 
@@ -166,7 +166,7 @@ export const updateApiKeyScopes = async (req: Request, res: Response) => {
 
     const existingKey = await prisma.api_keys.findFirst({
       where: {
-        id,
+        id: id as string,
         accountId: data.accountId,
       },
     });
@@ -179,7 +179,7 @@ export const updateApiKeyScopes = async (req: Request, res: Response) => {
 
     const updatedKey = await prisma.api_keys.update({
       where: {
-        id,
+        id: id as string,
       },
       data: {
         scopes,

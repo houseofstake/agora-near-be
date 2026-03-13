@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 import { prisma } from "../index";
+import { mixpanel } from "../utils/mixpanel";
 
 const hashApiKey = (key: string) => {
   return crypto.createHash("sha256").update(key).digest("hex");
@@ -56,14 +57,13 @@ export const apiKeyAuth = (requiredScopes: string[] = []) => {
         }
       }
 
-      /* Analytics Logging Placeholder (Mixpanel/Winston) - Fired asynchronously
-      logAnalyticsEvent({
-        event: "api_key_used",
-        accountId: keyRecord.accountId,
+      // Analytics Logging - Fired asynchronously, non-blocking
+      mixpanel.track("API_Key_Used", {
+        distinct_id: keyRecord.accountId,
         endpoint: req.originalUrl,
-        keyHint: keyRecord.keyHint
+        key_hint: keyRecord.keyHint,
+        scopes: keyRecord.scopes,
       });
-      */
 
       req.user = {
         accountId: keyRecord.accountId,
