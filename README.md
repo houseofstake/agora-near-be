@@ -7,7 +7,6 @@ A comprehensive governance platform backend for NEAR HoS, providing API services
 ### Core Functionality
 
 - **Proposals**
-
   - Track proposal lifecycle (Draft → Approved → Voting → Finished/Rejected)
   - Dynamic quorum calculation (default: max of 7M veNEAR or 35% of total supply)
   - Quorum override system for custom requirements
@@ -16,7 +15,6 @@ A comprehensive governance platform backend for NEAR HoS, providing API services
   - Voting charts and statistics
 
 - **Delegates**
-
   - Comprehensive delegate profiles with statements and social links
   - Voting history tracking
   - Delegation analytics (received/sent)
@@ -26,14 +24,12 @@ A comprehensive governance platform backend for NEAR HoS, providing API services
   - Privacy-preserving (email addresses excluded from public responses)
 
 - **Staking**
-
   - Real-time APY calculation for MetaPool and liNEAR
   - Historical price tracking (365 days for MetaPool, 25 days for liNEAR)
   - NEAR inflation adjustment factor support
   - Block-height based price queries
 
 - **Notifications**
-
   - Automated proposal notifications (new proposals, ending soon)
   - Multi-channel delivery (Email via Mailgun, Discord, Telegram)
   - Per-user notification preferences
@@ -167,6 +163,21 @@ DD_VERSION=1.0.0
 ```
 
 ## Database Setup
+
+### Database Access (GCP)
+
+1. Ensure access to GCP projects `hos-gov-dev`, `hos-gov-stg`, `hos-gov-prod`
+   - If not: open a PR on the [terraform repo](https://github.com/houseofstake/near-tf/blob/main/variables/hos-dev.tfvars) adding yourself and request review. Access is granted after merge. Add yourself to the environments you need: `hos-gov-dev`, `hos-gov-stg`, `hos-gov-prod`
+2. Authenticate in the CLI: `gcloud auth login`
+3. Create SSH tunnel (replace `-dev` with `-stg` or `-prod` for other envs):
+   ```bash
+   gcloud compute ssh sql-access-vm --tunnel-through-iap --project=hos-gov-dev -- -L 5432:localhost:5432
+   ```
+4. Get `DATABASE_URL`:
+   ```bash
+   echo postgresql://near_user:$(gcloud secrets versions access latest --secret="DATABASE_PASSWORD" --project=hos-gov-dev)@127.0.0.1:5432/postgres
+   ```
+5. Use the output as `DATABASE_URL` in `.env`
 
 ### Schema Structure
 
@@ -619,7 +630,6 @@ The API uses NEAR wallet message signing for authentication on protected endpoin
    ```
 
    The message is:
-
    - Serialized with Borsh
    - Hashed with SHA256
    - Signed with the wallet's private key
