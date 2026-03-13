@@ -1,9 +1,12 @@
 import express from "express";
 import { DelegatesController } from "../../controllers/delegates/delegates.controller";
+import { DelegateSearchController } from "../../controllers/delegates/search.controller";
 
 const router = express.Router();
 const delegatesController = new DelegatesController();
+const delegateSearchController = new DelegateSearchController();
 
+router.post("/search", delegateSearchController.search);
 router.post("/statement", delegatesController.createDelegateStatement);
 
 router.get(

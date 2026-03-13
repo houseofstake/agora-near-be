@@ -1,4 +1,4 @@
-import { schedules } from "@trigger.dev/sdk/v3";
+import { schedules } from "@trigger.dev/sdk";
 import { NotificationManager } from "../lib/notifications/notificationManager";
 import { prisma } from "../index";
 
