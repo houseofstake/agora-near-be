@@ -1,12 +1,12 @@
 const Mixpanel = require("mixpanel");
 
-// Initialize Mixpanel only if the token exists to prevent crashes in dev environments
+// Conditionally instantiate the Mixpanel client to prevent runtime exceptions in environments lacking a configured token
 const mixpanelToken = process.env.MIXPANEL_TOKEN;
 
 export const mixpanel = mixpanelToken
   ? Mixpanel.init(mixpanelToken)
   : {
-      // Dummy object that mimics the track function to avoid breaking the app if no token is provided
+      // Fallback implementation to safely bypass tracking when MIXPANEL_TOKEN is undefined in lower environments
       track: (event: string, properties?: any) => {
         if (process.env.NODE_ENV !== "test") {
           console.warn(
