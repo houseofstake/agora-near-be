@@ -68,34 +68,6 @@ export const getDelegates = async (req: ApiKeyRequest, res: Response) => {
   }
 }
 
-export const castProxyVote = async (req: ApiKeyRequest, res: Response) => {
-  try {
-    const accountId = req.user?.accountId;
-    const { proposalId, voteAction } = req.body;
-
-    if (!proposalId || !voteAction) {
-      return res.status(400).json({ error: "Missing proposalId or voteAction" });
-    }
-
-    // TODO: This is where we would securely dispatch the vote transaction 
-    // to the blockchain via a relayer or sign it conceptually if we hold keys.
-    // For now, it returns the intent securely authenticated.
-    return res.status(201).json({
-      message: `Vote intent securely received on behalf of ${accountId}`,
-      receipt: {
-        proposalId,
-        action: voteAction,
-        timestamp: new Date().toISOString(),
-        status: "pending_on_chain"
-      }
-    });
-
-  } catch (error) {
-    console.error("Error casting proxy vote:", error);
-    return res.status(500).json({ error: "Failed to cast proxy vote" });
-  }
-}
-
 export const getAPY = async (
   req: ApiKeyRequest & import("express").Request<{}, {}, {}, { networkId: string; contractId: string }>,
   res: Response

@@ -1,6 +1,6 @@
 import { Router, RequestHandler } from "express";
 import { apiKeyAuth } from "../../middleware/apiKeyAuth";
-import { getAgentProfile, getProposals, getDelegates, castProxyVote, getAPY, getVeNearSupply } from "../../controllers/v1/public.controller";
+import { getAgentProfile, getProposals, getDelegates, getAPY, getVeNearSupply } from "../../controllers/v1/public.controller";
 
 const router = Router();
 
@@ -19,7 +19,6 @@ router.get("/staking/apy", apiKeyAuth(["read:staking"]) as unknown as RequestHan
 // /v1/venear/supply -> Requires 'read:venear' scope
 router.get("/venear/supply", apiKeyAuth(["read:venear"]) as unknown as RequestHandler, getVeNearSupply as unknown as RequestHandler);
 
-// /v1/vote -> Requires 'write:vote' scope
-router.post("/vote", apiKeyAuth(["write:vote"]) as unknown as RequestHandler, castProxyVote as unknown as RequestHandler);
+
 
 export default router;

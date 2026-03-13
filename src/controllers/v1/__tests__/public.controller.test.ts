@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { getAgentProfile, getProposals, getDelegates, castProxyVote, getAPY, getVeNearSupply } from "../public.controller";
+import { getAgentProfile, getProposals, getDelegates, getAPY, getVeNearSupply } from "../public.controller";
 import { ApiKeyRequest } from "../../../middleware/apiKeyAuth";
 import { prisma } from "../../../index";
 import { ProposalController } from "../../proposal/proposals.controller";
@@ -76,38 +76,6 @@ describe("V1 Public Controller", () => {
   describe("getDelegates", () => {
     it("should successfully call the endpoints without crashing", async () => {
       await getDelegates(req as ApiKeyRequest, res as Response);
-    });
-  });
-
-  describe("castProxyVote", () => {
-    it("should return 400 if proposalId or voteAction are missing", async () => {
-      req.body = {};
-
-      await castProxyVote(req as ApiKeyRequest, res as Response);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        error: "Missing proposalId or voteAction",
-      });
-    });
-
-    it("should return 201 when valid proposal and action provided", async () => {
-      req.body = { proposalId: 123, voteAction: "Approve" };
-      req.user = { accountId: "atom.near", keyId: "key_1", scopes: ["write:vote"] };
-
-      await castProxyVote(req as ApiKeyRequest, res as Response);
-
-      expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: "Vote intent securely received on behalf of atom.near",
-          receipt: expect.objectContaining({
-            proposalId: 123,
-            action: "Approve",
-            status: "pending_on_chain",
-          }),
-        })
-      );
     });
   });
 
