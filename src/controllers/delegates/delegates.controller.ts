@@ -16,6 +16,7 @@ import { providers } from "near-api-js";
 import { getRpcUrl } from "../../lib/utils/rpc";
 import Big from "big.js";
 import { prisma } from "../..";
+import { syncSingleDelegateToMeilisearch } from "../../lib/meilisearch/sync";
 import {
   NotificationPreferences,
   NotificationPreferencesInput,
@@ -51,6 +52,9 @@ interface DeletesQuery {
 type DelegateWithVoterInfo = Omit<delegate_statements, "email"> &
   registeredVoters & {
     notificationPreferences?: NotificationPreferences | null;
+    lastVoteAt?: Date | null;
+    lastDelegationAt?: Date | null;
+    herdAlignmentRate?: number | null;
   };
 
 interface AddressParams {
@@ -86,19 +90,43 @@ export class DelegatesController {
     const seed = sorting_seed ? parseFloat(sorting_seed) : Math.random();
 
     let orderByClause;
-    if (order_by === "most_voting_power") {
-      orderByClause = Prisma.sql`ORDER BY COALESCE(vpc.voting_power, rv.current_voting_power) DESC NULLS LAST`;
-    } else if (order_by === "least_voting_power") {
-      orderByClause = Prisma.sql`ORDER BY COALESCE(vpc.voting_power, rv.current_voting_power) ASC NULLS FIRST`;
-    } else {
-      orderByClause = Prisma.sql`ORDER BY -log(random()) / NULLIF(COALESCE(vpc.voting_power, rv.current_voting_power), 0) NULLS LAST`;
+    switch (order_by) {
+      case "most_voting_power":
+        orderByClause = Prisma.sql`ORDER BY COALESCE(vpc.voting_power, rv.current_voting_power) DESC NULLS LAST`;
+        break;
+      case "least_voting_power":
+        orderByClause = Prisma.sql`ORDER BY COALESCE(vpc.voting_power, rv.current_voting_power) ASC NULLS FIRST`;
+        break;
+      case "most_recent_vote":
+        orderByClause = Prisma.sql`ORDER BY da."lastVoteAt" DESC NULLS LAST`;
+        break;
+      case "least_recent_vote":
+        orderByClause = Prisma.sql`ORDER BY da."lastVoteAt" ASC NULLS FIRST`;
+        break;
+      case "most_recent_delegation":
+        orderByClause = Prisma.sql`ORDER BY da."lastDelegationAt" DESC NULLS LAST`;
+        break;
+      case "least_recent_delegation":
+        orderByClause = Prisma.sql`ORDER BY da."lastDelegationAt" ASC NULLS FIRST`;
+        break;
+      case "most_aligned":
+        orderByClause = Prisma.sql`ORDER BY da."herdAlignmentRate" DESC NULLS LAST`;
+        break;
+      case "least_aligned":
+        orderByClause = Prisma.sql`ORDER BY da."herdAlignmentRate" ASC NULLS FIRST`;
+        break;
+      default:
+        orderByClause = Prisma.sql`ORDER BY -log(random()) / NULLIF(COALESCE(vpc.voting_power, rv.current_voting_power), 0) NULLS LAST`;
     }
 
-    let filterByClause = Prisma.sql``;
     const conditions: Prisma.Sql[] = [];
+    const filters = filter_by ? filter_by.split(",").map((f) => f.trim()) : [];
 
-    if (filter_by === "endorsed") {
+    if (filters.includes("endorsed")) {
       conditions.push(Prisma.sql`ds.endorsed = true`);
+    }
+    if (filters.includes("has_statement")) {
+      conditions.push(Prisma.sql`ds.statement IS NOT NULL`);
     }
 
     if (issue_type) {
@@ -114,9 +142,10 @@ export class DelegatesController {
       )`);
     }
 
-    if (conditions.length > 0) {
-      filterByClause = Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
-    }
+    const filterByClause =
+      conditions.length > 0
+        ? Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`
+        : Prisma.sql``;
 
     const { records } = await prisma.$transaction(async (tx) => {
       await tx.$executeRaw(Prisma.sql`SELECT setseed(${seed});`);
@@ -134,10 +163,14 @@ export class DelegatesController {
             ds.statement,
             ds."topIssues",
             ds.endorsed,
-            ds.notification_preferences as "notificationPreferences"
+            ds.notification_preferences as "notificationPreferences",
+            da."lastVoteAt" as "lastVoteAt",
+            da."lastDelegationAt" as "lastDelegationAt",
+            da."herdAlignmentRate" as "herdAlignmentRate"
           FROM fastnear.registered_voters rv
           FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
           LEFT JOIN web2.voting_power_cache vpc ON rv.registered_voter_id = vpc.account_id
+          LEFT JOIN web2.delegate_aggregates da ON da.address = COALESCE(rv.registered_voter_id, ds.address)
           ${filterByClause}
           ${orderByClause}
           LIMIT ${pageSize}
@@ -170,6 +203,9 @@ export class DelegatesController {
         topIssues,
         endorsed,
         notificationPreferences,
+        lastVoteAt,
+        lastDelegationAt,
+        herdAlignmentRate,
       } = record;
 
       return {
@@ -183,6 +219,9 @@ export class DelegatesController {
         topIssues,
         endorsed,
         notificationPreferences,
+        lastVoteAt: lastVoteAt ?? null,
+        lastDelegationAt: lastDelegationAt ?? null,
+        herdAlignmentRate: herdAlignmentRate ?? null,
       };
     });
 
@@ -679,6 +718,10 @@ export class DelegatesController {
         update: delegateData,
         create: delegateData,
       });
+
+      syncSingleDelegateToMeilisearch(prisma, data.address).catch((err) =>
+        console.error("Failed to sync delegate to Meilisearch:", err)
+      );
 
       res
         .status(200)
