@@ -2,11 +2,6 @@ import { Response } from "express";
 import { ApiKeyRequest } from "../../middleware/apiKeyAuth";
 import { prisma } from "../../index";
 
-/**
- * GET /v1/me
- * Returns the public profile of the user that owns the API Key.
- * Serves as a perfect "ping" or "whoami" test for agents.
- */
 export const getAgentProfile = async (req: ApiKeyRequest, res: Response) => {
   try {
     const accountId = req.user?.accountId;
@@ -44,11 +39,6 @@ export const getAgentProfile = async (req: ApiKeyRequest, res: Response) => {
   }
 };
 
-/**
- * GET /v1/forum-data
- * Example Read-Only endpoint wrapper for Discourse or Forum data.
- * Requires 'read:forum' or 'full' scope.
- */
 export const getForumData = async (req: ApiKeyRequest, res: Response) => {
   try {
     const accountId = req.user?.accountId;
@@ -66,11 +56,6 @@ export const getForumData = async (req: ApiKeyRequest, res: Response) => {
   }
 }
 
-/**
- * POST /v1/vote
- * Example Write endpoint for proxy voting.
- * Requires 'write:vote' or 'full' scope.
- */
 export const castProxyVote = async (req: ApiKeyRequest, res: Response) => {
   try {
     const accountId = req.user?.accountId;

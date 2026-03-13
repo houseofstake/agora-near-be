@@ -18,7 +18,6 @@ export interface ApiKeyRequest extends Request {
 export const apiKeyAuth = (requiredScopes: string[] = []) => {
   return async (req: ApiKeyRequest, res: Response, next: NextFunction) => {
     try {
-      // 1. Extract API Key from Header
       const apiKey = req.headers["x-api-key"];
 
       if (!apiKey || typeof apiKey !== "string") {
@@ -28,10 +27,8 @@ export const apiKeyAuth = (requiredScopes: string[] = []) => {
         });
       }
 
-      // 2. Hash the provided key to look it up securely
       const keyHash = hashApiKey(apiKey);
 
-      // 3. Find the key in the database
       const keyRecord = await prisma.api_keys.findFirst({
         where: {
           keyHash,
@@ -45,8 +42,6 @@ export const apiKeyAuth = (requiredScopes: string[] = []) => {
         });
       }
 
-      // 4. Validate Scopes
-      // If the route requires specific scopes, check if the key has them (or has 'full' access)
       if (requiredScopes.length > 0) {
         const hasFullAccess = keyRecord.scopes.includes("full") || keyRecord.scopes.includes("full_access");
         const hasRequiredScope = requiredScopes.some((scope) =>
@@ -61,9 +56,7 @@ export const apiKeyAuth = (requiredScopes: string[] = []) => {
         }
       }
 
-      // 5. Analytics Logging Placeholder (Mixpanel/Winston)
-      // This is fired asynchronously so it doesn't block the request
-      /* 
+      /* Analytics Logging Placeholder (Mixpanel/Winston) - Fired asynchronously
       logAnalyticsEvent({
         event: "api_key_used",
         accountId: keyRecord.accountId,
@@ -72,7 +65,6 @@ export const apiKeyAuth = (requiredScopes: string[] = []) => {
       });
       */
 
-      // 6. Attach the accountId to the request context for the controllers to consume
       req.user = {
         accountId: keyRecord.accountId,
         keyId: keyRecord.id,
