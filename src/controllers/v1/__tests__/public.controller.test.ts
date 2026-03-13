@@ -1,7 +1,9 @@
 import { Response } from "express";
-import { getAgentProfile, getForumData, castProxyVote } from "../public.controller";
+import { getAgentProfile, getProposals, getDelegates, castProxyVote } from "../public.controller";
 import { ApiKeyRequest } from "../../../middleware/apiKeyAuth";
 import { prisma } from "../../../index";
+import { ProposalController } from "../../proposal/proposals.controller";
+import { DelegatesController } from "../../delegates/delegates.controller";
 
 jest.mock("../../../index", () => ({
   prisma: {
@@ -10,6 +12,11 @@ jest.mock("../../../index", () => ({
     },
   },
 }));
+
+
+
+jest.mock("../../proposal/proposals.controller");
+jest.mock("../../delegates/delegates.controller");
 
 describe("V1 Public Controller", () => {
   let req: Partial<ApiKeyRequest>;
@@ -55,16 +62,16 @@ describe("V1 Public Controller", () => {
     });
   });
 
-  describe("getForumData", () => {
-    it("should return mock forum data", async () => {
-      await getForumData(req as ApiKeyRequest, res as Response);
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: "Fetching forum activity for atom.near",
-          forumData: expect.any(Array)
-        })
-      );
+  describe("getProposals", () => {
+    it("should successfully call the endpoints without crashing", async () => {
+      // Simulate successful run of the read methods
+      await getProposals(req as ApiKeyRequest, res as Response);
+    });
+  });
+
+  describe("getDelegates", () => {
+    it("should successfully call the endpoints without crashing", async () => {
+      await getDelegates(req as ApiKeyRequest, res as Response);
     });
   });
 
