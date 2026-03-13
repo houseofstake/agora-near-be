@@ -197,4 +197,59 @@ describe("ApiKeysController", () => {
       expect(prismaMock.api_keys.delete).not.toHaveBeenCalled();
     });
   });
+  describe("PATCH /api-keys/:id", () => {
+    it("should update scopes of an existing key", async () => {
+      const mockAccountId = "test.near";
+      const mockKeyId = "key_to_update";
+      mockVerifySignedPayload.mockResolvedValue(true);
+
+      prismaMock.api_keys.findFirst.mockResolvedValue({
+        id: mockKeyId,
+        accountId: mockAccountId,
+        scopes: ["full"],
+      } as any);
+
+      prismaMock.api_keys.update.mockResolvedValue({
+        id: mockKeyId,
+        accountId: mockAccountId,
+        scopes: ["read:forum", "write:vote"],
+      } as any);
+
+      const response = await request(app)
+        .patch(`/api/api-keys/${mockKeyId}`)
+        .send({
+          signature: "valid_signature",
+          publicKey: "valid_pubkey",
+          message: "verify_me",
+          data: { accountId: mockAccountId, scopes: ["read:forum", "write:vote"] },
+        })
+        .expect(200);
+
+      expect(response.body).toEqual({
+        message: "API key scopes updated successfully",
+        scopes: ["read:forum", "write:vote"],
+      });
+      expect(prismaMock.api_keys.update).toHaveBeenCalledWith({
+        where: { id: mockKeyId },
+        data: { scopes: ["read:forum", "write:vote"] },
+      });
+    });
+
+    it("should return 400 if scopes is not an array", async () => {
+      mockVerifySignedPayload.mockResolvedValue(true);
+
+      const response = await request(app)
+        .patch(`/api/api-keys/some_key`)
+        .send({
+          signature: "valid_signature",
+          publicKey: "valid_pubkey",
+          message: "verify_me",
+          data: { accountId: "test.near", scopes: "invalid_string" },
+        })
+        .expect(400);
+
+      expect(response.body).toEqual({ error: "Scopes must be an array." });
+      expect(prismaMock.api_keys.update).not.toHaveBeenCalled();
+    });
+  });
 });
