@@ -3,9 +3,13 @@ import { ApiKeyRequest } from "../../middleware/apiKeyAuth";
 import { prisma } from "../../index";
 import { ProposalController } from "../proposal/proposals.controller";
 import { DelegatesController } from "../delegates/delegates.controller";
+import { StakingController } from "../staking/staking.controller";
+import { VenearController } from "../venear/venear.controller";
 
 const proposalController = new ProposalController();
 const delegatesController = new DelegatesController();
+const stakingController = new StakingController();
+const venearController = new VenearController();
 
 export const getAgentProfile = async (req: ApiKeyRequest, res: Response) => {
   try {
@@ -89,5 +93,26 @@ export const castProxyVote = async (req: ApiKeyRequest, res: Response) => {
   } catch (error) {
     console.error("Error casting proxy vote:", error);
     return res.status(500).json({ error: "Failed to cast proxy vote" });
+  }
+}
+
+export const getAPY = async (
+  req: ApiKeyRequest & import("express").Request<{}, {}, {}, { networkId: string; contractId: string }>,
+  res: Response
+) => {
+  try {
+    return await stakingController.getAPY(req, res);
+  } catch (error) {
+    console.error("Error fetching APY for agent:", error);
+    return res.status(500).json({ error: "Failed to fetch APY" });
+  }
+};
+
+export const getVeNearSupply = async (req: ApiKeyRequest, res: Response) => {
+  try {
+    return await venearController.getTotalSupplyHistory(req, res);
+  } catch (error) {
+    console.error("Error fetching veNEAR supply for agent:", error);
+    return res.status(500).json({ error: "Failed to fetch veNEAR supply" });
   }
 }
