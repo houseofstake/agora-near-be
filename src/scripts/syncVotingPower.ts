@@ -136,7 +136,7 @@ async function syncVotingPower(): Promise<void> {
     }
   }
 
-  const blockRes = await provider.query({ request_type: "block", finality: "final" });
+  const blockRes = await provider.block({ finality: "final" });
   const blockHeight = (blockRes as any).header.height;
   const totalSupply = await fetchFtTotalSupply(provider);
   if (totalSupply !== null) {
