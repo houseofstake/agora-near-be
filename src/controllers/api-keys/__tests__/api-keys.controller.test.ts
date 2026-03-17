@@ -23,9 +23,8 @@ describe("ApiKeysController", () => {
       const mockApiKeys = [
         {
           id: "key_1",
-          keyHint: "hos_live_abcd...",
+          key: "hos_live_abcd...",
           email: "test@example.com",
-          scopes: ["full"],
           metadata: {},
           lastUsedAt: null,
           createdAt: new Date("2024-01-01T00:00:00.000Z"),
@@ -47,9 +46,8 @@ describe("ApiKeysController", () => {
       expect(response.body).toEqual([
         {
           id: "key_1",
-          keyHint: "hos_live_abcd...",
+          key: "hos_live_abcd...",
           email: "test@example.com",
-          scopes: ["full"],
           metadata: {},
           lastUsedAt: null,
           createdAt: "2024-01-01T00:00:00.000Z",
@@ -90,10 +88,8 @@ describe("ApiKeysController", () => {
       const mockCreatedKey = {
         id: "key_123",
         accountId: mockAccountId,
-        keyHint: "hos_live_1234...",
-        keyHash: "hashed_value_placeholder",
+        key: "hos_live_1234abcd...",
         email: mockEmail,
-        scopes: ["full"],
         metadata: {},
         lastUsedAt: null,
         createdAt: new Date("2024-01-01T00:00:00.000Z"),
@@ -114,15 +110,13 @@ describe("ApiKeysController", () => {
 
       expect(response.body).toHaveProperty("id", "key_123");
       expect(response.body).toHaveProperty("plainTextKey");
-      expect(response.body.plainTextKey).toMatch(/^hos_live_[a-f0-9]{64}$/);
-      expect(response.body).toHaveProperty("keyHint", "hos_live_1234...");
-      expect(response.body.scopes).toEqual(["full"]);
+      expect(response.body).not.toHaveProperty("keyHint");
+      expect(response.body).not.toHaveProperty("scopes");
 
       const createCallArgs = prismaMock.api_keys.create.mock.calls[0][0];
-      expect(createCallArgs.data.keyHash).not.toEqual(
+      expect(createCallArgs.data.key).toEqual(
         response.body.plainTextKey,
       );
-      expect(createCallArgs.data.keyHash.length).toBeGreaterThan(0);
     });
 
     it("should require an email to generate a key", async () => {
@@ -195,61 +189,6 @@ describe("ApiKeysController", () => {
         error: "API key not found or unauthorized",
       });
       expect(prismaMock.api_keys.delete).not.toHaveBeenCalled();
-    });
-  });
-  describe("PATCH /api-keys/:id", () => {
-    it("should update scopes of an existing key", async () => {
-      const mockAccountId = "test.near";
-      const mockKeyId = "key_to_update";
-      mockVerifySignedPayload.mockResolvedValue(true);
-
-      prismaMock.api_keys.findFirst.mockResolvedValue({
-        id: mockKeyId,
-        accountId: mockAccountId,
-        scopes: ["full"],
-      } as any);
-
-      prismaMock.api_keys.update.mockResolvedValue({
-        id: mockKeyId,
-        accountId: mockAccountId,
-        scopes: ["read:forum", "write:vote"],
-      } as any);
-
-      const response = await request(app)
-        .patch(`/api/api-keys/${mockKeyId}`)
-        .send({
-          signature: "valid_signature",
-          publicKey: "valid_pubkey",
-          message: "verify_me",
-          data: { accountId: mockAccountId, scopes: ["read:forum", "write:vote"] },
-        })
-        .expect(200);
-
-      expect(response.body).toEqual({
-        message: "API key scopes updated successfully",
-        scopes: ["read:forum", "write:vote"],
-      });
-      expect(prismaMock.api_keys.update).toHaveBeenCalledWith({
-        where: { id: mockKeyId },
-        data: { scopes: ["read:forum", "write:vote"] },
-      });
-    });
-
-    it("should return 400 if scopes is not an array", async () => {
-      mockVerifySignedPayload.mockResolvedValue(true);
-
-      const response = await request(app)
-        .patch(`/api/api-keys/some_key`)
-        .send({
-          signature: "valid_signature",
-          publicKey: "valid_pubkey",
-          message: "verify_me",
-          data: { accountId: "test.near", scopes: "invalid_string" },
-        })
-        .expect(400);
-
-      expect(response.body).toEqual({ error: "Scopes must be an array." });
-      expect(prismaMock.api_keys.update).not.toHaveBeenCalled();
     });
   });
 });

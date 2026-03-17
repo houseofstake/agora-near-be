@@ -1,23 +1,17 @@
 import { Request, Response, NextFunction } from "express";
-import crypto from "crypto";
 import { prisma } from "../index";
 import { mixpanel } from "../utils/mixpanel";
-
-const hashApiKey = (key: string) => {
-  return crypto.createHash("sha256").update(key).digest("hex");
-};
 
 // Extends Express Request to include the authenticated user
 export interface ApiKeyRequest extends Request {
   user?: {
     accountId: string;
     keyId: string;
-    scopes: string[];
   };
 }
 
-export const apiKeyAuth = (requiredScopes: string[] = []) => {
-  return async (req: ApiKeyRequest, res: Response, next: NextFunction) => {
+export const apiKeyAuth = () => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const apiKey = req.headers["x-api-key"];
 
@@ -28,11 +22,9 @@ export const apiKeyAuth = (requiredScopes: string[] = []) => {
         });
       }
 
-      const keyHash = hashApiKey(apiKey);
-
       const keyRecord = await prisma.api_keys.findFirst({
         where: {
-          keyHash,
+          key: apiKey,
         },
       });
 
@@ -43,32 +35,15 @@ export const apiKeyAuth = (requiredScopes: string[] = []) => {
         });
       }
 
-      if (requiredScopes.length > 0) {
-        const hasFullAccess = keyRecord.scopes.includes("full") || keyRecord.scopes.includes("full_access");
-        const hasRequiredScope = requiredScopes.some((scope) =>
-          keyRecord.scopes.includes(scope)
-        );
-
-        if (!hasFullAccess && !hasRequiredScope) {
-          return res.status(403).json({
-            error: "Forbidden",
-            message: "API Key lacks required scopes for this action",
-          });
-        }
-      }
-
       // Analytics Logging - Fired asynchronously, non-blocking
       mixpanel.track("API_Key_Used", {
         distinct_id: keyRecord.accountId,
         endpoint: req.originalUrl,
-        key_hint: keyRecord.keyHint,
-        scopes: keyRecord.scopes,
       });
 
-      req.user = {
+      (req as ApiKeyRequest).user = {
         accountId: keyRecord.accountId,
         keyId: keyRecord.id,
-        scopes: keyRecord.scopes,
       };
 
       next();
@@ -76,7 +51,7 @@ export const apiKeyAuth = (requiredScopes: string[] = []) => {
       console.error("API Key Auth Error:", error);
       return res.status(500).json({
         error: "Internal Server Error",
-        message: "Failed to authenticate API API",
+        message: "Failed to authenticate API",
       });
     }
   };

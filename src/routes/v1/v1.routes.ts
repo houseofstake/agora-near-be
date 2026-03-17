@@ -7,18 +7,16 @@ const router = Router();
 // /v1/me -> Returns profile info. Requires no special scopes, just a valid key.
 router.get("/me", apiKeyAuth() as unknown as RequestHandler, getAgentProfile as unknown as RequestHandler);
 
-// /v1/proposals -> Requires 'read:proposals' scope
-router.get("/proposals", apiKeyAuth(["read:proposals"]) as unknown as RequestHandler, getProposals as unknown as RequestHandler);
+// /v1/proposals
+router.get("/proposals", apiKeyAuth() as unknown as RequestHandler, getProposals as unknown as RequestHandler);
 
-// /v1/delegates -> Requires 'read:delegates' scope
-router.get("/delegates", apiKeyAuth(["read:delegates"]) as unknown as RequestHandler, getDelegates as unknown as RequestHandler);
+// /v1/delegates
+router.get("/delegates", apiKeyAuth() as unknown as RequestHandler, getDelegates as unknown as RequestHandler);
 
-// /v1/staking/apy -> Requires 'read:staking' scope
-router.get("/staking/apy", apiKeyAuth(["read:staking"]) as unknown as RequestHandler, getAPY as unknown as RequestHandler);
+// /v1/staking/apy
+router.get("/staking/apy", apiKeyAuth() as unknown as RequestHandler, getAPY as unknown as RequestHandler);
 
-// /v1/venear/supply -> Requires 'read:venear' scope
-router.get("/venear/supply", apiKeyAuth(["read:venear"]) as unknown as RequestHandler, getVeNearSupply as unknown as RequestHandler);
-
-
+// /v1/venear/supply
+router.get("/venear/supply", apiKeyAuth() as unknown as RequestHandler, getVeNearSupply as unknown as RequestHandler);
 
 export default router;

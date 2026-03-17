@@ -31,7 +31,6 @@ describe("V1 Public Controller", () => {
       user: {
         accountId: "atom.near",
         keyId: "key_1",
-        scopes: ["full_access"],
       },
       body: {},
     };

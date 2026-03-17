@@ -37,7 +37,6 @@ export const getAgentProfile = async (req: ApiKeyRequest, res: Response) => {
     return res.status(200).json({
       message: "API Key Authenticated",
       apiKeyDetails: {
-        scopes: req.user?.scopes,
         keyId: req.user?.keyId,
       },
       profile: profile || { account_id: accountId, note: "No public profile found." },
