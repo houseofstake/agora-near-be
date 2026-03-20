@@ -13,6 +13,7 @@ import { DelegateChangesController } from "../controllers/delegates/delegates-ch
 import { venearRoutes } from "./venear/venear.routes";
 import { ProposalVotingHistoryController } from "../controllers/proposal/votes.controller";
 import v1Routes from "./v1/v1.routes";
+import { internalRoutes } from "./internal/internal.routes";
 
 const router = express.Router();
 const delegateChangesController = new DelegateChangesController();
@@ -31,6 +32,7 @@ router.use("/transactions", transactionsRoutes);
 router.use("/api-keys", apiKeysRoutes);
 router.use("/venear", venearRoutes);
 router.use("/v1", v1Routes);
+router.use("/internal", internalRoutes);
 
 router.get(
   "/delegate_statement_changes",
