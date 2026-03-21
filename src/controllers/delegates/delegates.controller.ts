@@ -278,7 +278,7 @@ export class DelegatesController {
           delegateeId: address as string,
           isLatestDelegatorEvent: true,
           delegateMethod: "delegate_all",
-          delegateEvent: "ft_mint",
+          delegateEvent: { in: ["ft_mint", "ft_burn"] },
         },
       });
 
@@ -369,7 +369,7 @@ export class DelegatesController {
         where: {
           delegateeId: address,
           isLatestDelegatorEvent: true,
-          delegateEvent: "ft_mint",
+          delegateEvent: { in: ["ft_mint", "ft_burn"] },
         },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
@@ -382,7 +382,7 @@ export class DelegatesController {
         where: {
           delegateeId: address,
           isLatestDelegatorEvent: true,
-          delegateEvent: "ft_mint",
+          delegateEvent: { in: ["ft_mint", "ft_burn"] },
         },
       });
 
@@ -413,7 +413,7 @@ export class DelegatesController {
           delegatorId: address,
           isLatestDelegatorEvent: true,
           delegateMethod: "delegate_all",
-          delegateEvent: "ft_mint",
+          delegateEvent: { in: ["ft_mint", "ft_burn"] },
         },
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
@@ -427,7 +427,7 @@ export class DelegatesController {
           delegatorId: address,
           isLatestDelegatorEvent: true,
           delegateMethod: "delegate_all",
-          delegateEvent: "ft_mint",
+          delegateEvent: { in: ["ft_mint", "ft_burn"] },
         },
       });
 

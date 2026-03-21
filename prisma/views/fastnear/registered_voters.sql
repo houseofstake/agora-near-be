@@ -229,7 +229,7 @@ actively_delegating_accounts AS (
         delegation_events.delegate_method = 'delegate_all' :: text
       )
       AND (
-        delegation_events.delegate_event = 'ft_mint' :: text
+        delegation_events.delegate_event IN ('ft_mint' :: text, 'ft_burn' :: text)
       )
     )
 ),
