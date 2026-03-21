@@ -1092,7 +1092,7 @@ describe("DelegatesController", () => {
         where: {
           delegateeId: "delegate1.near",
           isLatestDelegatorEvent: true,
-          delegateEvent: "ft_mint",
+          delegateEvent: { in: ["ft_mint", "ft_burn"] },
         },
         skip: 0,
         take: 10,
@@ -1137,7 +1137,7 @@ describe("DelegatesController", () => {
         where: {
           delegateeId: "delegate2.near",
           isLatestDelegatorEvent: true,
-          delegateEvent: "ft_mint",
+          delegateEvent: { in: ["ft_mint", "ft_burn"] },
         },
         skip: 20,
         take: 20,
@@ -1203,7 +1203,7 @@ describe("DelegatesController", () => {
           delegatorId: "delegator1.near",
           isLatestDelegatorEvent: true,
           delegateMethod: "delegate_all",
-          delegateEvent: "ft_mint",
+          delegateEvent: { in: ["ft_mint", "ft_burn"] },
         },
         skip: 0,
         take: 10,
