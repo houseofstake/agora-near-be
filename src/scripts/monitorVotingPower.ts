@@ -71,22 +71,30 @@ export async function runWatchdogAudit(): Promise<void> {
     const onchainVP = await fetchTrueOnchainVotingPower(provider, account);
     const dbRecord = dbToyAccounts.find((a) => a.account_id === account);
 
-    // Cast decimal buffer to strict string for precision matching
-    const dbVpStr = dbRecord
-      ? BigInt(Math.trunc(Number(dbRecord.voting_power))).toString()
-      : "0";
-
     if (onchainVP === null) {
       console.error(`   ❌ [RPC ERROR] Could not fetch data for ${account}`);
       continue;
     }
 
-    if (dbVpStr !== onchainVP) {
+    const dbVpBig = dbRecord
+      ? BigInt(Math.trunc(Number(dbRecord.voting_power)))
+      : BigInt(0);
+    const onchainVpBig = BigInt(onchainVP);
+    const diff =
+      dbVpBig > onchainVpBig ? dbVpBig - onchainVpBig : onchainVpBig - dbVpBig;
+
+    // Dynamically allow up to 0.1% drift (for Whales) OR 0.1 VP (for Dust), whichever is greater
+    // This heuristically absorbs the APY time-growth generated between the static DB snapshot and the live RPC query.
+    const allowedDriftPercent = (onchainVpBig * BigInt(10)) / BigInt(10000);
+    const allowedDriftAbsolute = BigInt("100000000000000000000000");
+    const maxAllowedDrift = allowedDriftPercent > allowedDriftAbsolute ? allowedDriftPercent : allowedDriftAbsolute;
+
+    if (diff > maxAllowedDrift) {
       console.error(
         `   ❌ [ANOMALY DETECTED] DB Cache mismatch for ${account}`,
       );
       console.error(`      - On-Chain: ${onchainVP}`);
-      console.error(`      - Database: ${dbVpStr}`);
+      console.error(`      - Database: ${dbVpBig.toString()}`);
       anomaliesDetected++;
     } else {
       console.log(`   ✅ Validated Match: ${onchainVP} VP`);
@@ -109,7 +117,6 @@ export async function runWatchdogAudit(): Promise<void> {
       provider,
       record.account_id,
     );
-    const dbVpStr = BigInt(Math.trunc(Number(record.voting_power))).toString();
 
     if (onchainVP === null) {
       console.error(
@@ -118,13 +125,32 @@ export async function runWatchdogAudit(): Promise<void> {
       continue;
     }
 
-    // Ignore minor hourly indexing drift on live accounts
-    if (dbVpStr !== onchainVP) {
+    const dbVpBig = BigInt(Math.trunc(Number(record.voting_power)));
+    const onchainVpBig = BigInt(onchainVP);
+    const diff =
+      dbVpBig > onchainVpBig ? dbVpBig - onchainVpBig : onchainVpBig - dbVpBig;
+
+    const allowedDriftPercent = (onchainVpBig * BigInt(10)) / BigInt(10000);
+    const allowedDriftAbsolute = BigInt("100000000000000000000000");
+    const maxAllowedDrift = allowedDriftPercent > allowedDriftAbsolute ? allowedDriftPercent : allowedDriftAbsolute;
+
+    /**
+     * APY Time-Drift Heuristic Tolerance
+     * ----------------------------------
+     * Due to the lack of strict `block_height` determinism in the current `voting_power_cache` schema,
+     * time-based discrepancies arise between the Indexer's static DB snapshot and the Watchdog's live RPC query.
+     * We dynamically absorb this APY growth by allowing a composite maximum drift of:
+     *   - 0.10% (10 basis points) to protect heavy Whale lockups with massive per-minute precision growth.
+     *   - 0.10 VP (Absolute) to guard low-precision "Dust" accounts against fractional rounding.
+     *
+     * TODO: Refactor `voting_power_cache` to store `block_height` for 100% mathematically perfect RPC determinism.
+     */
+    if (diff > maxAllowedDrift) {
       console.error(
         `   ⚠️ [DRIFT DETECTED] DB Cache mismatch for live account ${record.account_id}`,
       );
       console.error(`      - On-Chain: ${onchainVP}`);
-      console.error(`      - Database: ${dbVpStr}`);
+      console.error(`      - Database: ${dbVpBig.toString()}`);
       // Log drift without failing the script for random live delegates
     } else {
       console.log(
