@@ -1086,6 +1086,7 @@ describe("DelegatesController", () => {
       expect(response.body).toEqual({
         events: mockDelegationEvents,
         count: mockCount,
+        selfLockedVotingPower: "0",
       });
 
       expect(prismaMock.delegationEvents.findMany).toHaveBeenCalledWith({
@@ -1131,6 +1132,7 @@ describe("DelegatesController", () => {
       expect(response.body).toEqual({
         events: mockDelegationEvents,
         count: mockCount,
+        selfLockedVotingPower: "0",
       });
 
       expect(prismaMock.delegationEvents.findMany).toHaveBeenCalledWith({
