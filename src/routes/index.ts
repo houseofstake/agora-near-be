@@ -14,6 +14,8 @@ import { venearRoutes } from "./venear/venear.routes";
 import { ProposalVotingHistoryController } from "../controllers/proposal/votes.controller";
 import v1Routes from "./v1/v1.routes";
 import { internalRoutes } from "./internal/internal.routes";
+import { screeningCommitteeRoutes } from "./screening-committee/screening-committee.routes";
+import { securityCouncilRoutes } from "./security-council/security-council.routes";
 
 const router = express.Router();
 const delegateChangesController = new DelegateChangesController();
@@ -33,6 +35,8 @@ router.use("/api-keys", apiKeysRoutes);
 router.use("/venear", venearRoutes);
 router.use("/v1", v1Routes);
 router.use("/internal", internalRoutes);
+router.use("/screening-committee", screeningCommitteeRoutes);
+router.use("/security-council", securityCouncilRoutes);
 
 router.get(
   "/delegate_statement_changes",

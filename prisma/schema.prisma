@@ -51,6 +51,38 @@ enum DraftProposalStage {
   @@schema("web2")
 }
 
+enum GovernanceRole {
+  SCREENING
+  COUNCIL
+
+  @@schema("web2")
+}
+
+enum ReviewAction {
+  APPROVE
+  REJECT
+  VETO
+  COMMENT
+
+  @@schema("web2")
+}
+
+enum ScreeningStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@schema("web2")
+}
+
+enum CouncilStatus {
+  ACTIVE
+  RATIFIED
+  VETOED
+
+  @@schema("web2")
+}
+
 model draft_proposals {
   id            String             @id @default(cuid())
   title         String
@@ -93,6 +125,53 @@ model api_keys {
 
   @@index([accountId], map: "idx_api_keys_account_id")
   @@index([key], map: "idx_api_keys_key")
+  @@schema("web2")
+}
+
+model governance_members {
+  id          String         @id @default(cuid())
+  wallet      String         @unique
+  name        String
+  subtitle    String?
+  role        GovernanceRole
+  appointedAt DateTime       @map("appointed_at") @db.Timestamp(6)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  reviews governance_reviews[]
+
+  @@index([role], map: "idx_governance_members_role")
+  @@map("governance_members")
+  @@schema("web2")
+}
+
+model governance_reviews {
+  id         String       @id @default(cuid())
+  proposalId String       @map("proposal_id")
+  memberId   String       @map("member_id")
+  action     ReviewAction
+  rationale  String?
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamp(6)
+
+  member governance_members @relation(fields: [memberId], references: [id])
+
+  @@index([proposalId], map: "idx_governance_reviews_proposal_id")
+  @@index([memberId], map: "idx_governance_reviews_member_id")
+  @@map("governance_reviews")
+  @@schema("web2")
+}
+
+model proposal_governance_status {
+  proposalId       String          @id @map("proposal_id")
+  screeningStatus  ScreeningStatus @default(PENDING) @map("screening_status")
+  screeningDeadline DateTime?      @map("screening_deadline") @db.Timestamp(6)
+  councilStatus    CouncilStatus?  @map("council_status")
+  vetoDeadline     DateTime?       @map("veto_deadline") @db.Timestamp(6)
+  ratifiedAt       DateTime?       @map("ratified_at") @db.Timestamp(6)
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@map("proposal_governance_status")
   @@schema("web2")
 }
 
