@@ -365,30 +365,39 @@ export class DelegatesController {
       const pageSize = parseInt(page_size ?? "10");
       const pageNumber = parseInt(page ?? "1");
 
-      const records = await prisma.delegationEvents.findMany({
-        where: {
-          delegateeId: address,
-          isLatestDelegatorEvent: true,
-          delegateEvent: "ft_mint",
-        },
-        skip: (pageNumber - 1) * pageSize,
-        take: pageSize,
-        orderBy: {
-          eventTimestamp: "desc",
-        },
-      });
+      const [records, count, voterRow] = await Promise.all([
+        prisma.delegationEvents.findMany({
+          where: {
+            delegateeId: address,
+            isLatestDelegatorEvent: true,
+            delegateEvent: "ft_mint",
+          },
+          skip: (pageNumber - 1) * pageSize,
+          take: pageSize,
+          orderBy: {
+            eventTimestamp: "desc",
+          },
+        }),
+        prisma.delegationEvents.count({
+          where: {
+            delegateeId: address,
+            isLatestDelegatorEvent: true,
+            delegateEvent: "ft_mint",
+          },
+        }),
+        prisma.registeredVoters.findFirst({
+          where: { registeredVoterId: address },
+          select: { votingPowerFromLocksUnlocks: true },
+        }),
+      ]);
 
-      const count = await prisma.delegationEvents.count({
-        where: {
-          delegateeId: address,
-          isLatestDelegatorEvent: true,
-          delegateEvent: "ft_mint",
-        },
-      });
+      const selfLockedVotingPower =
+        voterRow?.votingPowerFromLocksUnlocks?.toFixed() ?? "0";
 
       res.status(200).json({
         events: records.map(mapDelegationEvent),
         count,
+        selfLockedVotingPower,
       });
     } catch (error) {
       console.error("Error fetching delegate delegated from events:", error);
@@ -408,28 +417,29 @@ export class DelegatesController {
       const pageSize = parseInt(page_size ?? "10");
       const pageNumber = parseInt(page ?? "1");
 
-      const records = await prisma.delegationEvents.findMany({
-        where: {
-          delegatorId: address,
-          isLatestDelegatorEvent: true,
-          delegateMethod: "delegate_all",
-          delegateEvent: "ft_mint",
-        },
-        skip: (pageNumber - 1) * pageSize,
-        take: pageSize,
-        orderBy: {
-          eventTimestamp: "desc",
-        },
-      });
-
-      const count = await prisma.delegationEvents.count({
-        where: {
-          delegatorId: address,
-          isLatestDelegatorEvent: true,
-          delegateMethod: "delegate_all",
-          delegateEvent: "ft_mint",
-        },
-      });
+      const [records, count] = await Promise.all([
+        prisma.delegationEvents.findMany({
+          where: {
+            delegatorId: address,
+            isLatestDelegatorEvent: true,
+            delegateMethod: "delegate_all",
+            delegateEvent: "ft_mint",
+          },
+          skip: (pageNumber - 1) * pageSize,
+          take: pageSize,
+          orderBy: {
+            eventTimestamp: "desc",
+          },
+        }),
+        prisma.delegationEvents.count({
+          where: {
+            delegatorId: address,
+            isLatestDelegatorEvent: true,
+            delegateMethod: "delegate_all",
+            delegateEvent: "ft_mint",
+          },
+        }),
+      ]);
 
       res.status(200).json({
         events: records.map(mapDelegationEvent),
