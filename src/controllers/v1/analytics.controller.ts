@@ -33,12 +33,12 @@ export class AnalyticsController {
       const selfDelegateQuery: any[] = await prisma.$queryRawUnsafe(`
         SELECT 
           COALESCE(ds.endorsed, false) AS "isEndorsed",
-          COUNT(DISTINCT de.delegator_id) AS "uniqueAddresses",
-          SUM(de.near_amount) AS "totalDelegatedYocto"
-        FROM fastnear.delegation_events de
-        LEFT JOIN web2.delegate_statements ds ON de.delegatee_id = ds.address
-        WHERE de.is_latest_delegator_event = true 
-          AND de.delegator_id = de.delegatee_id
+          COUNT(DISTINCT rv.address) AS "uniqueAddresses",
+          SUM(rv.voting_power_from_locks_unlocks) AS "totalDelegatedYocto"
+        FROM fastnear.registered_voters rv
+        LEFT JOIN web2.delegate_statements ds ON rv.address = ds.address
+        WHERE rv.is_actively_delegating = false 
+          AND rv.voting_power_from_locks_unlocks > 0
         GROUP BY COALESCE(ds.endorsed, false)
       `);
 
