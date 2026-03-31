@@ -18,14 +18,26 @@ export class AnalyticsController {
     try {
       // 1) Endorsed vs Regular Delegate Distribution
       const delegateQuery: any[] = await prisma.$queryRawUnsafe(`
+        WITH Delegators AS (
+          SELECT 
+            rv.voting_power_from_locks_unlocks,
+            rv.registered_voter_id,
+            (
+              SELECT delegatee_id 
+              FROM fastnear.delegation_events de 
+              WHERE de.delegator_id = rv.registered_voter_id 
+              ORDER BY block_timestamp DESC 
+              LIMIT 1
+            ) as current_delegatee
+          FROM fastnear.registered_voters rv
+          WHERE rv.is_actively_delegating = true AND rv.voting_power_from_locks_unlocks > 0
+        )
         SELECT 
           COALESCE(ds.endorsed, false) AS "isEndorsed",
-          COUNT(DISTINCT de.delegator_id) AS "uniqueAddresses",
-          SUM(de.near_amount) AS "totalDelegatedYocto"
-        FROM fastnear.delegation_events de
-        LEFT JOIN web2.delegate_statements ds ON de.delegatee_id = ds.address
-        WHERE de.is_latest_delegator_event = true 
-          AND de.delegator_id != de.delegatee_id
+          COUNT(DISTINCT d.registered_voter_id) AS "uniqueAddresses",
+          SUM(d.voting_power_from_locks_unlocks) AS "totalDelegatedYocto"
+        FROM Delegators d
+        LEFT JOIN web2.delegate_statements ds ON d.current_delegatee = ds.address
         GROUP BY COALESCE(ds.endorsed, false)
       `);
 
@@ -33,10 +45,10 @@ export class AnalyticsController {
       const selfDelegateQuery: any[] = await prisma.$queryRawUnsafe(`
         SELECT 
           COALESCE(ds.endorsed, false) AS "isEndorsed",
-          COUNT(DISTINCT rv.address) AS "uniqueAddresses",
+          COUNT(DISTINCT rv.registered_voter_id) AS "uniqueAddresses",
           SUM(rv.voting_power_from_locks_unlocks) AS "totalDelegatedYocto"
         FROM fastnear.registered_voters rv
-        LEFT JOIN web2.delegate_statements ds ON rv.address = ds.address
+        LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
         WHERE rv.is_actively_delegating = false 
           AND rv.voting_power_from_locks_unlocks > 0
         GROUP BY COALESCE(ds.endorsed, false)
@@ -44,19 +56,13 @@ export class AnalyticsController {
 
       // 2) Global Voting Activity Representation
       const votingActivityQuery: any[] = await prisma.$queryRawUnsafe(`
-        WITH MaxVPPerVoter AS (
-          SELECT 
-            voter_id,
-            MAX(voting_power) as max_vp_used
-          FROM fastnear.proposal_voting_history
-          GROUP BY voter_id
-        )
         SELECT 
           COALESCE(ds.endorsed, false) AS "isEndorsed",
-          COUNT(DISTINCT mvp.voter_id) AS "activeVoters",
-          SUM(mvp.max_vp_used) AS "uniqueParticipatingVP"
-        FROM MaxVPPerVoter mvp
-        LEFT JOIN web2.delegate_statements ds ON mvp.voter_id = ds.address
+          COUNT(DISTINCT rv.registered_voter_id) AS "activeVoters",
+          SUM(GREATEST(rv.current_voting_power, CASE WHEN rv.is_actively_delegating = false THEN rv.voting_power_from_locks_unlocks ELSE 0 END)) AS "uniqueParticipatingVP"
+        FROM fastnear.registered_voters rv
+        LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+        WHERE GREATEST(rv.current_voting_power, CASE WHEN rv.is_actively_delegating = false THEN rv.voting_power_from_locks_unlocks ELSE 0 END) > 0
         GROUP BY COALESCE(ds.endorsed, false)
       `);
 
