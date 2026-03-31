@@ -20,43 +20,50 @@ export class AnalyticsController {
       const delegateQuery: any[] = await prisma.$queryRawUnsafe(`
         SELECT 
           COALESCE(ds.endorsed, false) AS "isEndorsed",
-          COUNT(DISTINCT de.delegator_id) AS "uniqueAddresses",
-          SUM(de.near_amount) AS "totalDelegatedYocto"
-        FROM fastnear.delegation_events de
-        LEFT JOIN web2.delegate_statements ds ON de.delegatee_id = ds.address
-        WHERE de.is_latest_delegator_event = true 
-          AND de.delegator_id != de.delegatee_id
+          SUM(vpc.voting_power) AS "totalVotingPower"
+        FROM web2.voting_power_cache vpc
+        LEFT JOIN web2.delegate_statements ds ON vpc.account_id = ds.address
+        WHERE vpc.voting_power > 0
         GROUP BY COALESCE(ds.endorsed, false)
       `);
 
-      // 1b) Self-Delegation Metrics
-      const selfDelegateQuery: any[] = await prisma.$queryRawUnsafe(`
+      const activelyDelegatingVpStats: any[] = await prisma.$queryRawUnsafe(`
         SELECT 
-          COALESCE(ds.endorsed, false) AS "isEndorsed",
-          COUNT(DISTINCT de.delegator_id) AS "uniqueAddresses",
-          SUM(de.near_amount) AS "totalDelegatedYocto"
-        FROM fastnear.delegation_events de
-        LEFT JOIN web2.delegate_statements ds ON de.delegatee_id = ds.address
-        WHERE de.is_latest_delegator_event = true 
-          AND de.delegator_id = de.delegatee_id
-        GROUP BY COALESCE(ds.endorsed, false)
+          COUNT(DISTINCT rv.registered_voter_id) AS "uniqueAddresses",
+          COALESCE(SUM(rv.voting_power_from_locks_unlocks), 0) AS "totalVotingPower"
+        FROM fastnear.registered_voters rv
+        WHERE rv.is_actively_delegating = true
       `);
+
+      const nonDelegatingVpStats: any[] = await prisma.$queryRawUnsafe(`
+        SELECT 
+          COUNT(DISTINCT rv.registered_voter_id) AS "uniqueAddresses",
+          COALESCE(SUM(rv.voting_power_from_locks_unlocks), 0) AS "totalVotingPower"
+        FROM fastnear.registered_voters rv
+        WHERE rv.is_actively_delegating = false
+      `);
+
+      const delegationStatusBreakdown = [
+        {
+          isActivelyDelegating: true,
+          uniqueAddresses: activelyDelegatingVpStats[0]?.uniqueAddresses ?? 0,
+          totalVotingPower: activelyDelegatingVpStats[0]?.totalVotingPower ?? 0,
+        },
+        {
+          isActivelyDelegating: false,
+          uniqueAddresses: nonDelegatingVpStats[0]?.uniqueAddresses ?? 0,
+          totalVotingPower: nonDelegatingVpStats[0]?.totalVotingPower ?? 0,
+        },
+      ];
 
       // 2) Global Voting Activity Representation
       const votingActivityQuery: any[] = await prisma.$queryRawUnsafe(`
-        WITH MaxVPPerVoter AS (
-          SELECT 
-            voter_id,
-            MAX(voting_power) as max_vp_used
-          FROM fastnear.proposal_voting_history
-          GROUP BY voter_id
-        )
         SELECT 
           COALESCE(ds.endorsed, false) AS "isEndorsed",
-          COUNT(DISTINCT mvp.voter_id) AS "activeVoters",
-          SUM(mvp.max_vp_used) AS "uniqueParticipatingVP"
-        FROM MaxVPPerVoter mvp
-        LEFT JOIN web2.delegate_statements ds ON mvp.voter_id = ds.address
+          COUNT(DISTINCT vpc.account_id) AS "activeVoters",
+          SUM(vpc.voting_power) AS "uniqueParticipatingVP"
+        FROM web2.voting_power_cache vpc
+        LEFT JOIN web2.delegate_statements ds ON vpc.account_id = ds.address
         GROUP BY COALESCE(ds.endorsed, false)
       `);
 
@@ -87,15 +94,43 @@ export class AnalyticsController {
         GROUP BY COALESCE(ds.endorsed, false)
       `);
 
+      // 4) Turnout Trend per Proposal
+      const turnoutTrendQuery: any[] = await prisma.$queryRawUnsafe(`
+        SELECT 
+          proposal_id AS "proposalId", 
+          num_distinct_voters AS "uniqueVoters",
+          for_voting_power + against_voting_power + abstain_voting_power AS "totalTurnoutVp"
+        FROM fastnear.proposals
+        WHERE has_votes = true
+        ORDER BY proposal_id ASC
+      `);
+
+      // 5) Voter Engagement Tiers
+      const voterEngagementQuery: any[] = await prisma.$queryRawUnsafe(`
+        SELECT 
+          SUM(CASE WHEN COALESCE(rv.proposal_participation_rate, 0) >= 0.8 THEN COALESCE(vpc.voting_power, rv.current_voting_power) ELSE 0 END) AS "activeVp",
+          SUM(CASE WHEN COALESCE(rv.proposal_participation_rate, 0) >= 0.2 AND COALESCE(rv.proposal_participation_rate, 0) < 0.8 THEN COALESCE(vpc.voting_power, rv.current_voting_power) ELSE 0 END) AS "occasionalVp",
+          SUM(CASE WHEN COALESCE(rv.proposal_participation_rate, 0) < 0.2 THEN COALESCE(vpc.voting_power, rv.current_voting_power) ELSE 0 END) AS "sleepingVp",
+          SUM(CASE WHEN COALESCE(rv.proposal_participation_rate, 0) >= 0.8 THEN 1 ELSE 0 END) AS "activeVoters",
+          SUM(CASE WHEN COALESCE(rv.proposal_participation_rate, 0) >= 0.2 AND COALESCE(rv.proposal_participation_rate, 0) < 0.8 THEN 1 ELSE 0 END) AS "occasionalVoters",
+          SUM(CASE WHEN COALESCE(rv.proposal_participation_rate, 0) < 0.2 THEN 1 ELSE 0 END) AS "sleepingVoters"
+        FROM fastnear.registered_voters rv
+        LEFT JOIN web2.voting_power_cache vpc ON rv.registered_voter_id = vpc.account_id
+      `);
+
       return res.status(200).json(
         normalizeBigInt({
           delegationDistribution: delegateQuery,
-          selfDelegationDistribution: selfDelegateQuery,
+          delegationStatusBreakdown,
           votingActivity: votingActivityQuery,
           relationships: {
             historicallySwitched:
               delegatorSwitches[0]?.historicallySwitched || 0,
             receivers: delegateReceiversQuery,
+          },
+          governanceHealth: {
+            turnoutTrend: turnoutTrendQuery,
+            voterEngagement: voterEngagementQuery[0] || {},
           },
         }),
       );
@@ -153,3 +188,4 @@ export class AnalyticsController {
     }
   }
 }
+// trigger PR approval
