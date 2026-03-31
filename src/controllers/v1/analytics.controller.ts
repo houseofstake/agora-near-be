@@ -114,7 +114,7 @@ export class AnalyticsController {
       const whaleConcentrationQuery: any[] = await prisma.$queryRawUnsafe(`
         WITH RankedVoters AS (
           SELECT 
-            registered_voter_id, 
+            registered_voter_id as address, 
             current_voting_power,
             ROW_NUMBER() OVER(ORDER BY current_voting_power DESC) as rank
           FROM fastnear.registered_voters
