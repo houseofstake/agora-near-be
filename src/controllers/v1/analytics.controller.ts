@@ -108,13 +108,14 @@ export class AnalyticsController {
       // 5) Voter Engagement Tiers
       const voterEngagementQuery: any[] = await prisma.$queryRawUnsafe(`
         SELECT 
-          CAST(SUM(CASE WHEN COALESCE(proposal_participation_rate, 0) >= 0.8 THEN current_voting_power ELSE 0 END) AS TEXT) AS "activeVp",
-          CAST(SUM(CASE WHEN COALESCE(proposal_participation_rate, 0) >= 0.2 AND COALESCE(proposal_participation_rate, 0) < 0.8 THEN current_voting_power ELSE 0 END) AS TEXT) AS "occasionalVp",
-          CAST(SUM(CASE WHEN COALESCE(proposal_participation_rate, 0) < 0.2 THEN current_voting_power ELSE 0 END) AS TEXT) AS "sleepingVp",
-          CAST(SUM(CASE WHEN COALESCE(proposal_participation_rate, 0) >= 0.8 THEN 1 ELSE 0 END) AS TEXT) AS "activeVoters",
-          CAST(SUM(CASE WHEN COALESCE(proposal_participation_rate, 0) >= 0.2 AND COALESCE(proposal_participation_rate, 0) < 0.8 THEN 1 ELSE 0 END) AS TEXT) AS "occasionalVoters",
-          CAST(SUM(CASE WHEN COALESCE(proposal_participation_rate, 0) < 0.2 THEN 1 ELSE 0 END) AS TEXT) AS "sleepingVoters"
-        FROM fastnear.registered_voters
+          SUM(CASE WHEN COALESCE(rv.proposal_participation_rate, 0) >= 0.8 THEN COALESCE(vpc.voting_power, rv.current_voting_power) ELSE 0 END) AS "activeVp",
+          SUM(CASE WHEN COALESCE(rv.proposal_participation_rate, 0) >= 0.2 AND COALESCE(rv.proposal_participation_rate, 0) < 0.8 THEN COALESCE(vpc.voting_power, rv.current_voting_power) ELSE 0 END) AS "occasionalVp",
+          SUM(CASE WHEN COALESCE(rv.proposal_participation_rate, 0) < 0.2 THEN COALESCE(vpc.voting_power, rv.current_voting_power) ELSE 0 END) AS "sleepingVp",
+          SUM(CASE WHEN COALESCE(rv.proposal_participation_rate, 0) >= 0.8 THEN 1 ELSE 0 END) AS "activeVoters",
+          SUM(CASE WHEN COALESCE(rv.proposal_participation_rate, 0) >= 0.2 AND COALESCE(rv.proposal_participation_rate, 0) < 0.8 THEN 1 ELSE 0 END) AS "occasionalVoters",
+          SUM(CASE WHEN COALESCE(rv.proposal_participation_rate, 0) < 0.2 THEN 1 ELSE 0 END) AS "sleepingVoters"
+        FROM fastnear.registered_voters rv
+        LEFT JOIN web2.voting_power_cache vpc ON rv.registered_voter_id = vpc.account_id
       `);
 
       return res.status(200).json(
