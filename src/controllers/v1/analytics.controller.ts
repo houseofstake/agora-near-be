@@ -87,6 +87,47 @@ export class AnalyticsController {
         GROUP BY COALESCE(ds.endorsed, false)
       `);
 
+      // 4) Turnout Trend per Proposal
+      const turnoutTrendQuery: any[] = await prisma.$queryRawUnsafe(`
+        SELECT 
+          proposal_id AS "proposalId", 
+          num_distinct_voters AS "uniqueVoters",
+          for_voting_power + against_voting_power + abstain_voting_power AS "totalTurnoutVp"
+        FROM fastnear.proposals
+        WHERE has_votes = true
+        ORDER BY proposal_id ASC
+      `);
+
+      // 5) Voter Engagement Tiers
+      const voterEngagementQuery: any[] = await prisma.$queryRawUnsafe(`
+        SELECT 
+          SUM(CASE WHEN proposal_participation_rate >= 80 THEN current_voting_power ELSE 0 END) AS "activeVp",
+          SUM(CASE WHEN proposal_participation_rate >= 20 AND proposal_participation_rate < 80 THEN current_voting_power ELSE 0 END) AS "occasionalVp",
+          SUM(CASE WHEN proposal_participation_rate < 20 THEN current_voting_power ELSE 0 END) AS "sleepingVp",
+          SUM(CASE WHEN proposal_participation_rate >= 80 THEN 1 ELSE 0 END) AS "activeVoters",
+          SUM(CASE WHEN proposal_participation_rate >= 20 AND proposal_participation_rate < 80 THEN 1 ELSE 0 END) AS "occasionalVoters",
+          SUM(CASE WHEN proposal_participation_rate < 20 THEN 1 ELSE 0 END) AS "sleepingVoters"
+        FROM fastnear.registered_voters
+      `);
+
+      // 6) Whale Concentration Risk
+      const whaleConcentrationQuery: any[] = await prisma.$queryRawUnsafe(`
+        WITH RankedVoters AS (
+          SELECT 
+            address, 
+            current_voting_power,
+            ROW_NUMBER() OVER(ORDER BY current_voting_power DESC) as rank
+          FROM fastnear.registered_voters
+          WHERE current_voting_power > 0
+        )
+        SELECT 
+          SUM(CASE WHEN rank <= 10 THEN current_voting_power ELSE 0 END) AS "top10Power",
+          SUM(CASE WHEN rank > 10 THEN current_voting_power ELSE 0 END) AS "restPower",
+          SUM(CASE WHEN rank <= 10 THEN 1 ELSE 0 END) AS "top10Addresses",
+          SUM(CASE WHEN rank > 10 THEN 1 ELSE 0 END) AS "restAddresses"
+        FROM RankedVoters
+      `);
+
       return res.status(200).json(
         normalizeBigInt({
           delegationDistribution: delegateQuery,
@@ -97,6 +138,11 @@ export class AnalyticsController {
               delegatorSwitches[0]?.historicallySwitched || 0,
             receivers: delegateReceiversQuery,
           },
+          governanceHealth: {
+            turnoutTrend: turnoutTrendQuery,
+            voterEngagement: voterEngagementQuery[0] || {},
+            whaleRisk: whaleConcentrationQuery[0] || {}
+          }
         }),
       );
     } catch (error) {
