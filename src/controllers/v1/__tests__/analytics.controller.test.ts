@@ -10,16 +10,17 @@ describe("AnalyticsController", () => {
 
   describe("GET /api/v1/analytics/global", () => {
     it("should aggregate and normalize global analytics data correctly", async () => {
-      // 1) Endorsed vs Regular Delegate Distribution
       const mockDelegateQuery = [
-        { isEndorsed: true, uniqueAddresses: BigInt(10), totalDelegatedYocto: BigInt(500) },
-        { isEndorsed: false, uniqueAddresses: BigInt(20), totalDelegatedYocto: BigInt(1000) }
+        { isEndorsed: true, totalVotingPower: BigInt(500) },
+        { isEndorsed: false, totalVotingPower: BigInt(1000) }
       ];
-      // 2) Self-Delegation Metrics
-      const mockSelfDelegateQuery = [
-        { isEndorsed: true, uniqueAddresses: BigInt(5), totalDelegatedYocto: BigInt(250) }
+      const mockActivelyDelegatingVpStats = [
+        { uniqueAddresses: BigInt(40), totalVotingPower: BigInt(1500) }
       ];
-      // 3) Global Voting Activity Representation
+      const mockNonDelegatingVpStats = [
+        { uniqueAddresses: BigInt(60), totalVotingPower: BigInt(2000) }
+      ];
+      // Global Voting Activity Representation
       const mockVotingActivityQuery = [
         { isEndorsed: false, activeVoters: BigInt(50), uniqueParticipatingVP: BigInt(100) }
       ];
@@ -40,10 +41,10 @@ describe("AnalyticsController", () => {
           activeVoters: BigInt(10), occasionalVoters: BigInt(20), sleepingVoters: BigInt(30)
         }
       ];
-      // prisma.$queryRawUnsafe gets called 7 times sequentially in getGlobalAnalytics
       prismaMock.$queryRawUnsafe
         .mockResolvedValueOnce(mockDelegateQuery)
-        .mockResolvedValueOnce(mockSelfDelegateQuery)
+        .mockResolvedValueOnce(mockActivelyDelegatingVpStats)
+        .mockResolvedValueOnce(mockNonDelegatingVpStats)
         .mockResolvedValueOnce(mockVotingActivityQuery)
         .mockResolvedValueOnce(mockDelegatorSwitches)
         .mockResolvedValueOnce(mockDelegateReceiversQuery)
@@ -58,11 +59,12 @@ describe("AnalyticsController", () => {
       // Verify strings instead of bigint (normalizeBigInt logic)
       expect(response.body).toEqual({
         delegationDistribution: [
-          { isEndorsed: true, uniqueAddresses: "10", totalDelegatedYocto: "500" },
-          { isEndorsed: false, uniqueAddresses: "20", totalDelegatedYocto: "1000" }
+          { isEndorsed: true, totalVotingPower: "500" },
+          { isEndorsed: false, totalVotingPower: "1000" }
         ],
-        selfDelegationDistribution: [
-          { isEndorsed: true, uniqueAddresses: "5", totalDelegatedYocto: "250" }
+        delegationStatusBreakdown: [
+          { isActivelyDelegating: true, uniqueAddresses: "40", totalVotingPower: "1500" },
+          { isActivelyDelegating: false, uniqueAddresses: "60", totalVotingPower: "2000" }
         ],
         votingActivity: [
           { isEndorsed: false, activeVoters: "50", uniqueParticipatingVP: "100" }
@@ -84,7 +86,7 @@ describe("AnalyticsController", () => {
         }
       });
       
-      expect(prismaMock.$queryRawUnsafe).toHaveBeenCalledTimes(7);
+      expect(prismaMock.$queryRawUnsafe).toHaveBeenCalledTimes(8);
     });
 
     it("should handle error paths robustly", async () => {

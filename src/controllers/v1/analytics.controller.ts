@@ -18,51 +18,52 @@ export class AnalyticsController {
     try {
       // 1) Endorsed vs Regular Delegate Distribution
       const delegateQuery: any[] = await prisma.$queryRawUnsafe(`
-        WITH Delegators AS (
-          SELECT 
-            rv.voting_power_from_locks_unlocks,
-            rv.registered_voter_id,
-            (
-              SELECT delegatee_id 
-              FROM fastnear.delegation_events de 
-              WHERE de.delegator_id = rv.registered_voter_id 
-              ORDER BY block_timestamp DESC 
-              LIMIT 1
-            ) as current_delegatee
-          FROM fastnear.registered_voters rv
-          WHERE rv.is_actively_delegating = true AND rv.voting_power_from_locks_unlocks > 0
-        )
         SELECT 
           COALESCE(ds.endorsed, false) AS "isEndorsed",
-          COUNT(DISTINCT d.registered_voter_id) AS "uniqueAddresses",
-          SUM(d.voting_power_from_locks_unlocks) AS "totalDelegatedYocto"
-        FROM Delegators d
-        LEFT JOIN web2.delegate_statements ds ON d.current_delegatee = ds.address
+          SUM(vpc.voting_power) AS "totalVotingPower"
+        FROM web2.voting_power_cache vpc
+        LEFT JOIN web2.delegate_statements ds ON vpc.account_id = ds.address
+        WHERE vpc.voting_power > 0
         GROUP BY COALESCE(ds.endorsed, false)
       `);
 
-      // 1b) Self-Delegation Metrics
-      const selfDelegateQuery: any[] = await prisma.$queryRawUnsafe(`
+      const activelyDelegatingVpStats: any[] = await prisma.$queryRawUnsafe(`
         SELECT 
-          COALESCE(ds.endorsed, false) AS "isEndorsed",
           COUNT(DISTINCT rv.registered_voter_id) AS "uniqueAddresses",
-          SUM(rv.voting_power_from_locks_unlocks) AS "totalDelegatedYocto"
+          COALESCE(SUM(rv.voting_power_from_locks_unlocks), 0) AS "totalVotingPower"
         FROM fastnear.registered_voters rv
-        LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
-        WHERE rv.is_actively_delegating = false 
-          AND rv.voting_power_from_locks_unlocks > 0
-        GROUP BY COALESCE(ds.endorsed, false)
+        WHERE rv.is_actively_delegating = true
       `);
+
+      const nonDelegatingVpStats: any[] = await prisma.$queryRawUnsafe(`
+        SELECT 
+          COUNT(DISTINCT rv.registered_voter_id) AS "uniqueAddresses",
+          COALESCE(SUM(rv.voting_power_from_locks_unlocks), 0) AS "totalVotingPower"
+        FROM fastnear.registered_voters rv
+        WHERE rv.is_actively_delegating = false
+      `);
+
+      const delegationStatusBreakdown = [
+        {
+          isActivelyDelegating: true,
+          uniqueAddresses: activelyDelegatingVpStats[0]?.uniqueAddresses ?? 0,
+          totalVotingPower: activelyDelegatingVpStats[0]?.totalVotingPower ?? 0,
+        },
+        {
+          isActivelyDelegating: false,
+          uniqueAddresses: nonDelegatingVpStats[0]?.uniqueAddresses ?? 0,
+          totalVotingPower: nonDelegatingVpStats[0]?.totalVotingPower ?? 0,
+        },
+      ];
 
       // 2) Global Voting Activity Representation
       const votingActivityQuery: any[] = await prisma.$queryRawUnsafe(`
         SELECT 
           COALESCE(ds.endorsed, false) AS "isEndorsed",
-          COUNT(DISTINCT rv.registered_voter_id) AS "activeVoters",
-          SUM(GREATEST(rv.current_voting_power, CASE WHEN rv.is_actively_delegating = false THEN rv.voting_power_from_locks_unlocks ELSE 0 END)) AS "uniqueParticipatingVP"
-        FROM fastnear.registered_voters rv
-        LEFT JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
-        WHERE GREATEST(rv.current_voting_power, CASE WHEN rv.is_actively_delegating = false THEN rv.voting_power_from_locks_unlocks ELSE 0 END) > 0
+          COUNT(DISTINCT vpc.account_id) AS "activeVoters",
+          SUM(vpc.voting_power) AS "uniqueParticipatingVP"
+        FROM web2.voting_power_cache vpc
+        LEFT JOIN web2.delegate_statements ds ON vpc.account_id = ds.address
         GROUP BY COALESCE(ds.endorsed, false)
       `);
 
@@ -119,7 +120,7 @@ export class AnalyticsController {
       return res.status(200).json(
         normalizeBigInt({
           delegationDistribution: delegateQuery,
-          selfDelegationDistribution: selfDelegateQuery,
+          delegationStatusBreakdown,
           votingActivity: votingActivityQuery,
           relationships: {
             historicallySwitched:
@@ -129,7 +130,7 @@ export class AnalyticsController {
           governanceHealth: {
             turnoutTrend: turnoutTrendQuery,
             voterEngagement: voterEngagementQuery[0] || {},
-          }
+          },
         }),
       );
     } catch (error) {
