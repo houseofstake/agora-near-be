@@ -110,24 +110,6 @@ export class AnalyticsController {
         FROM fastnear.registered_voters
       `);
 
-      // 6) Whale Concentration Risk
-      const whaleConcentrationQuery: any[] = await prisma.$queryRawUnsafe(`
-        WITH RankedVoters AS (
-          SELECT 
-            registered_voter_id as address, 
-            current_voting_power,
-            ROW_NUMBER() OVER(ORDER BY current_voting_power DESC) as rank
-          FROM fastnear.registered_voters
-          WHERE current_voting_power > 0
-        )
-        SELECT 
-          SUM(CASE WHEN rank <= 10 THEN current_voting_power ELSE 0 END) AS "top10Power",
-          SUM(CASE WHEN rank > 10 THEN current_voting_power ELSE 0 END) AS "restPower",
-          SUM(CASE WHEN rank <= 10 THEN 1 ELSE 0 END) AS "top10Addresses",
-          SUM(CASE WHEN rank > 10 THEN 1 ELSE 0 END) AS "restAddresses"
-        FROM RankedVoters
-      `);
-
       return res.status(200).json(
         normalizeBigInt({
           delegationDistribution: delegateQuery,
@@ -141,7 +123,6 @@ export class AnalyticsController {
           governanceHealth: {
             turnoutTrend: turnoutTrendQuery,
             voterEngagement: voterEngagementQuery[0] || {},
-            whaleRisk: whaleConcentrationQuery[0] || {}
           }
         }),
       );

@@ -40,15 +40,7 @@ describe("AnalyticsController", () => {
           activeVoters: BigInt(10), occasionalVoters: BigInt(20), sleepingVoters: BigInt(30)
         }
       ];
-      // 8) Whale Concentration Risk
-      const mockWhaleConcentrationQuery = [
-        {
-          top10Power: BigInt(90000), restPower: BigInt(10000),
-          top10Addresses: BigInt(10), restAddresses: BigInt(1000)
-        }
-      ];
-
-      // prisma.$queryRawUnsafe gets called 8 times sequentially in getGlobalAnalytics
+      // prisma.$queryRawUnsafe gets called 7 times sequentially in getGlobalAnalytics
       prismaMock.$queryRawUnsafe
         .mockResolvedValueOnce(mockDelegateQuery)
         .mockResolvedValueOnce(mockSelfDelegateQuery)
@@ -56,8 +48,7 @@ describe("AnalyticsController", () => {
         .mockResolvedValueOnce(mockDelegatorSwitches)
         .mockResolvedValueOnce(mockDelegateReceiversQuery)
         .mockResolvedValueOnce(mockTurnoutTrendQuery)
-        .mockResolvedValueOnce(mockVoterEngagementQuery)
-        .mockResolvedValueOnce(mockWhaleConcentrationQuery);
+        .mockResolvedValueOnce(mockVoterEngagementQuery);
 
       const response = await request(app)
         .get("/api/v1/analytics/global")
@@ -89,15 +80,11 @@ describe("AnalyticsController", () => {
           voterEngagement: {
             activeVp: "1000", occasionalVp: "500", sleepingVp: "200",
             activeVoters: "10", occasionalVoters: "20", sleepingVoters: "30"
-          },
-          whaleRisk: {
-            top10Power: "90000", restPower: "10000",
-            top10Addresses: "10", restAddresses: "1000"
           }
         }
       });
       
-      expect(prismaMock.$queryRawUnsafe).toHaveBeenCalledTimes(8);
+      expect(prismaMock.$queryRawUnsafe).toHaveBeenCalledTimes(7);
     });
 
     it("should handle error paths robustly", async () => {
