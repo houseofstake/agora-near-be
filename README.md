@@ -1,6 +1,6 @@
 # Agora Near Backend Service
 
-A comprehensive governance platform backend for NEAR HoS, providing API services for proposal management, voting analytics, delegate profiles, staking information, and multi-channel notifications.
+A comprehensive governance platform backend for NEAR HoS, providing API services for proposal management, voting analytics, delegate profiles, staking information, and email notifications.
 
 ## Features
 
@@ -31,7 +31,7 @@ A comprehensive governance platform backend for NEAR HoS, providing API services
 
 - **Notifications**
   - Automated proposal notifications (new proposals, ending soon)
-  - Multi-channel delivery (Email via Mailgun, Discord, Telegram)
+  - Email delivery via Mailgun
   - Per-user notification preferences
   - Safe mode and developer mode for testing
   - HTML email templates
@@ -140,13 +140,6 @@ MAILGUN_API_KEY=your_mailgun_api_key
 MAILGUN_DOMAIN=your_domain.com
 MAILGUN_REGION=us  # or eu
 SEND_EMAIL=true
-
-# Discord Bot
-DISCORD_BOT_TOKEN=your_discord_bot_token
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
-
-# Telegram Bot
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 
 # Notification Testing
 DEVELOPER_MODE=false  # Enable for test mode

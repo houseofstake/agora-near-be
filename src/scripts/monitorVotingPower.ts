@@ -171,14 +171,6 @@ export async function runWatchdogAudit(): Promise<void> {
   }
 }
 
-if (require.main === module) {
-  runWatchdogAudit()
-    .then(() => process.exit(0))
-    .catch((e) => {
-      console.error("Critical Watchdog Error:", e);
-      process.exit(1);
-    })
-    .finally(() => {
-      prisma.$disconnect();
-    });
+export function disconnectWatchdogPrisma(): Promise<void> {
+  return prisma.$disconnect();
 }

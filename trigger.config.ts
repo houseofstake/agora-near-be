@@ -1,4 +1,4 @@
-import { defineConfig } from "@trigger.dev/sdk/v3";
+import { defineConfig } from "@trigger.dev/sdk";
 
 export default defineConfig({
   project: "proj_txgbgfxleyhazzgenvau",
@@ -17,6 +17,6 @@ export default defineConfig({
   },
   dirs: ["./src/trigger"],
   build: {
-    external: ["discord.js", "jsdom", "canvas", "dd-trace"],
+    external: ["jsdom", "canvas", "dd-trace"],
   },
 });
