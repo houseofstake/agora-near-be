@@ -4,11 +4,10 @@ import {
 } from "./monitorVotingPower";
 
 runWatchdogAudit()
-  .then(() => process.exit(0))
   .catch((e) => {
-    console.error("Critical Watchdog Error:", e);
-    process.exit(1);
+    console.error(e);
+    process.exitCode = 1;
   })
   .finally(() => {
-    void disconnectWatchdogPrisma();
+    void disconnectWatchdogPrisma().finally(() => process.exit());
   });
