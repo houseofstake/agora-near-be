@@ -1,12 +1,4 @@
-WITH execution_outcomes_prep AS (
-  SELECT
-    execution_outcomes.receipt_id,
-    execution_outcomes.status,
-    execution_outcomes.logs
-  FROM
-    fastnear.execution_outcomes
-),
-approve_proposal_action_prep AS (
+WITH approve_proposal_action_prep AS (
   SELECT
     decode(ra_1.args_base64, 'base64' :: text) AS args,
     eo.status,
@@ -33,7 +25,7 @@ approve_proposal_action_prep AS (
   FROM
     (
       fastnear.receipt_actions ra_1
-      JOIN execution_outcomes_prep eo ON (
+      JOIN fastnear.execution_outcomes eo ON (
         (
           (ra_1.receipt_id = eo.receipt_id)
           AND (eo.status = 'SuccessReceiptId' :: text)
@@ -45,9 +37,7 @@ approve_proposal_action_prep AS (
       (ra_1.action_kind = 'FunctionCall' :: text)
       AND (ra_1.method_name = 'approve_proposal' :: text)
       AND (
-        ra_1.receiver_id = ANY (
-          ARRAY ['v.r-1748895584.testnet'::text, 'vote.r-1748895584.testnet'::text]
-        )
+        ra_1.receiver_id = ANY (ARRAY ['venear.dao'::text, 'vote.dao'::text])
       )
     )
   ORDER BY
@@ -62,11 +52,11 @@ SELECT
   CASE
     WHEN (
       (
-        safe_json_parse(convert_from(args, 'UTF8' :: name)) ->> 'error' :: text
+        fastnear.safe_json_parse(convert_from(args, 'UTF8' :: name)) ->> 'error' :: text
       ) IS NULL
     ) THEN (
       (
-        safe_json_parse(convert_from(args, 'UTF8' :: name)) ->> 'proposal_id' :: text
+        fastnear.safe_json_parse(convert_from(args, 'UTF8' :: name)) ->> 'proposal_id' :: text
       )
     ) :: numeric
     ELSE NULL :: numeric

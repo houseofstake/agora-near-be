@@ -1,12 +1,4 @@
-WITH execution_outcomes_prep AS (
-  SELECT
-    execution_outcomes.receipt_id,
-    execution_outcomes.status,
-    execution_outcomes.logs
-  FROM
-    fastnear.execution_outcomes
-),
-receipt_actions_prep AS (
+WITH receipt_actions_prep AS (
   SELECT
     decode(ra.args_base64, 'base64' :: text) AS args,
     ra.id,
@@ -32,7 +24,7 @@ receipt_actions_prep AS (
   FROM
     (
       fastnear.receipt_actions ra
-      JOIN execution_outcomes_prep eo ON (
+      JOIN fastnear.execution_outcomes eo ON (
         (
           (ra.receipt_id = eo.receipt_id)
           AND (eo.status = 'SuccessValue' :: text)
@@ -43,9 +35,10 @@ receipt_actions_prep AS (
     (
       (ra.action_kind = 'FunctionCall' :: text)
       AND (
-        ra.receiver_id = ANY (
-          ARRAY ['v.r-1748895584.testnet'::text, 'vote.r-1748895584.testnet'::text]
-        )
+        ra.method_name = ANY (ARRAY ['create_proposal'::text, 'vote'::text])
+      )
+      AND (
+        ra.receiver_id = ANY (ARRAY ['venear.dao'::text, 'vote.dao'::text])
       )
     )
 ),
@@ -54,11 +47,11 @@ proposal_metadata AS (
     CASE
       WHEN (
         (
-          safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) -> 'metadata' :: text
+          fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) -> 'metadata' :: text
         ) ->> 'title' :: text
       )
       ELSE NULL :: text
@@ -66,7 +59,7 @@ proposal_metadata AS (
     CASE
       WHEN (
         (
-          safe_json_parse(
+          fastnear.safe_json_parse(
             REPLACE(ra.logs [1], 'EVENT_JSON:' :: text, '' :: text)
           ) ->> 'error' :: text
         ) IS NULL
@@ -74,7 +67,7 @@ proposal_metadata AS (
         (
           (
             (
-              safe_json_parse(
+              fastnear.safe_json_parse(
                 REPLACE(ra.logs [1], 'EVENT_JSON:' :: text, '' :: text)
               ) -> 'data' :: text
             ) -> 0
@@ -97,11 +90,11 @@ proposal_voting_history AS (
     CASE
       WHEN (
         (
-          safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'proposal_id' :: text
+          fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'proposal_id' :: text
         )
       ) :: numeric
       ELSE NULL :: numeric
@@ -111,11 +104,11 @@ proposal_voting_history AS (
     CASE
       WHEN (
         (
-          safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'vote' :: text
+          fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'vote' :: text
         )
       ) :: numeric
       ELSE NULL :: numeric
@@ -123,7 +116,7 @@ proposal_voting_history AS (
     CASE
       WHEN (
         (
-          safe_json_parse(
+          fastnear.safe_json_parse(
             REPLACE(ra.logs [1], 'EVENT_JSON:' :: text, '' :: text)
           ) ->> 'error' :: text
         ) IS NULL
@@ -131,7 +124,7 @@ proposal_voting_history AS (
         (
           (
             (
-              safe_json_parse(
+              fastnear.safe_json_parse(
                 REPLACE(ra.logs [1], 'EVENT_JSON:' :: text, '' :: text)
               ) -> 'data' :: text
             ) -> 0
@@ -143,14 +136,14 @@ proposal_voting_history AS (
     CASE
       WHEN (
         (
-          safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
           (
             (
               (
-                safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) -> 'v_account' :: text
+                fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) -> 'v_account' :: text
               ) -> 'V0' :: text
             ) -> 'balance' :: text
           ) ->> 'near_balance' :: text
@@ -161,14 +154,14 @@ proposal_voting_history AS (
     CASE
       WHEN (
         (
-          safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
           (
             (
               (
-                safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) -> 'v_account' :: text
+                fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) -> 'v_account' :: text
               ) -> 'V0' :: text
             ) -> 'balance' :: text
           ) ->> 'extra_venear_balance' :: text
@@ -179,13 +172,13 @@ proposal_voting_history AS (
     CASE
       WHEN (
         (
-          safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
           (
             (
-              safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) -> 'v_account' :: text
+              fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) -> 'v_account' :: text
             ) -> 'V0' :: text
           ) -> 'delegation' :: text
         ) ->> 'account_id' :: text
@@ -195,14 +188,14 @@ proposal_voting_history AS (
     CASE
       WHEN (
         (
-          safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
           (
             (
               (
-                safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) -> 'v_account' :: text
+                fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) -> 'v_account' :: text
               ) -> 'V0' :: text
             ) -> 'delegated_balance' :: text
           ) ->> 'near_balance' :: text
@@ -213,14 +206,14 @@ proposal_voting_history AS (
     CASE
       WHEN (
         (
-          safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
           (
             (
               (
-                safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) -> 'v_account' :: text
+                fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) -> 'v_account' :: text
               ) -> 'V0' :: text
             ) -> 'delegated_balance' :: text
           ) ->> 'extra_venear_balance' :: text
@@ -240,35 +233,24 @@ proposal_voting_history AS (
         CASE
           WHEN (
             (
-              safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
+              fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
             ) IS NULL
           ) THEN (
             (
-              safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'proposal_id' :: text
+              fastnear.safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'proposal_id' :: text
             )
           ) :: numeric
           ELSE NULL :: numeric
         END IS NOT NULL
       )
     )
-  ORDER BY
-    CASE
-      WHEN (
-        (
-          safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'error' :: text
-        ) IS NULL
-      ) THEN (
-        (
-          safe_json_parse(convert_from(ra.args, 'UTF8' :: name)) ->> 'proposal_id' :: text
-        )
-      ) :: numeric
-      ELSE NULL :: numeric
-    END,
-    ra.block_timestamp
 ),
 latest_vote_per_proposal_and_voter AS (
   SELECT
-    proposal_voting_history.id,
+    DISTINCT ON (
+      proposal_voting_history.proposal_id,
+      proposal_voting_history.voter_id
+    ) proposal_voting_history.id,
     proposal_voting_history.receipt_id,
     proposal_voting_history.voted_date,
     proposal_voting_history.voted_at,
@@ -284,15 +266,14 @@ latest_vote_per_proposal_and_voter AS (
     proposal_voting_history.delegated_extra_venear_balance,
     proposal_voting_history.logs,
     proposal_voting_history.block_height,
-    proposal_voting_history.block_hash,
-    row_number() OVER (
-      PARTITION BY proposal_voting_history.proposal_id,
-      proposal_voting_history.voter_id
-      ORDER BY
-        proposal_voting_history.voted_at DESC
-    ) AS row_num
+    proposal_voting_history.block_hash
   FROM
     proposal_voting_history
+  ORDER BY
+    proposal_voting_history.proposal_id,
+    proposal_voting_history.voter_id,
+    proposal_voting_history.voted_at DESC,
+    proposal_voting_history.receipt_id DESC
 )
 SELECT
   l.id,
@@ -316,6 +297,4 @@ FROM
   (
     latest_vote_per_proposal_and_voter l
     LEFT JOIN proposal_metadata pm ON ((l.proposal_id = pm.proposal_id))
-  )
-WHERE
-  (l.row_num = 1);
+  );
