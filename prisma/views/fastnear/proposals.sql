@@ -1,16 +1,6 @@
-WITH execution_outcomes_prep AS (
-  SELECT
-    execution_outcomes.receipt_id,
-    execution_outcomes.status,
-    execution_outcomes.logs,
-    execution_outcomes.results_json
-  FROM
-    fastnear.execution_outcomes
-),
-receipt_actions_prep AS (
+WITH receipt_actions_prep AS (
   SELECT
     decode(ra.args_base64, 'base64' :: text) AS args_decoded,
-    eo.status AS action_status,
     eo.logs AS action_logs,
     eo.results_json,
     ra.id,
@@ -35,7 +25,7 @@ receipt_actions_prep AS (
   FROM
     (
       fastnear.receipt_actions ra
-      JOIN execution_outcomes_prep eo ON (
+      JOIN fastnear.execution_outcomes eo ON (
         (
           (ra.receipt_id = eo.receipt_id)
           AND (
@@ -50,9 +40,12 @@ receipt_actions_prep AS (
     (
       (ra.action_kind = 'FunctionCall' :: text)
       AND (
-        ra.receiver_id = ANY (
-          ARRAY ['v.r-1748895584.testnet'::text, 'vote.r-1748895584.testnet'::text]
+        ra.method_name = ANY (
+          ARRAY ['create_proposal'::text, 'approve_proposal'::text, 'on_get_snapshot'::text, 'reject_proposal'::text]
         )
+      )
+      AND (
+        ra.receiver_id = ANY (ARRAY ['venear.dao'::text, 'vote.dao'::text])
       )
     )
 ),
@@ -60,13 +53,12 @@ create_proposal AS (
   SELECT
     ra.receipt_id AS id,
     ra.receipt_id,
-    date(ra.block_timestamp) AS proposal_created_date,
     ra.block_timestamp AS proposal_created_at,
     ra.receiver_id AS hos_contract_address,
     CASE
       WHEN (
         (
-          safe_json_parse(
+          fastnear.safe_json_parse(
             REPLACE(ra.action_logs [1], 'EVENT_JSON:' :: text, '' :: text)
           ) ->> 'error' :: text
         ) IS NULL
@@ -74,7 +66,7 @@ create_proposal AS (
         (
           (
             (
-              safe_json_parse(
+              fastnear.safe_json_parse(
                 REPLACE(ra.action_logs [1], 'EVENT_JSON:' :: text, '' :: text)
               ) -> 'data' :: text
             ) -> 0
@@ -86,11 +78,11 @@ create_proposal AS (
     CASE
       WHEN (
         (
-          safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) -> 'metadata' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) -> 'metadata' :: text
         ) ->> 'title' :: text
       )
       ELSE NULL :: text
@@ -98,11 +90,11 @@ create_proposal AS (
     CASE
       WHEN (
         (
-          safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) -> 'metadata' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) -> 'metadata' :: text
         ) ->> 'description' :: text
       )
       ELSE NULL :: text
@@ -110,11 +102,11 @@ create_proposal AS (
     CASE
       WHEN (
         (
-          safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) -> 'metadata' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) -> 'metadata' :: text
         ) ->> 'link' :: text
       )
       ELSE NULL :: text
@@ -135,10 +127,10 @@ approve_proposal AS (
     CASE
       WHEN (
         (
-          safe_json_parse((ra.results_json) :: text) ->> 'error' :: text
+          fastnear.safe_json_parse((ra.results_json) :: text) ->> 'error' :: text
         ) IS NULL
       ) THEN (
-        safe_json_parse((ra.results_json) :: text) ->> 'receipt_id' :: text
+        fastnear.safe_json_parse((ra.results_json) :: text) ->> 'receipt_id' :: text
       )
       ELSE NULL :: text
     END AS snapshot_receipt_id,
@@ -148,11 +140,11 @@ approve_proposal AS (
     CASE
       WHEN (
         (
-          safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'proposal_id' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'proposal_id' :: text
         )
       ) :: numeric
       ELSE NULL :: numeric
@@ -172,12 +164,12 @@ approve_proposal_snapshot_metadata AS (
     CASE
       WHEN (
         (
-          safe_json_parse((ra.results_json) :: text) ->> 'error' :: text
+          fastnear.safe_json_parse((ra.results_json) :: text) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
           (
-            safe_json_parse((ra.results_json) :: text) -> 'snapshot_and_state' :: text
+            fastnear.safe_json_parse((ra.results_json) :: text) -> 'snapshot_and_state' :: text
           ) ->> 'total_venear' :: text
         )
       ) :: numeric
@@ -186,11 +178,11 @@ approve_proposal_snapshot_metadata AS (
     CASE
       WHEN (
         (
-          safe_json_parse((ra.results_json) :: text) ->> 'error' :: text
+          fastnear.safe_json_parse((ra.results_json) :: text) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse((ra.results_json) :: text) ->> 'voting_duration_ns' :: text
+          fastnear.safe_json_parse((ra.results_json) :: text) ->> 'voting_duration_ns' :: text
         )
       ) :: numeric
       ELSE NULL :: numeric
@@ -198,11 +190,11 @@ approve_proposal_snapshot_metadata AS (
     CASE
       WHEN (
         (
-          safe_json_parse((ra.results_json) :: text) ->> 'error' :: text
+          fastnear.safe_json_parse((ra.results_json) :: text) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse((ra.results_json) :: text) ->> 'voting_start_time_ns' :: text
+          fastnear.safe_json_parse((ra.results_json) :: text) ->> 'voting_start_time_ns' :: text
         )
       ) :: numeric
       ELSE NULL :: numeric
@@ -210,11 +202,11 @@ approve_proposal_snapshot_metadata AS (
     CASE
       WHEN (
         (
-          safe_json_parse((ra.results_json) :: text) ->> 'error' :: text
+          fastnear.safe_json_parse((ra.results_json) :: text) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse((ra.results_json) :: text) ->> 'creation_time_ns' :: text
+          fastnear.safe_json_parse((ra.results_json) :: text) ->> 'creation_time_ns' :: text
         )
       ) :: numeric
       ELSE NULL :: numeric
@@ -224,6 +216,8 @@ approve_proposal_snapshot_metadata AS (
       receipt_actions_prep ra
       JOIN approve_proposal ap_1 ON ((ra.receipt_id = ap_1.snapshot_receipt_id))
     )
+  WHERE
+    (ra.method_name = 'on_get_snapshot' :: text)
 ),
 reject_proposal AS (
   SELECT
@@ -235,11 +229,11 @@ reject_proposal AS (
     CASE
       WHEN (
         (
-          safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'proposal_id' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'proposal_id' :: text
         )
       ) :: numeric
       ELSE NULL :: numeric
@@ -371,9 +365,14 @@ FROM
       (
         (
           create_proposal cp
-          LEFT JOIN approve_proposal ap ON ((cp.proposal_id = ap.proposal_id))
+          LEFT JOIN approve_proposal_snapshot_metadata aps ON ((cp.proposal_id = aps.proposal_id))
         )
-        LEFT JOIN approve_proposal_snapshot_metadata aps ON ((cp.proposal_id = aps.proposal_id))
+        LEFT JOIN approve_proposal ap ON (
+          (
+            (cp.proposal_id = ap.proposal_id)
+            AND (ap.receipt_id = aps.approve_proposal_receipt_id)
+          )
+        )
       )
       LEFT JOIN reject_proposal rp ON ((cp.proposal_id = rp.proposal_id))
     )
