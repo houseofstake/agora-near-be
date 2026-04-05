@@ -14,27 +14,28 @@ describe("AnalyticsController", () => {
         { isEndorsed: true, totalVotingPower: BigInt(500) },
         { isEndorsed: false, totalVotingPower: BigInt(1000) }
       ];
-      const mockActivelyDelegatingVpStats = [
-        { uniqueAddresses: BigInt(40), totalVotingPower: BigInt(1500) }
-      ];
-      const mockNonDelegatingVpStats = [
-        { uniqueAddresses: BigInt(60), totalVotingPower: BigInt(2000) }
+      // Delegation stats (single CTE combining delegating/non-delegating breakdowns)
+      const mockDelegationStats = [
+        {
+          delegatingAddresses: BigInt(40), delegatingVP: BigInt(1500),
+          nonDelegatingAddresses: BigInt(60), nonDelegatingVP: BigInt(2000)
+        }
       ];
       // Global Voting Activity Representation
       const mockVotingActivityQuery = [
         { isEndorsed: false, activeVoters: BigInt(50), uniqueParticipatingVP: BigInt(100) }
       ];
-      // 4) Multi-delegator relational mapping (historicallySwitched)
+      // Multi-delegator relational mapping (historicallySwitched)
       const mockDelegatorSwitches = [{ historicallySwitched: BigInt(5) }];
-      // 5) Multi-delegator relational mapping (receivers)
+      // Multi-delegator relational mapping (receivers)
       const mockDelegateReceiversQuery = [
         { isEndorsed: false, delegatesWithMultiple: BigInt(3) }
       ];
-      // 6) Turnout Trend per Proposal
+      // Turnout Trend per Proposal
       const mockTurnoutTrendQuery = [
         { proposalId: 1, uniqueVoters: BigInt(100), totalTurnoutVp: BigInt(4000) }
       ];
-      // 7) Voter Engagement Tiers
+      // Voter Engagement Tiers
       const mockVoterEngagementQuery = [
         {
           activeVp: BigInt(1000), occasionalVp: BigInt(500), sleepingVp: BigInt(200),
@@ -43,8 +44,7 @@ describe("AnalyticsController", () => {
       ];
       prismaMock.$queryRawUnsafe
         .mockResolvedValueOnce(mockDelegateQuery)
-        .mockResolvedValueOnce(mockActivelyDelegatingVpStats)
-        .mockResolvedValueOnce(mockNonDelegatingVpStats)
+        .mockResolvedValueOnce(mockDelegationStats)
         .mockResolvedValueOnce(mockVotingActivityQuery)
         .mockResolvedValueOnce(mockDelegatorSwitches)
         .mockResolvedValueOnce(mockDelegateReceiversQuery)
@@ -86,7 +86,7 @@ describe("AnalyticsController", () => {
         }
       });
       
-      expect(prismaMock.$queryRawUnsafe).toHaveBeenCalledTimes(8);
+      expect(prismaMock.$queryRawUnsafe).toHaveBeenCalledTimes(7);
     });
 
     it("should handle error paths robustly", async () => {
