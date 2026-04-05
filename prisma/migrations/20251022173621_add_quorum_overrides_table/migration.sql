@@ -9,7 +9,3 @@ CREATE TABLE "web2"."quorum_overrides" (
 
     CONSTRAINT "quorum_overrides_pkey" PRIMARY KEY ("id")
 );
-
--- CreateIndex
-CREATE INDEX "idx_quorum_overrides_starting_from_id" ON "web2"."quorum_overrides"("starting_from_id");
-

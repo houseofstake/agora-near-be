@@ -1,6 +1,6 @@
-import { schedules } from "@trigger.dev/sdk/v3";
+import { schedules } from "@trigger.dev/sdk";
 import { NotificationManager } from "../lib/notifications/notificationManager";
-import { prisma } from "../index";
+import { convertNanoSecondsToMs } from "../lib/utils/time";
 
 const notificationManager = new NotificationManager();
 
@@ -16,23 +16,85 @@ interface ProposalNotificationData {
   endDate?: Date;
 }
 
-const mapProposalToNotificationData = (
-  proposal: any
+interface ApprovedProposalApi {
+  id: string;
+  proposalTitle: string | null;
+  createdAt: string;
+  votingStartTimeNs: string | null;
+  votingDurationNs: string | null;
+  isApproved: boolean;
+  isRejected: boolean;
+}
+
+interface ApprovedProposalsResponse {
+  proposals: ApprovedProposalApi[];
+  count: number;
+}
+
+function getApiBaseUrl(): string {
+  const base = process.env.API_BASE_URL;
+  if (!base) {
+    throw new Error("API_BASE_URL is required for notification tasks");
+  }
+  return base.replace(/\/$/, "");
+}
+
+async function fetchAllApprovedProposals(): Promise<ApprovedProposalApi[]> {
+  const base = getApiBaseUrl();
+  const pageSize = 100;
+  let page = 1;
+  const all: ApprovedProposalApi[] = [];
+  let total = Infinity;
+
+  while (all.length < total) {
+    const url = new URL(`${base}/api/proposal/approved`);
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("page_size", String(pageSize));
+
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      throw new Error(
+        `GET ${url.pathname} failed: ${res.status} ${res.statusText}`,
+      );
+    }
+
+    const data = (await res.json()) as ApprovedProposalsResponse;
+    total = data.count;
+
+    if (data.proposals.length === 0) {
+      break;
+    }
+
+    all.push(...data.proposals);
+
+    if (data.proposals.length < pageSize) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return all;
+}
+
+const mapApiProposalToNotificationData = (
+  proposal: ApprovedProposalApi,
 ): ProposalNotificationData => {
-  const startDate = proposal.voting_start_at
-    ? new Date(Number(proposal.voting_start_at))
-    : new Date();
+  const votingStartMs =
+    proposal.votingStartTimeNs != null
+      ? convertNanoSecondsToMs(proposal.votingStartTimeNs)
+      : null;
+
+  const startDate =
+    votingStartMs != null ? new Date(votingStartMs) : new Date();
 
   const endDate =
-    proposal.voting_start_at && proposal.voting_duration_ns
-      ? new Date(
-          Number(proposal.voting_start_at) +
-            Number(proposal.voting_duration_ns) / 1000000
-        )
+    votingStartMs != null && proposal.votingDurationNs != null
+      ? new Date(votingStartMs + Number(proposal.votingDurationNs) / 1_000_000)
       : undefined;
 
   return {
-    proposalId: proposal.id.toString(),
+    proposalId: String(proposal.id),
     proposalTitle: proposal.proposalTitle || `Proposal ${proposal.id}`,
     proposalUrl: `${process.env.FRONTEND_URL}proposals/${proposal.id}`,
     startDate,
@@ -43,38 +105,30 @@ const mapProposalToNotificationData = (
 // Check for new proposals every 2 hours
 export const checkNewProposalsTask = schedules.task({
   id: "check-new-proposals",
-  cron: "0 */2 * * *", // Every 2 hours
+  cron: "0 */2 * * *",
   run: async (payload, { ctx }) => {
     console.log("Checking for new proposals...");
 
     try {
       const timeCutoff = new Date(Date.now() - HOURS_2_IN_MS);
-      const now = new Date();
+      const proposals = await fetchAllApprovedProposals();
 
-      const newProposals = await prisma.proposals.findMany({
-        where: {
-          isApproved: true,
-          isRejected: false,
-          votingStartAt: { not: null },
-          // Check if voting started recently (proxy for when proposal became active)
-          OR: [
-            {
-              createdAt: {
-                gte: timeCutoff,
-              },
-            },
-            {
-              // Also include proposals where voting started recently
-              votingStartAt: {
-                gte: (now.getTime() - HOURS_2_IN_MS).toString(),
-              },
-            },
-          ],
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
+      const newProposals = proposals.filter((p) => {
+        if (!p.isApproved || p.isRejected || p.votingStartTimeNs == null) {
+          return false;
+        }
+        const createdAt = new Date(p.createdAt).getTime();
+        const votingStartMs = convertNanoSecondsToMs(p.votingStartTimeNs);
+        return (
+          createdAt >= timeCutoff.getTime() ||
+          votingStartMs >= timeCutoff.getTime()
+        );
       });
+
+      newProposals.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
 
       console.log(`Found ${newProposals.length} new proposals to notify about`);
 
@@ -86,11 +140,13 @@ export const checkNewProposalsTask = schedules.task({
         };
       }
 
-      const createdProposals = newProposals.map(mapProposalToNotificationData);
+      const createdProposals = newProposals.map(
+        mapApiProposalToNotificationData,
+      );
       await notificationManager.sendBulkNotifications(createdProposals, []);
 
       console.log(
-        `Successfully processed ${createdProposals.length} new proposals`
+        `Successfully processed ${createdProposals.length} new proposals`,
       );
 
       return {
@@ -103,7 +159,7 @@ export const checkNewProposalsTask = schedules.task({
       throw new Error(
         `Failed to check new proposals: ${
           error instanceof Error ? error.message : "Unknown error"
-        }`
+        }`,
       );
     }
   },
@@ -112,7 +168,7 @@ export const checkNewProposalsTask = schedules.task({
 // Check for proposals ending soon every 2 hours (offset by 1 hour to avoid conflicts)
 export const checkProposalsEndingSoonTask = schedules.task({
   id: "check-proposals-ending-soon",
-  cron: "0 1-23/2 * * *", // Every 2 hours starting at 1:00 (offset from new proposals)
+  cron: "0 1-23/2 * * *",
   run: async (payload, { ctx }) => {
     console.log("Checking for proposals ending soon...");
 
@@ -120,23 +176,17 @@ export const checkProposalsEndingSoonTask = schedules.task({
       const now = new Date();
       const twentyFourHoursFromNow = new Date(now.getTime() + HOURS_24_IN_MS);
 
-      // Get active proposals that end within 24 hours
-      const endingSoonProposals = await prisma.proposals.findMany({
-        where: {
-          isApproved: true,
-          isRejected: false,
-          votingStartAt: { not: null },
-          votingDurationNs: { not: null },
-        },
-      });
+      const proposals = await fetchAllApprovedProposals();
 
-      // Filter proposals that are actually ending soon
-      const filteredProposals = endingSoonProposals.filter((proposal) => {
-        if (!proposal.votingStartAt || !proposal.votingDurationNs) return false;
+      const filteredProposals = proposals.filter((p) => {
+        if (p.votingStartTimeNs == null || p.votingDurationNs == null) {
+          return false;
+        }
 
-        const startTime = Number(proposal.votingStartAt);
-        const duration = Number(proposal.votingDurationNs) / 1000000;
-        const endTime = new Date(startTime + duration);
+        const startMs = convertNanoSecondsToMs(p.votingStartTimeNs);
+        const endTime = new Date(
+          startMs + Number(p.votingDurationNs) / 1_000_000,
+        );
 
         return endTime > now && endTime <= twentyFourHoursFromNow;
       });
@@ -151,13 +201,13 @@ export const checkProposalsEndingSoonTask = schedules.task({
         };
       }
 
-      const endingSoonData = endingSoonProposals.map(
-        mapProposalToNotificationData
+      const endingSoonData = filteredProposals.map(
+        mapApiProposalToNotificationData,
       );
       await notificationManager.sendBulkNotifications([], endingSoonData);
 
       console.log(
-        `Successfully processed ${endingSoonData.length} ending soon proposals`
+        `Successfully processed ${endingSoonData.length} ending soon proposals`,
       );
 
       return {
@@ -170,7 +220,7 @@ export const checkProposalsEndingSoonTask = schedules.task({
       throw new Error(
         `Failed to check ending soon proposals: ${
           error instanceof Error ? error.message : "Unknown error"
-        }`
+        }`,
       );
     }
   },

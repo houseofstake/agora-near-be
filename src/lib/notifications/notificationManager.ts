@@ -1,7 +1,4 @@
 import { EmailService } from "./emailService";
-import { TelegramService } from "./telegramService";
-import { DiscordService } from "./discordService";
-import { prisma } from "../../index";
 import {
   EMAIL_TEMPLATE,
   generateSubject,
@@ -39,8 +36,6 @@ const TEST_ACCOUNTS = ["pedro@voteagora.com"];
 
 export class NotificationManager {
   private emailService: EmailService;
-  private telegramService?: TelegramService;
-  private discordService?: DiscordService;
 
   // Environment flags for safe deployment
   private readonly DEVELOPER_MODE =
@@ -51,23 +46,11 @@ export class NotificationManager {
 
   constructor() {
     this.emailService = EmailService.fromEnv();
-
-    try {
-      this.telegramService = TelegramService.fromEnv();
-    } catch (error) {
-      console.warn("Telegram service not available:", error);
-    }
-
-    try {
-      this.discordService = DiscordService.fromEnv();
-    } catch (error) {
-      console.warn("Discord service not available:", error);
-    }
   }
 
   private processNotifications(
     createdProposals: NotificationData[],
-    endingSoonProposals: NotificationData[]
+    endingSoonProposals: NotificationData[],
   ): ProcessedNotifications {
     // Mark signal types and format data
     const proposalCreated = createdProposals.map((p) => ({
@@ -88,7 +71,7 @@ export class NotificationManager {
     // Deduplication: if proposal is in both lists, keep only in ending-soon
     const endingSoonIds = new Set(proposalEndingSoon.map((p) => p.proposalId));
     const deduplicatedCreated = proposalCreated.filter(
-      (p) => !endingSoonIds.has(p.proposalId)
+      (p) => !endingSoonIds.has(p.proposalId),
     );
 
     // Combine and prioritize ending soon first
@@ -105,13 +88,13 @@ export class NotificationManager {
    * Build email context with proper subject generation
    */
   private buildEmailContext(
-    notifications: ProcessedNotifications
+    notifications: ProcessedNotifications,
   ): EmailContext {
     const { proposalCreated, proposalEndingSoon, deduplicated } = notifications;
 
     const subject = generateSubject(
       proposalCreated.length,
-      proposalEndingSoon.length
+      proposalEndingSoon.length,
     );
     const subtitle =
       "Your vote matters—cast your input and help shape the future of NEAR!";
@@ -126,27 +109,45 @@ export class NotificationManager {
     };
   }
 
-  /**
-   * Get delegates who opted into specific email notifications
-   */
   private async getDelegatesWithEmailPreferences(
     preferenceKey:
       | "wants_proposal_created_email"
-      | "wants_proposal_ending_soon_email"
-  ) {
-    return await prisma.delegate_statements.findMany({
-      where: {
-        email: { not: null },
-        notification_preferences: {
-          path: [preferenceKey],
-          equals: "true",
-        },
-      },
-      select: {
-        email: true,
-        notification_preferences: true,
+      | "wants_proposal_ending_soon_email",
+  ): Promise<
+    Array<{ email: string | null; notification_preferences: unknown }>
+  > {
+    const base = process.env.API_BASE_URL?.replace(/\/$/, "");
+    const secret = process.env.WATCHDOG_VP_API_SECRET;
+    if (!base || !secret) {
+      throw new Error(
+        "API_BASE_URL and WATCHDOG_VP_API_SECRET are required for notification recipient lookup",
+      );
+    }
+
+    const url = new URL(`${base}/api/internal/notifications/delegate-emails`);
+    url.searchParams.set("preference", preferenceKey);
+
+    const res = await fetch(url.toString(), {
+      headers: {
+        "x-internal-notifications-secret": secret,
       },
     });
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(
+        `delegate-emails API failed: ${res.status} ${res.statusText} ${body}`,
+      );
+    }
+
+    const data = (await res.json()) as {
+      delegates: Array<{
+        email: string | null;
+        notification_preferences: unknown;
+      }>;
+    };
+
+    return data.delegates;
   }
 
   /**
@@ -156,11 +157,11 @@ export class NotificationManager {
     if (!this.SEND_EMAIL) return false;
 
     const isEmployee = EMPLOYEE_DOMAINS.some((domain) =>
-      email.endsWith(domain)
+      email.endsWith(domain),
     );
     const isTestAccount = TEST_ACCOUNTS.some((account) => email === account);
 
-    return this.SAFE_MODE ? isEmployee || isTestAccount : true;
+    return this.SAFE_MODE ? isTestAccount : true;
   }
 
   /**
@@ -168,7 +169,7 @@ export class NotificationManager {
    */
   private async sendConsolidatedEmail(
     email: string,
-    context: EmailContext
+    context: EmailContext,
   ): Promise<void> {
     if (!this.shouldSendEmail(email)) {
       console.log(`Skipping email to ${email} due to safe mode restrictions`);
@@ -181,10 +182,10 @@ export class NotificationManager {
 
       // Separate proposals by type for the EmailService
       const createdProposals = context.proposals.filter(
-        (p) => p.signalType === "proposal_created"
+        (p) => p.signalType === "proposal_created",
       );
       const endingSoonProposals = context.proposals.filter(
-        (p) => p.signalType === "proposal_ending_soon"
+        (p) => p.signalType === "proposal_ending_soon",
       );
 
       if (
@@ -200,7 +201,7 @@ export class NotificationManager {
           proposal.proposalId,
           proposal.proposalUrl,
           proposal.startDate,
-          proposal.endDate
+          proposal.endDate,
         );
       } else if (
         endingSoonProposals.length > 0 &&
@@ -214,7 +215,7 @@ export class NotificationManager {
           proposal.proposalTitle,
           proposal.proposalId,
           proposal.endDate!,
-          proposal.proposalUrl
+          proposal.proposalUrl,
         );
       } else if (
         createdProposals.length > 0 ||
@@ -236,7 +237,7 @@ export class NotificationManager {
    */
   private async sendMultiProposalEmail(
     email: string,
-    context: EmailContext
+    context: EmailContext,
   ): Promise<void> {
     // Transform proposals to match EmailService template format
     const proposals = context.proposals.map((proposal) => ({
@@ -318,7 +319,7 @@ export class NotificationManager {
    */
   async sendBulkNotifications(
     createdProposals: NotificationData[],
-    endingSoonProposals: NotificationData[]
+    endingSoonProposals: NotificationData[],
   ): Promise<void> {
     if (createdProposals.length === 0 && endingSoonProposals.length === 0) {
       console.log("No proposals to notify about");
@@ -327,25 +328,25 @@ export class NotificationManager {
 
     const processed = this.processNotifications(
       createdProposals,
-      endingSoonProposals
+      endingSoonProposals,
     );
     const emailContext = this.buildEmailContext(processed);
 
     console.log(
-      `Processing notifications: ${processed.proposalCreated.length} new, ${processed.proposalEndingSoon.length} ending soon`
+      `Processing notifications: ${processed.proposalCreated.length} new, ${processed.proposalEndingSoon.length} ending soon`,
     );
 
     // Get delegates with email preferences
     const createdDelegates =
       processed.proposalCreated.length > 0
         ? await this.getDelegatesWithEmailPreferences(
-            "wants_proposal_created_email"
+            "wants_proposal_created_email",
           )
         : [];
     const endingSoonDelegates =
       processed.proposalEndingSoon.length > 0
         ? await this.getDelegatesWithEmailPreferences(
-            "wants_proposal_ending_soon_email"
+            "wants_proposal_ending_soon_email",
           )
         : [];
 
@@ -361,103 +362,13 @@ export class NotificationManager {
     const emailPromises = Array.from(allEmails).map((email) =>
       this.sendConsolidatedEmail(email, emailContext).catch((error) => {
         console.error(`Failed to send email to ${email}:`, error);
-      })
+      }),
     );
 
-    // Send to broadcast channels if any proposals
-    const broadcastPromises: Promise<void>[] = [];
-    if (processed.deduplicated.length > 0) {
-      if (this.telegramService && process.env.TELEGRAM_CHANNEL_ID) {
-        broadcastPromises.push(this.sendTelegramBroadcast(emailContext));
-      }
-      if (this.discordService && process.env.DISCORD_CHANNEL_ID) {
-        broadcastPromises.push(this.sendDiscordBroadcast(emailContext));
-      }
-    }
-
-    await Promise.all([...emailPromises, ...broadcastPromises]);
+    await Promise.all(emailPromises);
 
     console.log(
-      `Successfully processed ${processed.deduplicated.length} proposals for ${allEmails.size} recipients`
+      `Successfully processed ${processed.deduplicated.length} proposals for ${allEmails.size} recipients`,
     );
-  }
-
-  private async sendTelegramBroadcast(context: EmailContext): Promise<void> {
-    if (!this.telegramService || !process.env.TELEGRAM_CHANNEL_ID) return;
-
-    try {
-      let message = `🗳️ <b>${context.subject}</b>\n\n`;
-
-      context.proposals.forEach((proposal, index) => {
-        const emoji = proposal.signalType === "proposal_created" ? "🆕" : "⚠️";
-        message += `${emoji} <b>${proposal.proposalTitle}</b>\n`;
-
-        if (
-          proposal.signalType === "proposal_ending_soon" &&
-          proposal.timeRemaining
-        ) {
-          message += `⏰ Ends in: ${proposal.timeRemaining}\n`;
-        }
-
-        if (proposal.proposalUrl) {
-          message += `<a href="${proposal.proposalUrl}">View Proposal</a>\n`;
-        }
-        if (index < context.proposals.length - 1) message += "\n";
-      });
-
-      await this.telegramService.sendMessage(
-        process.env.TELEGRAM_CHANNEL_ID,
-        message
-      );
-      console.log("Telegram broadcast sent successfully");
-    } catch (error) {
-      console.error("Failed to send Telegram broadcast:", error);
-    }
-  }
-
-  private async sendDiscordBroadcast(context: EmailContext): Promise<void> {
-    if (!this.discordService || !process.env.DISCORD_CHANNEL_ID) return;
-
-    try {
-      const { EmbedBuilder, Colors } = await import("discord.js");
-
-      const embed = new EmbedBuilder()
-        .setTitle(context.subject)
-        .setDescription(context.subtitle)
-        .setColor(Colors.Blue)
-        .setTimestamp();
-
-      context.proposals.forEach((proposal) => {
-        const fieldName =
-          proposal.signalType === "proposal_created"
-            ? "🆕 New Proposal"
-            : "⚠️ Ending Soon";
-
-        let fieldValue = `**${proposal.proposalTitle}**\n`;
-
-        if (
-          proposal.signalType === "proposal_ending_soon" &&
-          proposal.timeRemaining
-        ) {
-          fieldValue += `⏰ Ends in: ${proposal.timeRemaining}\n`;
-        }
-
-        fieldValue += `${
-          proposal.proposalUrl
-            ? `[View Proposal](${proposal.proposalUrl})`
-            : "No link available"
-        }`;
-
-        embed.addFields({ name: fieldName, value: fieldValue, inline: false });
-      });
-
-      await this.discordService.sendEmbed(
-        process.env.DISCORD_CHANNEL_ID,
-        embed
-      );
-      console.log("Discord broadcast sent successfully");
-    } catch (error) {
-      console.error("Failed to send Discord broadcast:", error);
-    }
   }
 }

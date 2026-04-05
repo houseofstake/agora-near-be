@@ -77,7 +77,7 @@ function mapDelegationEvent(record: delegationEvents) {
 export class DelegatesController {
   public getAllDelegates = async (
     req: Request<{}, {}, {}, DeletesQuery>,
-    res: Response
+    res: Response,
   ): Promise<void> => {
     const { page_size, page, order_by, filter_by, sorting_seed, issue_type } =
       req.query;
@@ -87,11 +87,11 @@ export class DelegatesController {
 
     let orderByClause;
     if (order_by === "most_voting_power") {
-      orderByClause = Prisma.sql`ORDER BY rv.current_voting_power DESC NULLS LAST`;
+      orderByClause = Prisma.sql`ORDER BY COALESCE(vpc.voting_power, rv.current_voting_power) DESC NULLS LAST`;
     } else if (order_by === "least_voting_power") {
-      orderByClause = Prisma.sql`ORDER BY rv.current_voting_power ASC NULLS FIRST`;
+      orderByClause = Prisma.sql`ORDER BY COALESCE(vpc.voting_power, rv.current_voting_power) ASC NULLS FIRST`;
     } else {
-      orderByClause = Prisma.sql`ORDER BY -log(random()) / NULLIF(rv.current_voting_power, 0) NULLS LAST`;
+      orderByClause = Prisma.sql`ORDER BY -log(random()) / NULLIF(COALESCE(vpc.voting_power, rv.current_voting_power), 0) NULLS LAST`;
     }
 
     let filterByClause = Prisma.sql``;
@@ -125,7 +125,7 @@ export class DelegatesController {
         Prisma.sql`
           SELECT
             rv.registered_voter_id as "registeredVoterId",
-            rv.current_voting_power as "currentVotingPower",
+            COALESCE(vpc.voting_power, rv.current_voting_power) as "currentVotingPower",
             rv.proposal_participation_rate as "proposalParticipationRate",
             COALESCE(rv.registered_voter_id, ds.address) as address,
             ds.twitter,
@@ -137,11 +137,12 @@ export class DelegatesController {
             ds.notification_preferences as "notificationPreferences"
           FROM fastnear.registered_voters rv
           FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+          LEFT JOIN web2.voting_power_cache vpc ON rv.registered_voter_id = vpc.account_id
           ${filterByClause}
           ${orderByClause}
           LIMIT ${pageSize}
           OFFSET ${(pageNumber - 1) * pageSize}
-        `
+        `,
       );
 
       return { records };
@@ -152,8 +153,9 @@ export class DelegatesController {
         SELECT COUNT(*) as count
         FROM fastnear.registered_voters rv
         FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+        LEFT JOIN web2.voting_power_cache vpc ON rv.registered_voter_id = vpc.account_id
         ${filterByClause}
-      `
+      `,
     );
 
     const delegates = records.map((record) => {
@@ -192,7 +194,7 @@ export class DelegatesController {
 
   public getDelegateByAddress = async (
     req: Request,
-    res: Response
+    res: Response,
   ): Promise<void> => {
     try {
       const { address } = req.params;
@@ -202,7 +204,7 @@ export class DelegatesController {
         Prisma.sql`
           SELECT
             rv.registered_voter_id as "registeredVoterId",
-            rv.current_voting_power as "currentVotingPower",
+            COALESCE(vpc.voting_power, rv.current_voting_power) as "currentVotingPower",
             rv.proposal_participation_rate as "proposalParticipationRate",
             COALESCE(rv.registered_voter_id, ds.address) as address,
             ds.twitter,
@@ -218,8 +220,9 @@ export class DelegatesController {
             ds.notification_preferences as "notificationPreferences"
           FROM fastnear.registered_voters rv
           FULL OUTER JOIN web2.delegate_statements ds ON rv.registered_voter_id = ds.address
+          LEFT JOIN web2.voting_power_cache vpc ON rv.registered_voter_id = vpc.account_id
           WHERE COALESCE(rv.registered_voter_id, ds.address) = ${address}
-        `
+        `,
       );
 
       if (!voterData || voterData.length === 0) {
@@ -259,20 +262,20 @@ export class DelegatesController {
       const data = voterData[0];
 
       const forCountPromise = prisma.proposalVotingHistory.count({
-        where: { voterId: address, voteOption: 0 },
+        where: { voterId: address as string, voteOption: 0 },
       });
 
       const againstCountPromise = prisma.proposalVotingHistory.count({
-        where: { voterId: address, voteOption: 1 },
+        where: { voterId: address as string, voteOption: 1 },
       });
 
       const abstainCountPromise = prisma.proposalVotingHistory.count({
-        where: { voterId: address, voteOption: 2 },
+        where: { voterId: address as string, voteOption: 2 },
       });
 
       const delegatedFromCountPromise = prisma.delegationEvents.count({
         where: {
-          delegateeId: address,
+          delegateeId: address as string,
           isLatestDelegatorEvent: true,
           delegateMethod: "delegate_all",
           delegateEvent: "ft_mint",
@@ -313,7 +316,7 @@ export class DelegatesController {
 
   public getDelegateVotingHistory = async (
     req: Request<AddressParams, {}, {}, PaginationQuery>,
-    res: Response
+    res: Response,
   ): Promise<void> => {
     try {
       const { address } = req.params;
@@ -354,7 +357,7 @@ export class DelegatesController {
 
   public getDelegateDelegatedFrom = async (
     req: Request<AddressParams, {}, {}, PaginationQuery>,
-    res: Response
+    res: Response,
   ): Promise<void> => {
     try {
       const { address } = req.params;
@@ -362,30 +365,39 @@ export class DelegatesController {
       const pageSize = parseInt(page_size ?? "10");
       const pageNumber = parseInt(page ?? "1");
 
-      const records = await prisma.delegationEvents.findMany({
-        where: {
-          delegateeId: address,
-          isLatestDelegatorEvent: true,
-          delegateEvent: "ft_mint",
-        },
-        skip: (pageNumber - 1) * pageSize,
-        take: pageSize,
-        orderBy: {
-          eventTimestamp: "desc",
-        },
-      });
+      const [records, count, voterRow] = await Promise.all([
+        prisma.delegationEvents.findMany({
+          where: {
+            delegateeId: address,
+            isLatestDelegatorEvent: true,
+            delegateEvent: "ft_mint",
+          },
+          skip: (pageNumber - 1) * pageSize,
+          take: pageSize,
+          orderBy: {
+            eventTimestamp: "desc",
+          },
+        }),
+        prisma.delegationEvents.count({
+          where: {
+            delegateeId: address,
+            isLatestDelegatorEvent: true,
+            delegateEvent: "ft_mint",
+          },
+        }),
+        prisma.registeredVoters.findFirst({
+          where: { registeredVoterId: address },
+          select: { votingPowerFromLocksUnlocks: true },
+        }),
+      ]);
 
-      const count = await prisma.delegationEvents.count({
-        where: {
-          delegateeId: address,
-          isLatestDelegatorEvent: true,
-          delegateEvent: "ft_mint",
-        },
-      });
+      const selfLockedVotingPower =
+        voterRow?.votingPowerFromLocksUnlocks?.toFixed() ?? "0";
 
       res.status(200).json({
         events: records.map(mapDelegationEvent),
         count,
+        selfLockedVotingPower,
       });
     } catch (error) {
       console.error("Error fetching delegate delegated from events:", error);
@@ -397,7 +409,7 @@ export class DelegatesController {
 
   public getDelegateDelegatedTo = async (
     req: Request<AddressParams, {}, {}, PaginationQuery>,
-    res: Response
+    res: Response,
   ): Promise<void> => {
     try {
       const { address } = req.params;
@@ -405,28 +417,29 @@ export class DelegatesController {
       const pageSize = parseInt(page_size ?? "10");
       const pageNumber = parseInt(page ?? "1");
 
-      const records = await prisma.delegationEvents.findMany({
-        where: {
-          delegatorId: address,
-          isLatestDelegatorEvent: true,
-          delegateMethod: "delegate_all",
-          delegateEvent: "ft_mint",
-        },
-        skip: (pageNumber - 1) * pageSize,
-        take: pageSize,
-        orderBy: {
-          eventTimestamp: "desc",
-        },
-      });
-
-      const count = await prisma.delegationEvents.count({
-        where: {
-          delegatorId: address,
-          isLatestDelegatorEvent: true,
-          delegateMethod: "delegate_all",
-          delegateEvent: "ft_mint",
-        },
-      });
+      const [records, count] = await Promise.all([
+        prisma.delegationEvents.findMany({
+          where: {
+            delegatorId: address,
+            isLatestDelegatorEvent: true,
+            delegateMethod: "delegate_all",
+            delegateEvent: "ft_mint",
+          },
+          skip: (pageNumber - 1) * pageSize,
+          take: pageSize,
+          orderBy: {
+            eventTimestamp: "desc",
+          },
+        }),
+        prisma.delegationEvents.count({
+          where: {
+            delegatorId: address,
+            isLatestDelegatorEvent: true,
+            delegateMethod: "delegate_all",
+            delegateEvent: "ft_mint",
+          },
+        }),
+      ]);
 
       res.status(200).json({
         events: records.map(mapDelegationEvent),
@@ -442,7 +455,7 @@ export class DelegatesController {
 
   public getDelegateHosActivity = async (
     req: Request<AddressParams, {}, {}, HOSActivityQuery>,
-    res: Response
+    res: Response,
   ): Promise<void> => {
     try {
       const { address } = req.params;
@@ -521,7 +534,7 @@ export class DelegatesController {
 
       const getTransactionType = (
         methodName: string,
-        eventType: string
+        eventType: string,
       ): string => {
         if (
           methodName === "on_lockup_update" &&
@@ -568,7 +581,7 @@ export class DelegatesController {
       const hosActivity = records.map((record) => {
         const transactionType = getTransactionType(
           record.methodName ?? "",
-          record.eventType ?? ""
+          record.eventType ?? "",
         );
 
         // The amount logged by the contract does not include the storage deposit so we add it to the locked balance
@@ -579,12 +592,12 @@ export class DelegatesController {
         const lockedNearBalance =
           transactionType === "initial_registration"
             ? storageDeposit // Initial locked balance is the storage deposit
-            : lockedBalanceWithStorage?.toFixed() ?? null;
+            : (lockedBalanceWithStorage?.toFixed() ?? null);
 
         const nearAmount =
           transactionType === "initial_registration"
             ? storageDeposit // Initial voting power is the storage deposit
-            : record.nearAmount?.toFixed() ?? null;
+            : (record.nearAmount?.toFixed() ?? null);
 
         return {
           receiptId: record.receiptId,
@@ -605,7 +618,7 @@ export class DelegatesController {
 
   public createDelegateStatement = async (
     req: Request<{}, {}, DelegateStatementInput, { network_id: string }>,
-    res: Response
+    res: Response,
   ): Promise<void> => {
     try {
       const { signature, publicKey, data, message } = req.body;
@@ -627,7 +640,7 @@ export class DelegatesController {
       let notificationPreferencesData: Record<string, unknown> | undefined;
       if (data.notification_preferences) {
         const invalidPrefs = Object.entries(
-          data.notification_preferences
+          data.notification_preferences,
         ).filter(([, value]) => !isValidNotificationPreference(value));
         if (invalidPrefs.length > 0) {
           console.warn("Invalid notification preferences for account", {

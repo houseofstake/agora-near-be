@@ -155,7 +155,7 @@ a[x-apple-data-detectors],
                   <td align="left" class="es-m-p20b" style="padding:0;Margin:0;width:170px">
                    <table cellspacing="0" width="100%" role="presentation" cellpadding="0" bgcolor="#FAFAFA" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;border-radius:3px;background-color:#FAFAFA">
                      <tr>
-                      <td align="left" class="es-text-4697" style="padding:0;Margin:0;padding-right:15px;padding-left:15px;padding-bottom:15px"><p class="es-text-mobile-size-13" style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:19.5px;letter-spacing:0;color:#000;font-size:13px">{{ proposal.start_datetime }}</p></td>
+                      <td align="left" class="es-text-4697" style="padding:0;Margin:0;padding:15px;padding-bottom:15px"><p class="es-text-mobile-size-13" style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:16px;letter-spacing:0;color:#666666;font-size:11px;font-weight:bold;text-transform:uppercase;margin-bottom:4px">Start</p><p class="es-text-mobile-size-13" style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:19.5px;letter-spacing:0;color:#000;font-size:13px">{{ proposal.start_datetime }}</p></td>
                      </tr>
                    </table></td>
                   <td class="es-hidden" style="padding:0;Margin:0;width:20px"></td>
@@ -166,7 +166,7 @@ a[x-apple-data-detectors],
                   <td align="left" class="es-m-p20b" style="padding:0;Margin:0;width:170px">
                    <table cellpadding="0" cellspacing="0" width="100%" role="presentation" bgcolor="#FAFAFA" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;border-radius:3px;background-color:#FAFAFA">
                      <tr>
-                      <td align="left" class="es-text-5464" style="padding:0;Margin:0;padding-right:15px;padding-left:15px;padding-bottom:15px"><p class="es-text-mobile-size-13" style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:19.5px;letter-spacing:0;color:#000;font-size:13px">{{ proposal.end_datetime }}</p></td>
+                      <td align="left" class="es-text-5464" style="padding:0;Margin:0;padding:15px;padding-bottom:15px"><p class="es-text-mobile-size-13" style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:16px;letter-spacing:0;color:#666666;font-size:11px;font-weight:bold;text-transform:uppercase;margin-bottom:4px">End</p><p class="es-text-mobile-size-13" style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:19.5px;letter-spacing:0;color:#000;font-size:13px">{{ proposal.end_datetime }}</p></td>
                      </tr>
                    </table></td>
                  </tr>
@@ -226,7 +226,7 @@ a[x-apple-data-detectors],
                   <td align="left" class="es-m-p20b" style="padding:0;Margin:0;width:170px">
                    <table width="100%" role="presentation" cellpadding="0" cellspacing="0" bgcolor="#FAFAFA" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;border-radius:3px;background-color:#FAFAFA">
                      <tr>
-                      <td align="left" class="es-text-4193" style="padding:0;Margin:0;padding-right:15px;padding-left:15px;padding-bottom:15px"><p class="es-text-mobile-size-13" style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:19.5px;letter-spacing:0;color:#000;font-size:13px">{{ proposal.end_datetime }}</p></td>
+                      <td align="left" class="es-text-4193" style="padding:0;Margin:0;padding:15px;padding-bottom:15px"><p class="es-text-mobile-size-13" style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:16px;letter-spacing:0;color:#666666;font-size:11px;font-weight:bold;text-transform:uppercase;margin-bottom:4px">End</p><p class="es-text-mobile-size-13" style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:19.5px;letter-spacing:0;color:#000;font-size:13px">{{ proposal.end_datetime }}</p></td>
                      </tr>
                    </table></td>
                   <td class="es-hidden" style="padding:0;Margin:0;width:20px"></td>
@@ -290,39 +290,6 @@ a[x-apple-data-detectors],
     {% endfor %}
 
 	   
-	   
-	   <!-- powered by footer -->
-       <table cellspacing="0" cellpadding="0" align="center" class="es-content" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;width:100%;table-layout:fixed !important">
-         <tr>
-          <td align="center" bgcolor="transparent" style="padding:0;Margin:0">
-           <table cellpadding="0" cellspacing="0" bgcolor="#f6f6f6" align="center" class="es-content-body" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;background-color:#f6f6f6;width:600px">
-             <tr>
-              <td align="left" style="padding:0;Margin:0;padding-right:20px;padding-left:20px;padding-top:30px"><!--[if mso]><table style="width:560px" cellpadding="0" cellspacing="0"><tr><td style="width:204px" valign="top"><![endif]-->
-               <table cellpadding="0" cellspacing="0" align="left" class="es-left" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;float:left">
-                 <tr>
-                  <td align="left" style="padding:0;Margin:0;width:204px">
-                   <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px">
-                     <tr>
-                      <td align="left" style="padding:0;Margin:0;padding-bottom:5px"><p style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:28px;letter-spacing:0;color:#999999;font-size:14px"><strong>{{ friendly_short_name }} governance powered by</strong></p></td>
-                     </tr>
-                   </table></td>
-                 </tr>
-               </table><!--[if mso]></td><td style="width:356px" valign="top"><![endif]-->
-               <table cellpadding="0" cellspacing="0" align="right" class="es-right" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;float:right">
-                 <tr>
-                  <td align="left" style="padding:0;Margin:0;width:356px">
-                   <table cellpadding="0" cellspacing="0" width="100%" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px">
-                     <tr>
-                      <td align="left" style="padding:0;Margin:0;padding-bottom:5px;padding-top:7px;padding-left:15px;font-size:0"><img src="https://storage.googleapis.com/agora-public-assets/logos/agora.png" alt="" width="75" style="display:block;font-size:14px;border:0;outline:none;text-decoration:none"></td>
-                     </tr>
-                   </table></td>
-                 </tr>
-               </table><!--[if mso]></td></tr></table><![endif]--></td>
-             </tr>
-           </table></td>
-         </tr>
-       </table>
-	   
 	   <!-- unsubscribe footer -->
        <table cellpadding="0" align="center" cellspacing="0" class="es-content" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;width:100%;table-layout:fixed !important">
          <tr>
@@ -335,7 +302,7 @@ a[x-apple-data-detectors],
                   <td align="left" style="padding:0;Margin:0;width:600px">
                    <table cellpadding="0" cellspacing="0" width="100%" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px">
                      <tr>
-                      <td align="left" style="padding:0;Margin:0"><p style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:21px;letter-spacing:0;color:#999999;font-size:14px">Don't want any more emails from Agora about {{ friendly_short_name }} proposals? <a href="{{ unsubscribe_url }}" target="_blank" style="mso-line-height-rule:exactly;text-decoration:none;color:#333333;font-size:14px;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif">Unsubscribe here.</a> You can change your preferences at any time.</p></td>
+                      <td align="left" style="padding:0;Margin:0"><p style="Margin:0;mso-line-height-rule:exactly;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:21px;letter-spacing:0;color:#999999;font-size:14px">Don't want any more emails from {{ friendly_short_name }} proposals? <a href="{{ unsubscribe_url }}" target="_blank" style="mso-line-height-rule:exactly;text-decoration:none;color:#333333;font-size:14px;font-family:'open sans', 'helvetica neue', helvetica, arial, sans-serif">Unsubscribe here.</a> You can change your preferences at any time.</p></td>
                      </tr>
                    </table></td>
                  </tr>
@@ -353,7 +320,7 @@ a[x-apple-data-detectors],
 
 export function generateSubject(
   proposalCreatedCount: number,
-  proposalEndingSoonCount: number
+  proposalEndingSoonCount: number,
 ): string {
   if (proposalCreatedCount === 0) {
     if (proposalEndingSoonCount === 0) {

@@ -1,12 +1,4 @@
-WITH execution_outcomes_prep AS (
-  SELECT
-    execution_outcomes.receipt_id,
-    execution_outcomes.status,
-    execution_outcomes.logs
-  FROM
-    fastnear.execution_outcomes
-),
-receipt_actions_prep AS (
+WITH receipt_actions_prep AS (
   SELECT
     decode(ra.args_base64, 'base64' :: text) AS args_decoded,
     CASE
@@ -42,10 +34,17 @@ receipt_actions_prep AS (
   FROM
     (
       fastnear.receipt_actions ra
-      LEFT JOIN execution_outcomes_prep eo ON ((ra.receipt_id = eo.receipt_id))
+      LEFT JOIN fastnear.execution_outcomes eo ON ((ra.receipt_id = eo.receipt_id))
     )
   WHERE
-    (ra.action_kind = 'FunctionCall' :: text)
+    (
+      (ra.action_kind = 'FunctionCall' :: text)
+      AND (
+        ra.method_name = ANY (
+          ARRAY ['on_lockup_deployed'::text, 'lock_near'::text, 'on_lockup_update'::text, 'delegate_all'::text, 'undelegate'::text, 'begin_unlock_near'::text, 'lock_pending_near'::text, 'withdraw_from_staking_pool'::text, 'withdraw_all_from_staking_pool'::text, 'unstake'::text, 'unstake_all'::text]
+        )
+      )
+    )
 ),
 on_lockup_deployed AS (
   SELECT
@@ -56,12 +55,12 @@ on_lockup_deployed AS (
       CASE
         WHEN (
           (
-            safe_json_parse(
+            fastnear.safe_json_parse(
               REPLACE(ra.logs [1], 'EVENT_JSON:' :: text, '' :: text)
             ) ->> 'error' :: text
           ) IS NULL
         ) THEN (
-          safe_json_parse(
+          fastnear.safe_json_parse(
             REPLACE(ra.logs [1], 'EVENT_JSON:' :: text, '' :: text)
           ) ->> 'event' :: text
         )
@@ -76,21 +75,11 @@ on_lockup_deployed AS (
     CASE
       WHEN (
         (
-          safe_json_parse(
-            convert_from(
-              decode(ra.args_base64, 'base64' :: text),
-              'UTF8' :: name
-            )
-          ) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse(
-            convert_from(
-              decode(ra.args_base64, 'base64' :: text),
-              'UTF8' :: name
-            )
-          ) ->> 'lockup_deposit' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'lockup_deposit' :: text
         )
       ) :: numeric
       ELSE NULL :: numeric
@@ -98,7 +87,7 @@ on_lockup_deployed AS (
     CASE
       WHEN (
         (
-          safe_json_parse(
+          fastnear.safe_json_parse(
             REPLACE(ra.logs [1], 'EVENT_JSON:' :: text, '' :: text)
           ) ->> 'error' :: text
         ) IS NULL
@@ -106,7 +95,7 @@ on_lockup_deployed AS (
         (
           (
             (
-              safe_json_parse(
+              fastnear.safe_json_parse(
                 REPLACE(ra.logs [1], 'EVENT_JSON:' :: text, '' :: text)
               ) -> 'data' :: text
             ) -> 0
@@ -123,9 +112,7 @@ on_lockup_deployed AS (
     (
       (ra.method_name = 'on_lockup_deployed' :: text)
       AND (
-        ra.receiver_id = ANY (
-          ARRAY ['v.r-1748895584.testnet'::text, 'vote.r-1748895584.testnet'::text]
-        )
+        ra.receiver_id = ANY (ARRAY ['venear.dao'::text, 'vote.dao'::text])
       )
     )
 ),
@@ -138,12 +125,12 @@ lock_near AS (
       CASE
         WHEN (
           (
-            safe_json_parse(
+            fastnear.safe_json_parse(
               REPLACE(ra.logs [1], 'EVENT_JSON:' :: text, '' :: text)
             ) ->> 'error' :: text
           ) IS NULL
         ) THEN (
-          safe_json_parse(
+          fastnear.safe_json_parse(
             REPLACE(ra.logs [1], 'EVENT_JSON:' :: text, '' :: text)
           ) ->> 'event' :: text
         )
@@ -162,21 +149,11 @@ lock_near AS (
     CASE
       WHEN (
         (
-          safe_json_parse(
-            convert_from(
-              decode(ra.args_base64, 'base64' :: text),
-              'UTF8' :: name
-            )
-          ) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse(
-            convert_from(
-              decode(ra.args_base64, 'base64' :: text),
-              'UTF8' :: name
-            )
-          ) ->> 'amount' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'amount' :: text
         )
       ) :: numeric
       ELSE NULL :: numeric
@@ -184,7 +161,7 @@ lock_near AS (
     CASE
       WHEN (
         (
-          safe_json_parse(
+          fastnear.safe_json_parse(
             REPLACE(ra.logs [1], 'EVENT_JSON:' :: text, '' :: text)
           ) ->> 'error' :: text
         ) IS NULL
@@ -192,7 +169,7 @@ lock_near AS (
         (
           (
             (
-              safe_json_parse(
+              fastnear.safe_json_parse(
                 REPLACE(ra.logs [1], 'EVENT_JSON:' :: text, '' :: text)
               ) -> 'data' :: text
             ) -> 0
@@ -213,9 +190,7 @@ lock_near AS (
           ra.receiver_id
           FROM
             (POSITION(('.' :: text) IN (ra.receiver_id)) + 1)
-        ) = ANY (
-          ARRAY ['v.r-1748895584.testnet'::text, 'vote.r-1748895584.testnet'::text]
-        )
+        ) = ANY (ARRAY ['venear.dao'::text, 'vote.dao'::text])
       )
     )
 ),
@@ -235,16 +210,16 @@ on_lockup_update_prep AS (
         WHEN (
           (
             (
-              safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) ->> 'error' :: text
+              fastnear.safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) ->> 'error' :: text
             ) IS NULL
           )
           AND (
             (
-              safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) ->> 'event' :: text
+              fastnear.safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) ->> 'event' :: text
             ) = ANY (ARRAY ['ft_mint'::text, 'ft_burn'::text])
           )
         ) THEN (
-          safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) ->> 'event' :: text
+          fastnear.safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) ->> 'event' :: text
         )
         ELSE NULL :: text
       END
@@ -254,19 +229,19 @@ on_lockup_update_prep AS (
         WHEN (
           (
             (
-              safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) ->> 'error' :: text
+              fastnear.safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) ->> 'error' :: text
             ) IS NULL
           )
           AND (
             (
-              safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) ->> 'event' :: text
+              fastnear.safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) ->> 'event' :: text
             ) = 'lockup_update' :: text
           )
         ) THEN (
           (
             (
               (
-                safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) -> 'data' :: text
+                fastnear.safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) -> 'data' :: text
               ) -> 0
             ) ->> 'locked_near_balance' :: text
           )
@@ -279,19 +254,19 @@ on_lockup_update_prep AS (
         WHEN (
           (
             (
-              safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) ->> 'error' :: text
+              fastnear.safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) ->> 'error' :: text
             ) IS NULL
           )
           AND (
             (
-              safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) ->> 'event' :: text
+              fastnear.safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) ->> 'event' :: text
             ) = ANY (ARRAY ['ft_mint'::text, 'ft_burn'::text])
           )
         ) THEN (
           (
             (
               (
-                safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) -> 'data' :: text
+                fastnear.safe_json_parse(REPLACE(log.log, 'EVENT_JSON:' :: text, '' :: text)) -> 'data' :: text
               ) -> 0
             ) ->> 'amount' :: text
           )
@@ -308,12 +283,11 @@ on_lockup_update_prep AS (
     (
       (ra.method_name = 'on_lockup_update' :: text)
       AND (
-        ra.receiver_id = ANY (
-          ARRAY ['v.r-1748895584.testnet'::text, 'vote.r-1748895584.testnet'::text]
-        )
+        ra.receiver_id = ANY (ARRAY ['venear.dao'::text, 'vote.dao'::text])
       )
     )
   GROUP BY
+    ra.receipt_id,
     ra.receipt_id,
     ra.block_timestamp,
     ra.method_name,
@@ -354,7 +328,7 @@ delegations_undelegations AS (
         CASE
           WHEN (
             (
-              safe_json_parse(
+              fastnear.safe_json_parse(
                 REPLACE(
                   unnested_logs.unnested_logs,
                   'EVENT_JSON:' :: text,
@@ -365,7 +339,7 @@ delegations_undelegations AS (
           ) THEN (
             (
               (
-                safe_json_parse(
+                fastnear.safe_json_parse(
                   REPLACE(
                     unnested_logs.unnested_logs,
                     'EVENT_JSON:' :: text,
@@ -386,7 +360,7 @@ delegations_undelegations AS (
         (ra.method_name || '_' :: text) || CASE
           WHEN (
             (
-              safe_json_parse(
+              fastnear.safe_json_parse(
                 REPLACE(
                   unnested_logs.unnested_logs,
                   'EVENT_JSON:' :: text,
@@ -395,7 +369,7 @@ delegations_undelegations AS (
               ) ->> 'error' :: text
             ) IS NULL
           ) THEN (
-            safe_json_parse(
+            fastnear.safe_json_parse(
               REPLACE(
                 unnested_logs.unnested_logs,
                 'EVENT_JSON:' :: text,
@@ -414,7 +388,7 @@ delegations_undelegations AS (
       CASE
         WHEN (
           (
-            safe_json_parse(
+            fastnear.safe_json_parse(
               REPLACE(
                 unnested_logs.unnested_logs,
                 'EVENT_JSON:' :: text,
@@ -425,7 +399,7 @@ delegations_undelegations AS (
         ) THEN (
           (
             (
-              safe_json_parse(
+              fastnear.safe_json_parse(
                 REPLACE(
                   unnested_logs.unnested_logs,
                   'EVENT_JSON:' :: text,
@@ -443,7 +417,7 @@ delegations_undelegations AS (
     CASE
       WHEN (
         (
-          safe_json_parse(
+          fastnear.safe_json_parse(
             REPLACE(
               unnested_logs.unnested_logs,
               'EVENT_JSON:' :: text,
@@ -455,7 +429,7 @@ delegations_undelegations AS (
         (
           (
             (
-              safe_json_parse(
+              fastnear.safe_json_parse(
                 REPLACE(
                   unnested_logs.unnested_logs,
                   'EVENT_JSON:' :: text,
@@ -482,9 +456,7 @@ delegations_undelegations AS (
         ra.method_name = ANY (ARRAY ['delegate_all'::text, 'undelegate'::text])
       )
       AND (
-        ra.receiver_id = ANY (
-          ARRAY ['v.r-1748895584.testnet'::text, 'vote.r-1748895584.testnet'::text]
-        )
+        ra.receiver_id = ANY (ARRAY ['venear.dao'::text, 'vote.dao'::text])
       )
     )
 ),
@@ -505,21 +477,11 @@ begin_unlock_near AS (
     CASE
       WHEN (
         (
-          safe_json_parse(
-            convert_from(
-              decode(ra.args_base64, 'base64' :: text),
-              'UTF8' :: name
-            )
-          ) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse(
-            convert_from(
-              decode(ra.args_base64, 'base64' :: text),
-              'UTF8' :: name
-            )
-          ) ->> 'amount' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'amount' :: text
         )
       ) :: numeric
       ELSE NULL :: numeric
@@ -537,9 +499,7 @@ begin_unlock_near AS (
           ra.receiver_id
           FROM
             (POSITION(('.' :: text) IN (ra.receiver_id)) + 1)
-        ) = ANY (
-          ARRAY ['v.r-1748895584.testnet'::text, 'vote.r-1748895584.testnet'::text]
-        )
+        ) = ANY (ARRAY ['venear.dao'::text, 'vote.dao'::text])
       )
     )
 ),
@@ -560,21 +520,11 @@ relock_pending_near AS (
     CASE
       WHEN (
         (
-          safe_json_parse(
-            convert_from(
-              decode(ra.args_base64, 'base64' :: text),
-              'UTF8' :: name
-            )
-          ) ->> 'error' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
         ) IS NULL
       ) THEN (
         (
-          safe_json_parse(
-            convert_from(
-              decode(ra.args_base64, 'base64' :: text),
-              'UTF8' :: name
-            )
-          ) ->> 'amount' :: text
+          fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'amount' :: text
         )
       ) :: numeric
       ELSE NULL :: numeric
@@ -592,9 +542,169 @@ relock_pending_near AS (
           ra.receiver_id
           FROM
             (POSITION(('.' :: text) IN (ra.receiver_id)) + 1)
-        ) = ANY (
-          ARRAY ['v.r-1748895584.testnet'::text, 'vote.r-1748895584.testnet'::text]
+        ) = ANY (ARRAY ['venear.dao'::text, 'vote.dao'::text])
+      )
+    )
+),
+withdraw_from_staking_pool AS (
+  SELECT
+    ra.receipt_id AS id,
+    ra.receipt_id,
+    ra.block_timestamp AS event_timestamp,
+    ra.method_name AS event_type,
+    ra.method_name,
+    ra.event_status,
+    ra.signer_account_id AS account_id,
+    SUBSTRING(
+      ra.receiver_id
+      FROM
+        (POSITION(('.' :: text) IN (ra.receiver_id)) + 1)
+    ) AS hos_contract_address,
+    COALESCE(
+      CASE
+        WHEN (
+          (
+            fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
+          ) IS NULL
+        ) THEN (
+          (
+            fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'amount' :: text
+          )
+        ) :: numeric
+        ELSE NULL :: numeric
+      END,
+      CASE
+        WHEN (
+          (
+            fastnear.safe_json_parse(
+              REPLACE(
+                unnested_logs.unnested_logs,
+                'EVENT_JSON:' :: text,
+                '' :: text
+              )
+            ) ->> 'error' :: text
+          ) IS NULL
+        ) THEN (
+          (
+            (
+              (
+                fastnear.safe_json_parse(
+                  REPLACE(
+                    unnested_logs.unnested_logs,
+                    'EVENT_JSON:' :: text,
+                    '' :: text
+                  )
+                ) -> 'data' :: text
+              ) -> 0
+            ) ->> 'amount' :: text
+          )
+        ) :: numeric
+        ELSE NULL :: numeric
+      END,
+      (0) :: numeric
+    ) AS near_amount,
+    NULL :: numeric AS locked_near_balance,
+    ra.block_height,
+    ra.block_hash
+  FROM
+    (
+      receipt_actions_prep ra
+      LEFT JOIN LATERAL unnest(ra.logs) unnested_logs(unnested_logs) ON (TRUE)
+    )
+  WHERE
+    (
+      (
+        ra.method_name = ANY (
+          ARRAY ['withdraw_from_staking_pool'::text, 'withdraw_all_from_staking_pool'::text]
         )
+      )
+      AND (ra.event_status = 'succeeded' :: text)
+      AND (
+        SUBSTRING(
+          ra.receiver_id
+          FROM
+            (POSITION(('.' :: text) IN (ra.receiver_id)) + 1)
+        ) = ANY (ARRAY ['venear.dao'::text, 'vote.dao'::text])
+      )
+    )
+),
+unstake AS (
+  SELECT
+    ra.receipt_id AS id,
+    ra.receipt_id,
+    ra.block_timestamp AS event_timestamp,
+    ra.method_name AS event_type,
+    ra.method_name,
+    ra.event_status,
+    ra.signer_account_id AS account_id,
+    SUBSTRING(
+      ra.receiver_id
+      FROM
+        (POSITION(('.' :: text) IN (ra.receiver_id)) + 1)
+    ) AS hos_contract_address,
+    COALESCE(
+      CASE
+        WHEN (
+          (
+            fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'error' :: text
+          ) IS NULL
+        ) THEN (
+          (
+            fastnear.safe_json_parse(convert_from(ra.args_decoded, 'UTF8' :: name)) ->> 'amount' :: text
+          )
+        ) :: numeric
+        ELSE NULL :: numeric
+      END,
+      CASE
+        WHEN (
+          (
+            fastnear.safe_json_parse(
+              REPLACE(
+                unnested_logs.unnested_logs,
+                'EVENT_JSON:' :: text,
+                '' :: text
+              )
+            ) ->> 'error' :: text
+          ) IS NULL
+        ) THEN (
+          (
+            (
+              (
+                fastnear.safe_json_parse(
+                  REPLACE(
+                    unnested_logs.unnested_logs,
+                    'EVENT_JSON:' :: text,
+                    '' :: text
+                  )
+                ) -> 'data' :: text
+              ) -> 0
+            ) ->> 'amount' :: text
+          )
+        ) :: numeric
+        ELSE NULL :: numeric
+      END,
+      (0) :: numeric
+    ) AS near_amount,
+    NULL :: numeric AS locked_near_balance,
+    ra.block_height,
+    ra.block_hash
+  FROM
+    (
+      receipt_actions_prep ra
+      LEFT JOIN LATERAL unnest(ra.logs) unnested_logs(unnested_logs) ON (TRUE)
+    )
+  WHERE
+    (
+      (
+        ra.method_name = ANY (ARRAY ['unstake'::text, 'unstake_all'::text])
+      )
+      AND (ra.event_status = 'succeeded' :: text)
+      AND (
+        SUBSTRING(
+          ra.receiver_id
+          FROM
+            (POSITION(('.' :: text) IN (ra.receiver_id)) + 1)
+        ) = ANY (ARRAY ['venear.dao'::text, 'vote.dao'::text])
       )
     )
 ),
@@ -699,6 +809,40 @@ unioned_events AS (
     relock_pending_near.block_hash
   FROM
     relock_pending_near
+  UNION
+  ALL
+  SELECT
+    withdraw_from_staking_pool.id,
+    withdraw_from_staking_pool.receipt_id,
+    withdraw_from_staking_pool.event_timestamp,
+    withdraw_from_staking_pool.event_type,
+    withdraw_from_staking_pool.method_name,
+    withdraw_from_staking_pool.event_status,
+    withdraw_from_staking_pool.account_id,
+    withdraw_from_staking_pool.hos_contract_address,
+    withdraw_from_staking_pool.near_amount,
+    withdraw_from_staking_pool.locked_near_balance,
+    withdraw_from_staking_pool.block_height,
+    withdraw_from_staking_pool.block_hash
+  FROM
+    withdraw_from_staking_pool
+  UNION
+  ALL
+  SELECT
+    unstake.id,
+    unstake.receipt_id,
+    unstake.event_timestamp,
+    unstake.event_type,
+    unstake.method_name,
+    unstake.event_status,
+    unstake.account_id,
+    unstake.hos_contract_address,
+    unstake.near_amount,
+    unstake.locked_near_balance,
+    unstake.block_height,
+    unstake.block_hash
+  FROM
+    unstake
 )
 SELECT
   id,

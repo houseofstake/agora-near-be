@@ -17,7 +17,7 @@ CREATE TABLE "web2"."delegate_statements" (
     "discord" TEXT,
     "email" TEXT,
     "warpcast" TEXT,
-    "endorsed" BOOLEAN NOT NULL DEFAULT false,
+    "endorsed" BOOLEAN DEFAULT false,
 
     CONSTRAINT "delegate_statements_pkey" PRIMARY KEY ("address")
 );
@@ -101,9 +101,6 @@ CREATE TABLE "fastnear"."receipt_actions" (
 
     CONSTRAINT "receipt_actions_pkey" PRIMARY KEY ("id")
 );
-
--- CreateIndex
-CREATE INDEX "idx_delegate_statements_email" ON "web2"."delegate_statements"("email");
 
 -- CreateIndex
 CREATE INDEX "idx_cache_expires_at" ON "web2"."cache"("expires_at");
