@@ -301,6 +301,7 @@ view registeredVoters {
   hasLockedUnlockedNear       Boolean?  @map("has_locked_unlocked_near")
   isActivelyDelegating        Boolean?  @map("is_actively_delegating")
   votingPowerFromDelegations  Decimal?  @map("voting_power_from_delegations") @db.Decimal
+  delegatedExtraVenear        Decimal?  @map("delegated_extra_venear") @db.Decimal
   votingPowerFromLocksUnlocks Decimal?  @map("voting_power_from_locks_unlocks") @db.Decimal
   initialVotingPower          Decimal?  @map("initial_voting_power") @db.Decimal
   currentVotingPower          Decimal?  @map("current_voting_power") @db.Decimal

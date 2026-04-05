@@ -365,7 +365,7 @@ export class DelegatesController {
       const pageSize = parseInt(page_size ?? "10");
       const pageNumber = parseInt(page ?? "1");
 
-      const [records, count, voterRow] = await Promise.all([
+      const [records, count, voterRow, vpCacheRow] = await Promise.all([
         prisma.delegationEvents.findMany({
           where: {
             delegateeId: address,
@@ -387,17 +387,35 @@ export class DelegatesController {
         }),
         prisma.registeredVoters.findFirst({
           where: { registeredVoterId: address },
-          select: { votingPowerFromLocksUnlocks: true },
+          select: {
+            isActivelyDelegating: true,
+            votingPowerFromDelegations: true,
+            delegatedExtraVenear: true,
+          },
+        }),
+        prisma.voting_power_cache.findUnique({
+          where: { accountId: address },
+          select: { votingPower: true },
         }),
       ]);
 
-      const selfLockedVotingPower =
-        voterRow?.votingPowerFromLocksUnlocks?.toFixed() ?? "0";
+      let selfLockedVotingPower = new Prisma.Decimal(0);
+      if (voterRow && !voterRow.isActivelyDelegating) {
+        const totalVp = vpCacheRow?.votingPower ?? new Prisma.Decimal(0);
+        const receivedVp = (
+          voterRow.votingPowerFromDelegations ?? new Prisma.Decimal(0)
+        ).add(voterRow.delegatedExtraVenear ?? new Prisma.Decimal(0));
+        selfLockedVotingPower = totalVp.minus(receivedVp);
+      }
+
+      const selfLockedVotingPowerStr = selfLockedVotingPower.greaterThan(0)
+        ? selfLockedVotingPower.toFixed()
+        : "0";
 
       res.status(200).json({
         events: records.map(mapDelegationEvent),
         count,
-        selfLockedVotingPower,
+        selfLockedVotingPower: selfLockedVotingPowerStr,
       });
     } catch (error) {
       console.error("Error fetching delegate delegated from events:", error);
