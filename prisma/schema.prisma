@@ -211,6 +211,12 @@ view proposals {
   forVotingPower        Decimal?  @map("for_voting_power") @db.Decimal
   againstVotingPower    Decimal?  @map("against_voting_power") @db.Decimal
   abstainVotingPower    Decimal?  @map("abstain_voting_power") @db.Decimal
+  status                String?   @map("status")
+  quorumThresholdBps    Decimal?  @map("quorum_threshold_bps") @db.Decimal
+  quorumFloor           Decimal?  @map("quorum_floor") @db.Decimal
+  approvalThresholdBps  Decimal?  @map("approval_threshold_bps") @db.Decimal
+  isExecuted            Boolean?  @map("is_executed")
+  executedAt            DateTime? @map("executed_at") @db.Timestamp(6)
   blockHeight           BigInt?   @map("block_height")
   blockHash             String?   @map("block_hash")
 
