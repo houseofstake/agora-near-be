@@ -45,6 +45,7 @@ async function fetchFtTotalSupply(
 async function fetchVotingPower(
   provider: providers.JsonRpcProvider,
   accountId: string,
+  blockId: number,
 ): Promise<string | null> {
   try {
     const result = await provider.query<any>({
@@ -54,7 +55,7 @@ async function fetchVotingPower(
       args_base64: Buffer.from(
         JSON.stringify({ account_id: accountId }),
       ).toString("base64"),
-      finality: "final",
+      block_id: blockId,
     });
 
     const balance = JSON.parse(Buffer.from(result.result).toString());
@@ -69,6 +70,15 @@ async function syncVotingPower(): Promise<void> {
   console.log("Starting voting power sync...");
   const startTime = Date.now();
 
+  // Initialize RPC provider
+  const rpcUrl = getRpcUrl({ networkId: "mainnet" });
+  const provider = new providers.JsonRpcProvider({ url: rpcUrl });
+
+  // Baseline the block strictly
+  const blockRes = await provider.block({ finality: "final" });
+  const blockHeight = Number((blockRes as any).header.height);
+  console.log(`Auditing at strict block height: ${blockHeight}`);
+
   // Fetch all registered voter IDs
   const voters = await prisma.$queryRaw<{ registered_voter_id: string }[]>`
     SELECT registered_voter_id FROM fastnear.registered_voters
@@ -81,10 +91,6 @@ async function syncVotingPower(): Promise<void> {
     console.log("No voters to sync. Exiting.");
     return;
   }
-
-  // Initialize RPC provider
-  const rpcUrl = getRpcUrl({ networkId: "mainnet" });
-  const provider = new providers.JsonRpcProvider({ url: rpcUrl });
 
   let successCount = 0;
   let failCount = 0;
@@ -102,6 +108,7 @@ async function syncVotingPower(): Promise<void> {
         const balance = await fetchVotingPower(
           provider,
           voter.registered_voter_id,
+          blockHeight,
         );
         if (balance === null) return null;
 
@@ -117,10 +124,10 @@ async function syncVotingPower(): Promise<void> {
       if (result.status === "fulfilled" && result.value) {
         try {
           await prisma.$executeRaw`
-            INSERT INTO web2.voting_power_cache (account_id, voting_power, updated_at)
-            VALUES (${result.value.accountId}, ${result.value.votingPower}::decimal, NOW())
+            INSERT INTO web2.voting_power_cache (account_id, voting_power, block_height, updated_at)
+            VALUES (${result.value.accountId}, ${result.value.votingPower}::decimal, ${blockHeight}::bigint, NOW())
             ON CONFLICT (account_id)
-            DO UPDATE SET voting_power = ${result.value.votingPower}::decimal, updated_at = NOW()
+            DO UPDATE SET voting_power = ${result.value.votingPower}::decimal, block_height = ${blockHeight}::bigint, updated_at = NOW()
           `;
           successCount++;
         } catch (error) {
@@ -136,9 +143,7 @@ async function syncVotingPower(): Promise<void> {
     }
   }
 
-  const blockRes = await provider.block({ finality: "final" });
-  const blockHeight = (blockRes as any).header.height;
-  const totalSupply = await fetchFtTotalSupply(provider);
+  const totalSupply = await fetchFtTotalSupply(provider, blockHeight);
   if (totalSupply !== null) {
     const recordedAt = new Date().toISOString().slice(0, 10);
     await prisma.$executeRaw`

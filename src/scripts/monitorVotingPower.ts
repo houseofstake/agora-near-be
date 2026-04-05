@@ -19,22 +19,32 @@ const TEST_ACCOUNTS = [
   "hos-test-delegatee.near", // Received VP, 0 balance
   "hos-test-expired.near", // Expired lock
   "hos-test-dust.near", // Dust precision edge case
+  "hos-test-lst-holder.near", // LST only locking
+  "hos-test-lst-delegator.near", // LST delegating 100% VP
 ];
 
 async function fetchTrueOnchainVotingPower(
   provider: providers.JsonRpcProvider,
   accountId: string,
+  blockHeight?: string
 ): Promise<string | null> {
   try {
-    const result = await provider.query<any>({
+    const queryArgs: any = {
       request_type: "call_function",
       account_id: VENEAR_CONTRACT_ID,
       method_name: "ft_balance_of",
       args_base64: Buffer.from(
         JSON.stringify({ account_id: accountId }),
       ).toString("base64"),
-      finality: "final",
-    });
+    };
+    
+    if (blockHeight) {
+      queryArgs.block_id = Number(blockHeight);
+    } else {
+      queryArgs.finality = "final";
+    }
+
+    const result = await provider.query<any>(queryArgs);
 
     const balance = JSON.parse(Buffer.from(result.result).toString());
     return typeof balance === "string" ? balance : String(balance);
@@ -57,9 +67,9 @@ export async function runWatchdogAudit(): Promise<void> {
   // 1. Query expected test accounts
   console.log("-> Auditing Expected Test Accounts...");
   const dbToyAccounts = await prisma.$queryRaw<
-    { account_id: string; voting_power: number }[]
+    { account_id: string; voting_power: number; block_height: string | null }[]
   >`
-    SELECT account_id, voting_power FROM web2.voting_power_cache
+    SELECT account_id, voting_power, block_height FROM web2.voting_power_cache
     WHERE account_id = ANY(${TEST_ACCOUNTS})
   `;
 
@@ -68,8 +78,8 @@ export async function runWatchdogAudit(): Promise<void> {
   for (const account of TEST_ACCOUNTS) {
     console.log(`\nAnalyzing Test Account: ${account}`);
 
-    const onchainVP = await fetchTrueOnchainVotingPower(provider, account);
     const dbRecord = dbToyAccounts.find((a) => a.account_id === account);
+    const onchainVP = await fetchTrueOnchainVotingPower(provider, account, dbRecord?.block_height || undefined);
 
     if (onchainVP === null) {
       console.error(`   ❌ [RPC ERROR] Could not fetch data for ${account}`);
@@ -83,16 +93,20 @@ export async function runWatchdogAudit(): Promise<void> {
     const diff =
       dbVpBig > onchainVpBig ? dbVpBig - onchainVpBig : onchainVpBig - dbVpBig;
 
-    // Dynamically allow up to 0.1% drift (for Whales) OR 0.1 VP (for Dust), whichever is greater
-    // This heuristically absorbs the APY time-growth generated between the static DB snapshot and the live RPC query.
-    const allowedDriftPercent = (onchainVpBig * BigInt(10)) / BigInt(10000);
-    const allowedDriftAbsolute = BigInt("100000000000000000000000");
-    const maxAllowedDrift = allowedDriftPercent > allowedDriftAbsolute ? allowedDriftPercent : allowedDriftAbsolute;
+    let maxAllowedDrift = BigInt(0);
+    
+    // If block_height is not yet synced, we allow heuristic drift
+    if (!dbRecord?.block_height) {
+      const allowedDriftPercent = (onchainVpBig * BigInt(10)) / BigInt(10000);
+      const allowedDriftAbsolute = BigInt("100000000000000000000000");
+      maxAllowedDrift = allowedDriftPercent > allowedDriftAbsolute ? allowedDriftPercent : allowedDriftAbsolute;
+    }
 
     if (diff > maxAllowedDrift) {
       console.error(
         `   ❌ [ANOMALY DETECTED] DB Cache mismatch for ${account}`,
       );
+      if (dbRecord?.block_height) console.error(`      - Deterministic Block: ${dbRecord.block_height}`);
       console.error(`      - On-Chain: ${onchainVP}`);
       console.error(`      - Database: ${dbVpBig.toString()}`);
       anomaliesDetected++;
@@ -105,9 +119,9 @@ export async function runWatchdogAudit(): Promise<void> {
   console.log("\n-> Auditing Global Indexer Health (Random Sample)...");
 
   const dbRandomDelegates = await prisma.$queryRaw<
-    { account_id: string; voting_power: number }[]
+    { account_id: string; voting_power: number; block_height: string | null }[]
   >`
-    SELECT account_id, voting_power FROM web2.voting_power_cache
+    SELECT account_id, voting_power, block_height FROM web2.voting_power_cache
     ORDER BY RANDOM()
     LIMIT 10
   `;
@@ -116,6 +130,7 @@ export async function runWatchdogAudit(): Promise<void> {
     const onchainVP = await fetchTrueOnchainVotingPower(
       provider,
       record.account_id,
+      record.block_height || undefined
     );
 
     if (onchainVP === null) {
@@ -130,20 +145,16 @@ export async function runWatchdogAudit(): Promise<void> {
     const diff =
       dbVpBig > onchainVpBig ? dbVpBig - onchainVpBig : onchainVpBig - dbVpBig;
 
-    const allowedDriftPercent = (onchainVpBig * BigInt(10)) / BigInt(10000);
-    const allowedDriftAbsolute = BigInt("100000000000000000000000");
-    const maxAllowedDrift = allowedDriftPercent > allowedDriftAbsolute ? allowedDriftPercent : allowedDriftAbsolute;
+    let maxAllowedDrift = BigInt(0);
+    if (!record.block_height) {
+      const allowedDriftPercent = (onchainVpBig * BigInt(10)) / BigInt(10000);
+      const allowedDriftAbsolute = BigInt("100000000000000000000000");
+      maxAllowedDrift = allowedDriftPercent > allowedDriftAbsolute ? allowedDriftPercent : allowedDriftAbsolute;
+    }
 
     /**
-     * APY Time-Drift Heuristic Tolerance
-     * ----------------------------------
-     * Due to the lack of strict `block_height` determinism in the current `voting_power_cache` schema,
-     * time-based discrepancies arise between the Indexer's static DB snapshot and the Watchdog's live RPC query.
-     * We dynamically absorb this APY growth by allowing a composite maximum drift of:
-     *   - 0.10% (10 basis points) to protect heavy Whale lockups with massive per-minute precision growth.
-     *   - 0.10 VP (Absolute) to guard low-precision "Dust" accounts against fractional rounding.
-     *
-     * TODO: Refactor `voting_power_cache` to store `block_height` for 100% mathematically perfect RPC determinism.
+     * strict block_height determinism overrides heuristic tolerance.
+     * With block_height recorded, we achieve 100% mathematically perfect RPC determinism.
      */
     if (diff > maxAllowedDrift) {
       console.error(

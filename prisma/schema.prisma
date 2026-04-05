@@ -274,6 +274,7 @@ view userActivities {
 model voting_power_cache {
   accountId   String    @id @map("account_id") @db.VarChar(255)
   votingPower Decimal   @map("voting_power") @db.Decimal(38, 0)
+  blockHeight BigInt?   @map("block_height")
   createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
