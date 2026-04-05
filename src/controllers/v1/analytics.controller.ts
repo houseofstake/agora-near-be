@@ -27,32 +27,41 @@ export class AnalyticsController {
         GROUP BY COALESCE(ds.endorsed, false)
       `);
 
-      const activelyDelegatingVpStats: any[] = await prisma.$queryRawUnsafe(`
+      const delegationStats: any[] = await prisma.$queryRawUnsafe(`
+        WITH NonDelegating AS (
+          SELECT
+            COUNT(DISTINCT rv.registered_voter_id) AS "unique_addresses",
+            COALESCE(SUM(vpc.voting_power - COALESCE(rv.voting_power_from_delegations, 0) - COALESCE(rv.delegated_extra_venear, 0)), 0) AS "total_vp"
+          FROM fastnear.registered_voters rv
+          LEFT JOIN web2.voting_power_cache vpc ON rv.registered_voter_id = vpc.account_id
+          WHERE rv.is_actively_delegating = false
+        ),
+        SystemVP AS (
+          SELECT COALESCE(SUM(voting_power), 0) AS "total_vp" FROM web2.voting_power_cache
+        ),
+        Delegating AS (
+          SELECT COUNT(DISTINCT rv.registered_voter_id) AS "unique_addresses"
+          FROM fastnear.registered_voters rv
+          WHERE rv.is_actively_delegating = true
+        )
         SELECT 
-          COUNT(DISTINCT rv.registered_voter_id) AS "uniqueAddresses",
-          COALESCE(SUM(rv.voting_power_from_locks_unlocks), 0) AS "totalVotingPower"
-        FROM fastnear.registered_voters rv
-        WHERE rv.is_actively_delegating = true
-      `);
-
-      const nonDelegatingVpStats: any[] = await prisma.$queryRawUnsafe(`
-        SELECT 
-          COUNT(DISTINCT rv.registered_voter_id) AS "uniqueAddresses",
-          COALESCE(SUM(rv.voting_power_from_locks_unlocks), 0) AS "totalVotingPower"
-        FROM fastnear.registered_voters rv
-        WHERE rv.is_actively_delegating = false
+          d.unique_addresses AS "delegatingAddresses",
+          (s.total_vp - nd.total_vp) AS "delegatingVP",
+          nd.unique_addresses AS "nonDelegatingAddresses",
+          nd.total_vp AS "nonDelegatingVP"
+        FROM NonDelegating nd, SystemVP s, Delegating d
       `);
 
       const delegationStatusBreakdown = [
         {
           isActivelyDelegating: true,
-          uniqueAddresses: activelyDelegatingVpStats[0]?.uniqueAddresses ?? 0,
-          totalVotingPower: activelyDelegatingVpStats[0]?.totalVotingPower ?? 0,
+          uniqueAddresses: delegationStats[0]?.delegatingAddresses ?? 0,
+          totalVotingPower: delegationStats[0]?.delegatingVP ?? 0,
         },
         {
           isActivelyDelegating: false,
-          uniqueAddresses: nonDelegatingVpStats[0]?.uniqueAddresses ?? 0,
-          totalVotingPower: nonDelegatingVpStats[0]?.totalVotingPower ?? 0,
+          uniqueAddresses: delegationStats[0]?.nonDelegatingAddresses ?? 0,
+          totalVotingPower: delegationStats[0]?.nonDelegatingVP ?? 0,
         },
       ];
 
