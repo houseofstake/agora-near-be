@@ -7,7 +7,7 @@ export const DEFAULT_QUORUM_PERCENTAGE_BPS = '3500';
 
 export function getDerivedProposalStatus(proposal: proposals) {
   // If the proposal natively exposes a status from the indexer (v1.1+ proposals)
-  if (proposal.status !== null && proposal.quorumThresholdBps !== null) {
+  if (proposal.status != null && proposal.quorumThresholdBps != null) {
     return proposal.status;
   }
 
@@ -44,7 +44,7 @@ export function calculateQuorumAmount(
   metadata: ProposalMetadata,
 ): string {
   // If the proposal natively exposes a quorum floor from the indexer (v1.1+ proposals)
-  if (proposal.quorumFloor !== null && proposal.quorumThresholdBps !== null) {
+  if (proposal.quorumFloor != null && proposal.quorumThresholdBps != null) {
     const quorumFloorVal = new Big(proposal.quorumFloor.toFixed());
     const totalVenear = proposal.totalVenearAtApproval
       ? new Big(proposal.totalVenearAtApproval.toFixed())
