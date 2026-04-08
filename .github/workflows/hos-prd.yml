@@ -34,6 +34,29 @@ jobs:
       - name: Login to Artifact Registry
         run: gcloud auth configure-docker ${{env.REGION}}-docker.pkg.dev
 
+      - name: Build and push migrate job image
+        run: |
+          docker build -f Dockerfile.migrate -t ${{env.DOCKER_IMAGE}}-migrate .
+          docker push ${{env.DOCKER_IMAGE}}-migrate
+
+      - name: Deploy migrate Cloud Run Job
+        run: |
+          gcloud run jobs deploy migrate-db \
+            --image ${{env.DOCKER_IMAGE}}-migrate \
+            --region ${{env.REGION}} \
+            --set-secrets=DATABASE_URL=DATABASE_URL:latest \
+            --service-account=near-api@${{env.PROJECT_ID}}.iam.gserviceaccount.com \
+            --vpc-connector=projects/${{env.PROJECT_ID}}/locations/${{env.REGION}}/connectors/vpc-connector \
+            --vpc-egress=private-ranges-only \
+            --max-retries=0 \
+            --task-timeout=120s
+
+      - name: Run database migrations
+        run: |
+          gcloud run jobs execute migrate-db \
+            --region ${{env.REGION}} \
+            --wait
+
       - name: Build Docker image
         run: docker build -t ${{env.DOCKER_IMAGE}} .
 

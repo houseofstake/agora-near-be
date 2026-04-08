@@ -205,6 +205,9 @@ npm run prisma:generate
 # Run migrations
 npm run prisma:migrate
 
+# Apply committed migrations without creating a new one
+npm run prisma:deploy
+
 # Open Prisma Studio (database GUI)
 npm run prisma:studio
 
@@ -214,6 +217,17 @@ npm run prisma:pull
 # Generate migration diff
 npm run prisma:migrateDiff
 ```
+
+### Promoting Prisma Changes Across Environments
+
+When changing the Prisma schema:
+
+1. Update `prisma/schema.prisma`
+2. Create the migration locally with `npm run prisma:migrate`
+3. Commit both the schema changes and the generated files in `prisma/migrations`
+4. Promote the same committed migration through `dev`, `stg`, and `prd`
+
+Deployment environments should apply committed migrations with `npm run prisma:deploy`. Do not generate fresh migrations separately in each environment.
 
 ## API Documentation
 
@@ -668,6 +682,12 @@ The following endpoints require signature verification:
 docker build -t agora-near-be .
 ```
 
+#### Build Migration Image
+
+```bash
+docker build -f Dockerfile.migrate -t agora-near-be-migrate .
+```
+
 #### Run Container
 
 ```bash
@@ -689,9 +709,23 @@ The service is designed for deployment on Google Cloud Run with the included CI/
 #### CI/CD Pipelines
 
 - **Unit Tests** (`.github/workflows/unit-tests.yml`) - Run tests on PRs
-- **Dev** (`.github/workflows/dev.yml`) - Deploy to development environment
-- **Staging** (`.github/workflows/staging.yml`) - Deploy to staging environment
-- **Production** (`.github/workflows/prod.yml`) - Deploy to production
+- **Dev** (`.github/workflows/hos-dev.yml`) - Deploy to development environment
+- **Staging** (`.github/workflows/hos-stg.yml`) - Deploy to staging environment
+- **Production** (`.github/workflows/hos-prd.yml`) - Deploy to production
+
+At the moment these deployment workflows are manual (`workflow_dispatch`).
+
+#### Migration Deployment Flow
+
+Each environment workflow now performs the following sequence:
+
+1. Build and push the migration image from `Dockerfile.migrate`
+2. Deploy the `migrate-db` Cloud Run Job
+3. Execute `prisma migrate deploy` against the target environment database
+4. Build and deploy the API service
+5. Build and deploy the voting power sync job
+
+Because migrations run before the new API revision is deployed, database migrations should remain backward-compatible during rollout.
 
 ### Environment-Specific Configuration
 
