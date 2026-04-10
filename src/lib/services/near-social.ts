@@ -42,3 +42,46 @@ export async function fetchNearSocialProfile(
     return null;
   }
 }
+
+export async function fetchNearSocialProfiles(
+  addresses: string[],
+  networkId: string = "mainnet",
+): Promise<Record<string, NearSocialProfile>> {
+  if (addresses.length === 0) return {};
+
+  try {
+    const rpcUrl = getRpcUrl({ networkId });
+    const provider = new providers.JsonRpcProvider({ url: rpcUrl });
+    const contractId = networkId === "mainnet" ? "social.near" : "v1.social08.testnet";
+
+    const keys = addresses.map(address => `${address}/profile/**`);
+
+    const result = await provider.query({
+      request_type: "call_function",
+      account_id: contractId,
+      method_name: "get",
+      args_base64: Buffer.from(JSON.stringify({ keys })).toString("base64"),
+      finality: "final",
+    });
+
+    const parsedResult = JSON.parse(
+      Buffer.from((result as any).result).toString(),
+    );
+
+    const profiles: Record<string, NearSocialProfile> = {};
+
+    if (parsedResult) {
+      for (const address of addresses) {
+        if (parsedResult[address] && parsedResult[address].profile) {
+          profiles[address] = parsedResult[address].profile as NearSocialProfile;
+        }
+      }
+    }
+
+    return profiles;
+  } catch (error) {
+    console.error(`Error fetching NEAR Social profiles for batch:`, error);
+    return {};
+  }
+}
+

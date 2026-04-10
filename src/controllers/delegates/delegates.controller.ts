@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { fetchNearSocialProfile } from "../../lib/services/near-social";
+
 
 import {
   verifySignedPayload,
@@ -200,15 +200,6 @@ export class DelegatesController {
     try {
       const { address } = req.params;
       const { networkId } = req.query;
-
-      const nearSocialPromise = fetchNearSocialProfile(
-        address,
-        networkId as string,
-      ).catch((e) => {
-        console.error("NEAR Social fetch failed silently:", e);
-        return null;
-      });
-
       const voterData = await prisma.$queryRaw<DelegateWithVoterInfo[]>(
         Prisma.sql`
           SELECT
@@ -298,42 +289,6 @@ export class DelegatesController {
           abstainCountPromise,
           delegatedFromCountPromise,
         ]);
-
-      const nearSocialProfile = await nearSocialPromise;
-
-      if (nearSocialProfile && data.address) {
-        let needsUpdate = false;
-        const updatePayload: any = {};
-
-        if (
-          nearSocialProfile.description &&
-          nearSocialProfile.description !== data.statement
-        ) {
-          needsUpdate = true;
-          updatePayload.statement = nearSocialProfile.description;
-          data.statement = nearSocialProfile.description;
-        }
-
-        if (
-          nearSocialProfile.linktree?.twitter &&
-          nearSocialProfile.linktree.twitter !== data.twitter
-        ) {
-          needsUpdate = true;
-          updatePayload.twitter = nearSocialProfile.linktree.twitter;
-          data.twitter = nearSocialProfile.linktree.twitter;
-        }
-
-        if (needsUpdate && data.signature) {
-          prisma.delegate_statements
-            .update({
-              where: { address: data.address },
-              data: updatePayload,
-            })
-            .catch((e) =>
-              console.error("Silently failed to sync NEAR Social profile:", e),
-            );
-        }
-      }
 
       res.status(200).json({
         delegate: {
