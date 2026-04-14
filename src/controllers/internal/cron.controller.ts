@@ -70,8 +70,10 @@ export class CronController {
           const newTwitter = profile.linktree?.twitter ?? null;
 
           if (!existing) {
-            // New entry: Must upsert dummy fields due to Prisma constraints
-            needsUpdate = true;
+            // Only create a new entry if there is meaningful content to store
+            if (profile.description || profile.linktree?.twitter) {
+              needsUpdate = true;
+            }
           } else {
             // Existing entry: Check for changes
             if (profile.description && newStatement !== existing.statement) {
