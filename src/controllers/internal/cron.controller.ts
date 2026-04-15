@@ -64,7 +64,6 @@ export class CronController {
           if (!profile) continue;
 
           const existing = existingMap.get(address);
-          let needsUpdate = false;
 
           const newStatement = profile.description ?? "";
           const newTwitter = profile.linktree?.twitter ?? null;
@@ -72,37 +71,41 @@ export class CronController {
           if (!existing) {
             // Only create a new entry if there is meaningful content to store
             if (profile.description || profile.linktree?.twitter) {
-              needsUpdate = true;
+              upserts.push(
+                prisma.delegate_statements.create({
+                  data: {
+                    address,
+                    statement: newStatement,
+                    twitter: newTwitter,
+                    signature: "CRON_SYNC_TOS_NOT_SIGNED",
+                    publicKey: "CRON_SYNC_PUBLIC_KEY",
+                    message: "CRON_SYNC_MESSAGE",
+                    agreeCodeConduct: false,
+                  },
+                }),
+              );
             }
           } else {
-            // Existing entry: Check for changes
+            // Build a partial update payload — only update fields that have new content.
+            // This prevents the CRON from overwriting a manually-signed statement
+            // with "" if a delegate removes their NEAR Social bio.
+            const updatePayload: { statement?: string; twitter?: string | null } = {};
+
             if (profile.description && newStatement !== existing.statement) {
-              needsUpdate = true;
+              updatePayload.statement = newStatement;
             }
             if (profile.linktree?.twitter && newTwitter !== existing.twitter) {
-              needsUpdate = true;
+              updatePayload.twitter = newTwitter;
             }
-          }
 
-          if (needsUpdate) {
-            upserts.push(
-              prisma.delegate_statements.upsert({
-                where: { address },
-                update: {
-                  statement: newStatement,
-                  twitter: newTwitter,
-                },
-                create: {
-                  address: address,
-                  statement: newStatement,
-                  twitter: newTwitter,
-                  signature: "CRON_SYNC_TOS_NOT_SIGNED",
-                  publicKey: "CRON_SYNC_PUBLIC_KEY",
-                  message: "CRON_SYNC_MESSAGE",
-                  agreeCodeConduct: false, // Indicates this is just an auto-synced profile
-                },
-              }),
-            );
+            if (Object.keys(updatePayload).length > 0) {
+              upserts.push(
+                prisma.delegate_statements.update({
+                  where: { address },
+                  data: updatePayload,
+                }),
+              );
+            }
           }
         }
 
