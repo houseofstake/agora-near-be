@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 
+
 import {
   verifySignedPayload,
   SignedPayload,
@@ -199,7 +200,6 @@ export class DelegatesController {
     try {
       const { address } = req.params;
       const { networkId } = req.query;
-
       const voterData = await prisma.$queryRaw<DelegateWithVoterInfo[]>(
         Prisma.sql`
           SELECT
