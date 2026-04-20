@@ -32,7 +32,7 @@ function mapRecordToResponse(
   const approvalThreshold = metadata.approvalThreshold.toString();
 
   const quorumAmount = calculateQuorumAmount(
-    record.totalVenearAtApproval?.toFixed(),
+    record,
     quorumOverride,
     metadata,
   );
@@ -202,7 +202,7 @@ export class ProposalController {
       const override = overrides[0] || null;
 
       const quorumAmount = calculateQuorumAmount(
-        proposal.totalVenearAtApproval?.toFixed(),
+        proposal,
         override,
         metadata,
       );

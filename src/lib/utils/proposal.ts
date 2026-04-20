@@ -6,6 +6,12 @@ import Big from "big.js";
 export const DEFAULT_QUORUM_PERCENTAGE_BPS = '3500';
 
 export function getDerivedProposalStatus(proposal: proposals) {
+  // If the proposal natively exposes a status from the indexer (v1.1+ proposals)
+  if (proposal.status != null && proposal.quorumThresholdBps != null) {
+    return proposal.status;
+  }
+
+  // Fallback structure for V1 legacy proposals
   const startTimeMs = proposal.votingStartAt?.getTime();
   const votingDurationMs = convertNanoSecondsToMs(
     proposal.votingDurationNs?.toFixed(),
@@ -33,10 +39,28 @@ export function getDerivedProposalStatus(proposal: proposals) {
 }
 
 export function calculateQuorumAmount(
-  totalVenearAtApproval: string | null | undefined,
+  proposal: proposals,
   quorumOverride: quorum_overrides | null,
   metadata: ProposalMetadata,
 ): string {
+  // If the proposal natively exposes a quorum floor from the indexer (v1.1+ proposals)
+  if (proposal.quorumFloor != null && proposal.quorumThresholdBps != null) {
+    const quorumFloorVal = new Big(proposal.quorumFloor.toFixed());
+    const totalVenear = proposal.totalVenearAtApproval
+      ? new Big(proposal.totalVenearAtApproval.toFixed())
+      : new Big(0);
+
+    const bpsQuorum = totalVenear
+      .mul(new Big(proposal.quorumThresholdBps.toFixed()))
+      .div(10000);
+
+    return bpsQuorum.gt(quorumFloorVal)
+      ? bpsQuorum.toFixed(0)
+      : quorumFloorVal.toFixed(0);
+  }
+
+  // Fallback calculating structure for V1 legacy proposals
+  
   // Determine Quorum Floor based on environment
   // Prod: 7M veNEAR (Strict)
   // Dev/Staging: process.env.QUORUM_FLOOR or 10 veNEAR (Flexible)
@@ -48,8 +72,8 @@ export function calculateQuorumAmount(
   }
 
   const quorumFloor = new Big(floorValue);
-  const totalVenear = totalVenearAtApproval
-    ? new Big(totalVenearAtApproval)
+  const totalVenear = proposal.totalVenearAtApproval
+    ? new Big(proposal.totalVenearAtApproval.toFixed())
     : new Big(0);
 
   // For metadata.version = 0, it's implicitly set to DEFAULT_QUORUM_PERCENTAGE_BPS
